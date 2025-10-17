@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, useCameraDevices} from 'react-native-vision-camera';
+import { Camera, useCameraDevices, useFrameProcessor} from 'react-native-vision-camera';
 import { StyleSheet, View, Text, Button } from 'react-native';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 
@@ -26,7 +26,6 @@ const CamSelector = (props: CamSelectorProps)=> {
 
 const App = () => {
   const [camIndex, setCamIndex] = useState(0);
-  const [focalDistance, setFocalDistance] = useState(0.5); // 0 to 1
   const devices = useCameraDevices()
   const camera = useRef(null);
 
@@ -37,6 +36,14 @@ const App = () => {
   // You must handle permissions!
   useEffect(() => { 
     requestPermission();
+  }, []);
+
+
+// ...
+
+  const frameProcessor = useFrameProcessor((frame) => {
+    'worklet';
+    const labels = labelImage(frame);
   }, []);
 
   const takePicture = async () => {

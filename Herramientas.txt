@@ -1,3 +1,9 @@
 Comprobar conexión con el dispositivo de desarrollo: adb devices
 Activar menú de desarrollador: adb shell input keyevent 82
 Reconectar dispositivo de desarrollo : adb reverse tcp:8081 tcp:8081
+
+rebuildear proyecto: npm run android
+parchear paquete: 
+en      node_modude/react-native-worklets-core/android/CMakeList.txt
+
+https://github.com/margelo/react-native-worklets-core/issues/261
