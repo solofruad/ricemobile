@@ -1,46 +1,75 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useEffect, useRef, useState } from 'react';
+import { Camera, useCameraDevices} from 'react-native-vision-camera';
+import { StyleSheet, View, Text, Button } from 'react-native';
+import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
-
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
-  );
+type CamSelectorProps = {
+  setCamIndex: (idx:number)=>void,
+  cameraCount: number
 }
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
+const CamSelector = (props: CamSelectorProps)=> {
+  return <View style={{position:"absolute",bottom:0,display:"flex",flexDirection:"row",gap:12}}>
+    {
+      [...new Array(props.cameraCount)].map((_,idx)=>(
+        <Button 
+          key={idx}
+          onPress={() => {
+            props.setCamIndex(idx);
+          }}
+          title={`Lente${idx+1}`}
+        />
+      ))
+    }
+  </View>
+}
 
+const App = () => {
+  const [camIndex, setCamIndex] = useState(0);
+  const [focalDistance, setFocalDistance] = useState(0.5); // 0 to 1
+  const devices = useCameraDevices()
+  const camera = useRef(null);
+
+  const requestPermission = async () => {
+    const newCameraPermission = await Camera.requestCameraPermission();
+      // ... handle permission result
+    };
+  // You must handle permissions!
+  useEffect(() => { 
+    requestPermission();
+  }, []);
+
+  const takePicture = async () => {
+    if (camera.current) {
+      const photo = await (camera.current as Camera).takePhoto({
+        
+      });
+      const res = await CameraRoll.saveAsset(`file://${photo.path}`, {
+        type: 'photo',
+      })
+      console.log(res);
+    }
+  };
+
+  if (devices == null) return <View><Text>No camera device</Text></View>;
   return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
+    <View style={{width:"100%",height:"100%", display:"flex", gap:8}}>
+      <Camera
+        ref={camera}
+        style={StyleSheet.absoluteFill}
+        device={devices[camIndex]}
+        isActive={true}
+        resizeMode={'contain'}
+        photo={true}
+        photoQualityBalance={"quality"}
       />
-      Hola bb
+      
+      <CamSelector cameraCount={devices.length} setCamIndex={(idx: number)=>{setCamIndex(idx);}}/> 
+
+      <Button onPress={takePicture} title="Fotito y pal foro"/>
+      <Button onPress={()=>{console.log(camera.current)}} title="Permiso"/>
     </View>
   );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
+};
 
 export default App;
