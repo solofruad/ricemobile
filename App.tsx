@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Camera, useCameraDevices, useFrameProcessor} from 'react-native-vision-camera';
+import { Camera, runAsync, useCameraDevices, useFrameProcessor} from 'react-native-vision-camera';
 import { StyleSheet, View, Text, Button } from 'react-native';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
+import { useImageLabeler } from 'react-native-vision-camera-image-labeler';
 
 type CamSelectorProps = {
   setCamIndex: (idx:number)=>void,
@@ -38,13 +39,15 @@ const App = () => {
     requestPermission();
   }, []);
 
-
-// ...
-
+  // const {scanImage} = useImageLabeler({minConfidence : 1.0})
   const frameProcessor = useFrameProcessor((frame) => {
-    'worklet';
-    const labels = labelImage(frame);
-  }, []);
+    // 'worklet'
+    // runAsync(frame,()=>{
+    //   // const data = scanImage(frame)
+    // })
+
+	// console.log(data, 'data')
+  }, [])
 
   const takePicture = async () => {
     if (camera.current) {
@@ -69,6 +72,7 @@ const App = () => {
         resizeMode={'contain'}
         photo={true}
         photoQualityBalance={"quality"}
+        frameProcessor={frameProcessor}
       />
       
       <CamSelector cameraCount={devices.length} setCamIndex={(idx: number)=>{setCamIndex(idx);}}/> 

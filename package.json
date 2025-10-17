@@ -16,8 +16,8 @@
     "react-native": "0.82.0",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-vision-camera": "^4.7.2",
-    "react-native-worklets-core": "^1.6.2",
-    "vision-camera-image-labeler": "^0.1.6"
+    "react-native-vision-camera-image-labeler": "^2.2.0",
+    "react-native-worklets-core": "^1.6.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
