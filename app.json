@@ -1,4 +1,7 @@
 {
   "name": "mobileProject",
-  "displayName": "mobileProject"
+  "displayName": "mobileProject",
+  "packagerOpts": {
+    "config": "metro.config.js"
+  }
 }

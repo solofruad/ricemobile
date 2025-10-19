@@ -1,8 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, runAsync, useCameraDevices, useFrameProcessor} from 'react-native-vision-camera';
-import { StyleSheet, View, Text, Button } from 'react-native';
+import { StyleSheet, View, Text, Button, Image, ImageResolvedAssetSource } from 'react-native';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
-import { useImageLabeler } from 'react-native-vision-camera-image-labeler';
+import ImageLabeling from '@react-native-ml-kit/image-labeling';
+import imageURL from "./src/assets/image.jpg"
+
+
+
 
 type CamSelectorProps = {
   setCamIndex: (idx:number)=>void,
@@ -29,7 +33,7 @@ const App = () => {
   const [camIndex, setCamIndex] = useState(0);
   const devices = useCameraDevices()
   const camera = useRef(null);
-
+  
   const requestPermission = async () => {
     const newCameraPermission = await Camera.requestCameraPermission();
       // ... handle permission result
@@ -37,6 +41,11 @@ const App = () => {
   // You must handle permissions!
   useEffect(() => { 
     requestPermission();
+    const uri = Image.resolveAssetSource(imageURL).uri;
+    console.log(uri);
+    // ImageLabeling.label(uri).then((res)=>{
+    //   console.log(res); 
+    // });
   }, []);
 
   // const {scanImage} = useImageLabeler({minConfidence : 1.0})
@@ -53,6 +62,9 @@ const App = () => {
     if (camera.current) {
       const photo = await (camera.current as Camera).takePhoto({
         
+      });
+      ImageLabeling.label(`file://${photo.path}`).then((res)=>{
+        console.log(res); 
       });
       const res = await CameraRoll.saveAsset(`file://${photo.path}`, {
         type: 'photo',
@@ -72,7 +84,7 @@ const App = () => {
         resizeMode={'contain'}
         photo={true}
         photoQualityBalance={"quality"}
-        frameProcessor={frameProcessor}
+        // frameProcessor={frameProcessor}
       />
       
       <CamSelector cameraCount={devices.length} setCamIndex={(idx: number)=>{setCamIndex(idx);}}/> 
