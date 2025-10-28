@@ -1,26 +1,20 @@
-// const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+// const { getDefaultConfig, mergeConfig } = require('expo/metro-config');
 
-// /**
-//  * Metro configuration
-//  * https://reactnative.dev/docs/metro
-//  *
-//  * @type {import('@react-native/metro-config').MetroConfig}
-//  */
-// const config = {};
+// const defaultConfig = getDefaultConfig(__dirname);
 
-// module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+// console.log(defaultConfig);
 
+// module.exports = mergeConfig(defaultConfig, {
+//   resolver: {
+//     assetExts: [...defaultConfig.resolver.assetExts, "tflite", "png", "jpg"],
+//     sourceExts: [...defaultConfig.resolver.sourceExts, "tflite", "png", "jpg"],
+//   },
+// });
 
-const { getDefaultConfig, mergeConfig } = require("@react-native/metro-config");
+const { getDefaultConfig } = require('expo/metro-config');
 
-const defaultConfig = getDefaultConfig(__dirname);
+const config = getDefaultConfig(__dirname);
 
-console.log(defaultConfig);
+config.resolver.assetExts.push('tflite');
 
-module.exports = mergeConfig(defaultConfig, {
-  resolver: {
-    assetExts: [...defaultConfig.resolver.assetExts, "tflite", "png", "jpg"],
-    sourceExts: [...defaultConfig.resolver.sourceExts, "tflite", "png", "jpg"],
-  },
-});
-
+module.exports = config;
