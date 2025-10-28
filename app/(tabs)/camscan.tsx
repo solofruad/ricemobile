@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Camera,  useCameraDevices} from 'react-native-vision-camera';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler'
 import { StyleSheet, View, Text, Button, Dimensions} from 'react-native';
-import {Image as ImageRes} from 'react-native';
 import ImageResizer from '@bam.tech/react-native-image-resizer';
 import {
   RNMLKitObjectDetectionObject,
@@ -10,8 +9,8 @@ import {
 } from "@infinitered/react-native-mlkit-object-detection";
 import type { MyModelsConfig } from "../_layout";
 import { Canvas, Rect, Image, Skia, SkImage, Group,  Line, vec, matchFont, Text as TextDraw, Circle } from '@shopify/react-native-skia';
-import RNFS from 'react-native-fs';
-import { writeAsync, readAsync, ExifTags } from '@lodev09/react-native-exify';
+import { writeAsync, readAsync} from '@lodev09/react-native-exify';
+import { runOnJS } from 'react-native-worklets';
 
 type CamSelectorProps = {
   setCamIndex: (idx:number)=>void,
@@ -19,7 +18,7 @@ type CamSelectorProps = {
 }
 
 const CamSelector = (props: CamSelectorProps)=> {
-  return <View style={{position:"absolute",bottom:0,display:"flex",flexDirection:"row",gap:12}}>
+  return <>
     {
       [...new Array(props.cameraCount)].map((_,idx)=>(
         <Button 
@@ -31,7 +30,7 @@ const CamSelector = (props: CamSelectorProps)=> {
         />
       ))
     }
-  </View>
+  </>
 }
 
 type ScanLabelsProps = {
@@ -44,26 +43,35 @@ const ScanLabels = (props: ScanLabelsProps)=>{
   const fontStyle = {
     fontFamily: "arial",
     fontWeight: "bold",
-    fontSize: 16
+    fontSize: 14
   } as const;
   const font = matchFont(fontStyle);
 
   return props.rects.map((obj)=>{
+    if(obj.labels.length == 0){
+      return null;
+    }
     const x= obj.frame.origin.x * props.scale ;
     const y= obj.frame.origin.y * props.scale ;
 
-    const width = obj.frame.size.x * props.scale;
     const height = obj.frame.size.y * props.scale;
 
     const point = rotatePointAroundPlaneCenter({x,y},{width:props.imageDims.width,height:props.imageDims.width},90);
     return <>
+      <Rect
+        x={point.x-height-2}
+        y={point.y-18}
+        width={height+4}
+        height={18}
+        color={"green"}
+      />
       <TextDraw
         text={obj.labels.map(e=>{return `${e.text}: ${e.confidence.toFixed(2)}`}).join(", ")}
         font={font}
-        x={point.x-height}
-        y={point.y}
+        x={point.x-height+4}
+        y={point.y-4}
+        color={"white"}
         />
-        {/* <Circle cx={point.x} cy={point.y} r={5} color="lightblue" /> */}
     </>
   })
 }
@@ -198,11 +206,6 @@ const CamScan = () => {
 
   const devices = useCameraDevices()
   const camera = useRef(null);
-  // console.log(require("../../assets/models/eh.jpg"));
-  // console.log(ImageRes);
-  // console.log(RNFS.ExternalDirectoryPath );
-
-    
           
   const requestPermission = async () => {
     const newCameraPermission = await Camera.requestCameraPermission();
@@ -246,8 +249,6 @@ const CamScan = () => {
               //   detectAndSetUri(rotatedImage.uri);
               //   readAsync(rotatedImage.uri).then(res=>{console.log(res)});
               // })
-
-              
             // }else{
               detectAndSetUri(uri);
             // }
@@ -256,8 +257,6 @@ const CamScan = () => {
           });
           
         })
-
-        
         // setDetectedObjects(detectionResults);
         // CameraRoll.saveAsset(`file://${photo.path}`, {
         //   type: 'photo',
@@ -266,24 +265,43 @@ const CamScan = () => {
     }
   };
 
+  const focus = (point: {x:number, y:number}) => {
+    const c = camera.current as unknown as Camera;
+    if (c == null) return
+      c.focus(point)
+  }
+
+  const gesture = Gesture.Tap()
+    .onEnd(({ x, y }) => {
+      //?El ident aconseja usar "scheduleOnRN()" en su lugar, pero dicho metodo internamente emplea "runOnJS()"... bruh
+      runOnJS(focus)({ x, y })
+    });
+
   if (devices == null) return <View><Text>No camera device</Text></View>;
   return (
     <View style={{paddingTop:30,width:"100%",height:"100%", display:"flex", gap:8, position:"relative"}}>
-      <Camera
-        ref={camera}
-        style={StyleSheet.absoluteFill}
-        device={devices[camIndex]}
-        isActive={true}
-        resizeMode={'contain'}
-        photo={true}
-        photoQualityBalance={"quality"}
-        outputOrientation='preview'
-      />
-      
-      <CamSelector cameraCount={devices.length} setCamIndex={(idx: number)=>{setCamIndex(idx);}}/> 
+      <GestureHandlerRootView>
+      <GestureDetector gesture={gesture}>
+        <Camera
+          ref={camera}
+          style={StyleSheet.absoluteFill}
+          device={devices[camIndex]}
+          isActive={true}
+          resizeMode={'contain'}
+          photo={true}
+          photoQualityBalance={"quality"}
+          outputOrientation='preview'
+          enableLocation={false}
+          focusable={false}
+        />
+      </GestureDetector>
+      </GestureHandlerRootView>
 
-      <View style={{ display:"flex", gap:10}}>
+
+
+      <View style={{ display:"flex", gap:10, flexDirection:"row"}}>
         <Button onPress={takePicture} title="Fotito y pal foro"/>
+        <CamSelector cameraCount={devices.length} setCamIndex={(idx: number)=>{setCamIndex(idx);}}/> 
       </View>
       
       {detection && photoUri ? <ScanCanvas detection={detection} photoUri={photoUri} deleteData={()=>{setDetection(null); setPhotoUri('');}}/> : null}
