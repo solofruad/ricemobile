@@ -1,0 +1,268 @@
+diff --git a/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/CameraSession+FocusDepth.kt b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/CameraSession+FocusDepth.kt
+new file mode 100644
+index 0000000..9d8a743
+--- /dev/null
++++ b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/core/CameraSession+FocusDepth.kt
+@@ -0,0 +1,29 @@
++package com.mrousavy.camera.core
++
++import android.annotation.SuppressLint
++import android.hardware.camera2.CameraMetadata
++import android.hardware.camera2.CaptureRequest
++import androidx.camera.camera2.interop.Camera2CameraControl
++import androidx.camera.camera2.interop.CaptureRequestOptions
++import androidx.camera.camera2.interop.ExperimentalCamera2Interop
++import androidx.camera.core.CameraControl
++
++@ExperimentalCamera2Interop
++@SuppressLint("RestrictedApi")
++suspend fun CameraSession.focusDepth(depth: Double) {
++  val camera = camera ?: throw CameraNotReadyError()
++
++  try {
++    Camera2CameraControl.from(camera.cameraControl).let {
++      CaptureRequestOptions.Builder().apply {
++        val distance = depth.toFloat()
++        setCaptureRequestOption(CaptureRequest.LENS_FOCUS_DISTANCE, distance)
++        setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_OFF)
++      }.let { builder ->
++        it.addCaptureRequestOptions(builder.build())
++      }
++    }
++  } catch (e: CameraControl.OperationCanceledException) {
++    throw FocusCanceledError()
++  }
++}
+diff --git a/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraView+FocusDepth.kt b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraView+FocusDepth.kt
+new file mode 100644
+index 0000000..054de59
+--- /dev/null
++++ b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraView+FocusDepth.kt
+@@ -0,0 +1,9 @@
++package com.mrousavy.camera.react
++
++import androidx.camera.camera2.interop.ExperimentalCamera2Interop
++import com.mrousavy.camera.core.focusDepth
++
++@ExperimentalCamera2Interop
++suspend fun CameraView.focusDepth(distance: Double) {
++  cameraSession.focusDepth(distance)
++}
+diff --git a/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewModule.kt b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewModule.kt
+index 7ae4209..08d035e 100644
+--- a/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewModule.kt
++++ b/node_modules/react-native-vision-camera/android/src/main/java/com/mrousavy/camera/react/CameraViewModule.kt
+@@ -34,6 +34,8 @@ import kotlinx.coroutines.cancel
+ import kotlinx.coroutines.isActive
+ import kotlinx.coroutines.launch
+ 
++import androidx.camera.camera2.interop.ExperimentalCamera2Interop
++
+ @ReactModule(name = CameraViewModule.TAG)
+ @Suppress("unused")
+ class CameraViewModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+@@ -188,6 +190,18 @@ class CameraViewModule(reactContext: ReactApplicationContext) : ReactContextBase
+     }
+   }
+ 
++     @ExperimentalCamera2Interop
++     @ReactMethod
++     fun focusDepth(viewTag: Int, distance: Double, promise: Promise) {
++             backgroundCoroutineScope.launch {
++                     val view = findCameraView(viewTag)
++                     withPromise(promise) {
++                             view.focusDepth(distance)
++                             return@withPromise null
++                         }
++                 }
++         }
++
+   private fun canRequestPermission(permission: String): Boolean {
+     val activity = currentActivity as? PermissionAwareActivity
+     return activity?.shouldShowRequestPermissionRationale(permission) ?: false
+diff --git a/node_modules/react-native-vision-camera/ios/Core/CameraError.swift b/node_modules/react-native-vision-camera/ios/Core/CameraError.swift
+index 9835689..f5f742c 100644
+--- a/node_modules/react-native-vision-camera/ios/Core/CameraError.swift
++++ b/node_modules/react-native-vision-camera/ios/Core/CameraError.swift
+@@ -76,6 +76,7 @@ enum DeviceError {
+   case microphoneUnavailable
+   case lowLightBoostNotSupported
+   case focusNotSupported
++  case focusDepthNotSupported
+   case notAvailableOnSimulator
+   case pixelFormatNotSupported(targetFormats: [FourCharCode], availableFormats: [FourCharCode])
+ 
+@@ -95,6 +96,8 @@ enum DeviceError {
+       return "low-light-boost-not-supported"
+     case .focusNotSupported:
+       return "focus-not-supported"
++    case .focusDepthNotSupported:
++      return "focus-depth-not-supported"
+     case .notAvailableOnSimulator:
+       return "camera-not-available-on-simulator"
+     case .pixelFormatNotSupported:
+@@ -116,6 +119,8 @@ enum DeviceError {
+       return "The currently selected camera device does not support low-light boost! Select a device where `device.supportsLowLightBoost` is true."
+     case .focusNotSupported:
+       return "The currently selected camera device does not support focusing!"
++    case .focusDepthNotSupported:
++      return "The currently selected camera device does not support manual depth-of-field focusing!"
+     case .microphoneUnavailable:
+       return "The microphone was unavailable."
+     case .notAvailableOnSimulator:
+diff --git a/node_modules/react-native-vision-camera/ios/Core/CameraSession+FocusDepth.swift b/node_modules/react-native-vision-camera/ios/Core/CameraSession+FocusDepth.swift
+new file mode 100644
+index 0000000..361a777
+--- /dev/null
++++ b/node_modules/react-native-vision-camera/ios/Core/CameraSession+FocusDepth.swift
+@@ -0,0 +1,38 @@
++//
++//  CameraSession+FocusDepth.swift
++//  VisionCamera
++//
++//  Created by Hugo Gresse on 12.08.25.
++//
++
++import AVFoundation
++import Foundation
++
++extension CameraSession {
++  /**
++   Focuses the Camera to the specified distance. The distance must be within 0.001f and device.minFocusDistance.
++   The range of possible positions is 0.0 to 1.0, with 0.0 being the shortest distance at which the lens can focus and 1.0 the furthest. Note that 1.0 doesn’t represent focus at infinity. The default value is 1.0.
++   */
++  func focusDepth(distance: Float) throws {
++    guard let device = videoDeviceInput?.device else {
++      throw CameraError.session(SessionError.cameraNotReady)
++    }
++    if !device.isLockingFocusWithCustomLensPositionSupported {
++      throw CameraError.device(DeviceError.focusDepthNotSupported)
++    }
++
++    VisionLogger.log(level: .info, message: "Focusing depth (\(distance))...")
++
++    do {
++      try device.lockForConfiguration()
++      defer {
++        device.unlockForConfiguration()
++      }
++
++      // Set Focus depth
++      device.setFocusModeLocked(lensPosition: distance, completionHandler: nil)
++    } catch {
++      throw CameraError.device(DeviceError.configureError)
++    }
++  }
++}
+diff --git a/node_modules/react-native-vision-camera/ios/Core/Extensions/AVCaptureDevice+toDictionary.swift b/node_modules/react-native-vision-camera/ios/Core/Extensions/AVCaptureDevice+toDictionary.swift
+index 4d8bc38..120f0de 100644
+--- a/node_modules/react-native-vision-camera/ios/Core/Extensions/AVCaptureDevice+toDictionary.swift
++++ b/node_modules/react-native-vision-camera/ios/Core/Extensions/AVCaptureDevice+toDictionary.swift
+@@ -29,6 +29,7 @@ extension AVCaptureDevice {
+       "supportsRawCapture": false, // TODO: supportsRawCapture
+       "supportsLowLightBoost": isLowLightBoostSupported,
+       "supportsFocus": isFocusPointOfInterestSupported,
++      "supportsFocusDepth": isLockingFocusWithCustomLensPositionSupported,
+       "hardwareLevel": HardwareLevel.full.jsValue,
+       "sensorOrientation": sensorOrientation.jsValue,
+       "formats": formats.map { $0.toJSValue() },
+diff --git a/node_modules/react-native-vision-camera/ios/React/CameraView+FocusDepth.swift b/node_modules/react-native-vision-camera/ios/React/CameraView+FocusDepth.swift
+new file mode 100644
+index 0000000..fef1bfa
+--- /dev/null
++++ b/node_modules/react-native-vision-camera/ios/React/CameraView+FocusDepth.swift
+@@ -0,0 +1,18 @@
++//
++//  CameraView+FocusDepth.swift
++//  VisionCamera
++//
++//  Created by Hugo Gresse on 12.08.25.
++//
++
++import AVFoundation
++import Foundation
++
++extension CameraView {
++  func focusDepth(distance: Float, promise: Promise) {
++    withPromise(promise) {
++      try cameraSession.focusDepth(distance: distance)
++      return nil
++    }
++  }
++}
+diff --git a/node_modules/react-native-vision-camera/ios/React/CameraViewManager.m b/node_modules/react-native-vision-camera/ios/React/CameraViewManager.m
+index 527c9bc..819088b 100644
+--- a/node_modules/react-native-vision-camera/ios/React/CameraViewManager.m
++++ b/node_modules/react-native-vision-camera/ios/React/CameraViewManager.m
+@@ -88,5 +88,7 @@ @interface RCT_EXTERN_REMAP_MODULE (CameraView, CameraViewManager, RCTViewManage
+                       resolve reject : (RCTPromiseRejectBlock)reject);
+ RCT_EXTERN_METHOD(focus : (nonnull NSNumber*)node point : (NSDictionary*)point resolve : (RCTPromiseResolveBlock)
+                       resolve reject : (RCTPromiseRejectBlock)reject);
++RCT_EXTERN_METHOD(focusDepth : (nonnull NSNumber*)node distance : (NSNumber*)distance resolve : (RCTPromiseResolveBlock)
++                      resolve reject : (RCTPromiseRejectBlock)reject);
+ 
+ @end
+diff --git a/node_modules/react-native-vision-camera/ios/React/CameraViewManager.swift b/node_modules/react-native-vision-camera/ios/React/CameraViewManager.swift
+index f7bd9e8..5b345ba 100644
+--- a/node_modules/react-native-vision-camera/ios/React/CameraViewManager.swift
++++ b/node_modules/react-native-vision-camera/ios/React/CameraViewManager.swift
+@@ -96,6 +96,13 @@ final class CameraViewManager: RCTViewManager {
+     component.focus(point: CGPoint(x: x.doubleValue, y: y.doubleValue), promise: promise)
+   }
+ 
++  @objc
++  final func focusDepth(_ node: NSNumber, distance: NSNumber, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
++    let promise = Promise(resolver: resolve, rejecter: reject)
++    let component = getCameraView(withTag: node)
++    component.focusDepth(distance: distance.floatValue, promise: promise)
++  }
++
+   @objc
+   final func getCameraPermissionStatus() -> String {
+     let status = AVCaptureDevice.authorizationStatus(for: .video)
+diff --git a/node_modules/react-native-vision-camera/src/Camera.tsx b/node_modules/react-native-vision-camera/src/Camera.tsx
+index afe056a..8f22aa3 100644
+--- a/node_modules/react-native-vision-camera/src/Camera.tsx
++++ b/node_modules/react-native-vision-camera/src/Camera.tsx
+@@ -380,6 +380,29 @@ export class Camera extends React.PureComponent<CameraProps, CameraState> {
+       throw tryParseNativeCameraError(e)
+     }
+   }
++
++
++ /**
++        * Focus the camera to a specific distance.
++        * @param {number} distance The distance to focus to. It should be lower than the minFocusDistance. Lower the value (closer to 0.001f), further the distance, higher the value (closer to the minFocusDistance), more macro the focus will be.
++        *
++        * Make sure the value doesn't exceed the device.minFocusDistance.
++        *
++        * @throws {@linkcode CameraRuntimeError} When any kind of error occured while focussing.
++        * Use the {@linkcode CameraRuntimeError.code | code} property to get the actual error
++        * @example
++        * ```ts
++        * await camera.current.focusDepth(5)
++        * ```
++        */
++ public async focusDepth(distance: number): Promise<void> {
++           try {
++                     return await CameraModule.focusDepth(this.handle, distance)
++                           } catch (e) {
++                     throw tryParseNativeCameraError(e)
++                   }
++         }
++
+   //#endregion
+ 
+   //#region Static Functions (NativeModule)
+diff --git a/node_modules/react-native-vision-camera/src/CameraError.ts b/node_modules/react-native-vision-camera/src/CameraError.ts
+index 01ad3f1..9a04ac3 100644
+--- a/node_modules/react-native-vision-camera/src/CameraError.ts
++++ b/node_modules/react-native-vision-camera/src/CameraError.ts
+@@ -12,6 +12,7 @@ export type DeviceError =
+   | 'device/pixel-format-not-supported'
+   | 'device/low-light-boost-not-supported'
+   | 'device/focus-not-supported'
++  | 'device/focus-depth-not-supported'
+   | 'device/camera-not-available-on-simulator'
+   | 'device/camera-already-in-use'
+ export type FormatError =

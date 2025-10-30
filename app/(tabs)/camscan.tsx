@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Camera,  useCameraDevices} from 'react-native-vision-camera';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler'
 import { StyleSheet, View, Text, Button, Dimensions} from 'react-native';
-import ImageResizer from '@bam.tech/react-native-image-resizer';
+import Slider from '@react-native-community/slider';
 import {
   RNMLKitObjectDetectionObject,
   useObjectDetection,
@@ -173,14 +173,12 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
         y: skImage.width()*scaleB 
       });
       setImage(skImage);
-
-
     })
   },[])
 
-  return  <View style={{position:"absolute", width:"100%", height:"100%", backgroundColor:"orange", bottom:0}}>
-    <Button title='Exit' onPress={()=>{props.deleteData(); setImage(null); setScale(1);}}/>
-    {(image && dims && scale) ? <Canvas style={{width:dims.x, height:dims.y, backgroundColor:"black"}}>
+  return  <View style={{position:"absolute", width:"100%", height:"100%", bottom:0, display:"flex"}}>
+    {(image && dims && scale) ? 
+    <Canvas style={{width:dims.x, height:dims.y, backgroundColor:"black", marginTop:"auto", marginBottom:"auto"}}>
        <Group 
         transform={[{rotate:(90 *Math.PI)/180},{scale:1}]} 
         origin={{x:(dims.x)*(0.5),y:(dims.x)*0.5}}>
@@ -191,8 +189,10 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
         rects={props.detection} 
         imageDims={{width:dims.x,height:dims.y}} 
         scale={scale}/>
-      <Circle cx={(dims.x)/2} cy={(dims.y)/2} r={5} color="lightblue" />
     </Canvas> : null}
+        <Button 
+      title='Exit' 
+      onPress={()=>{props.deleteData(); setImage(null); setScale(1);}}/>
   </View> 
 }
 
@@ -211,9 +211,10 @@ const CamScan = () => {
     const newCameraPermission = await Camera.requestCameraPermission();
       // ... handle permission result
     };
-  // You must handle permissions!
   useEffect(() => { 
-    requestPermission();
+    requestPermission().then(()=>{
+      console.log("==========",devices[camIndex].minFocusDistance)
+    });
   }, []);
 
   const detectAndSetUri = (uri:string)=>{
@@ -230,33 +231,11 @@ const CamScan = () => {
         var uri = `file://${photo.path}`
         // const uri = ImageRes.resolveAssetSource(require("../../assets/models/eh.jpg")).uri;
         writeAsync(uri,{Orientation:0}).then(()=>{
-          readAsync(uri).then(res=>{
+          // readAsync(uri).then(res=>{
           //   console.log(res?.Orientation)
-            // const rotation = 0;
-          //   // if (rotation !== 0) {
-              // ImageResizer.createResizedImage(
-              //   uri,
-              //   photo.width,
-              //   photo.height,
-              //   'JPEG',
-              //   100,
-              //   rotation,
-              //   undefined,
-              //   false,
-              //   { mode: 'contain', onlyScaleDown: false }
-              // ).then((rotatedImage)=>{
-              //   // console.log("here",rotatedImage);
-              //   detectAndSetUri(rotatedImage.uri);
-              //   readAsync(rotatedImage.uri).then(res=>{console.log(res)});
-              // })
-            // }else{
               detectAndSetUri(uri);
-            // }
-            window.alert("Captura realizada");
-
-          });
-          
-        })
+          // });
+        });
         // setDetectedObjects(detectionResults);
         // CameraRoll.saveAsset(`file://${photo.path}`, {
         //   type: 'photo',
@@ -276,36 +255,47 @@ const CamScan = () => {
       //?El ident aconseja usar "scheduleOnRN()" en su lugar, pero dicho metodo internamente emplea "runOnJS()"... bruh
       runOnJS(focus)({ x, y })
     });
-
   if (devices == null) return <View><Text>No camera device</Text></View>;
   return (
     <View style={{paddingTop:30,width:"100%",height:"100%", display:"flex", gap:8, position:"relative"}}>
-      <GestureHandlerRootView>
-      <GestureDetector gesture={gesture}>
-        <Camera
-          ref={camera}
-          style={StyleSheet.absoluteFill}
-          device={devices[camIndex]}
-          isActive={true}
-          resizeMode={'contain'}
-          photo={true}
-          photoQualityBalance={"quality"}
-          outputOrientation='preview'
-          enableLocation={false}
-          focusable={false}
+      {!(detection && photoUri) ? <>
+        <GestureHandlerRootView>
+          <GestureDetector gesture={gesture}>
+            <Camera
+              ref={camera}
+              style={StyleSheet.absoluteFill}
+              device={devices[camIndex]}
+              isActive={true}
+              resizeMode={'contain'}
+              photo={true}
+              photoQualityBalance={"quality"}
+              outputOrientation='preview'
+              enableLocation={false}
+              focusable={true}
+            />
+          </GestureDetector>
+        </GestureHandlerRootView>
+
+        <View style={{ display:"flex", gap:10, flexDirection:"row"}}>
+          <Button onPress={takePicture} title="Fotito y pal foro"/>
+          <CamSelector cameraCount={devices.length} setCamIndex={(idx: number)=>{setCamIndex(idx);}}/>
+        </View>
+        <Slider
+          onValueChange={(n)=>{(camera.current as unknown as Camera).focusDepth(n);}}
+          style={{width: "100%", height: 40}}
+          minimumValue={0}
+          maximumValue={15}
+          minimumTrackTintColor="#FFFFFF"
+          maximumTrackTintColor="#000000"
         />
-      </GestureDetector>
-      </GestureHandlerRootView>
-
-
-
-      <View style={{ display:"flex", gap:10, flexDirection:"row"}}>
-        <Button onPress={takePicture} title="Fotito y pal foro"/>
-        <CamSelector cameraCount={devices.length} setCamIndex={(idx: number)=>{setCamIndex(idx);}}/> 
-      </View>
-      
-      {detection && photoUri ? <ScanCanvas detection={detection} photoUri={photoUri} deleteData={()=>{setDetection(null); setPhotoUri('');}}/> : null}
-      {/* <Text style={{color:"white",fontSize:24}}>{label}</Text> */}
+      </>
+      :null}
+      {detection && photoUri ? 
+        <ScanCanvas 
+          detection={detection} 
+          photoUri={photoUri} 
+          deleteData={()=>{setDetection(null); setPhotoUri('');}}/> 
+      : null}
     </View>
   );
 };
