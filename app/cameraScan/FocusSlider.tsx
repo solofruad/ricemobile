@@ -21,8 +21,8 @@ const FocusSlider = (props:FocusSliderProps) => {
         backgroundColor:(colorScheme == "dark" ? "#00000067": "#ffffff7a"), 
         borderRadius:5
         }}>
-      <View style={{width:width-5, height:width-5, marginHorizontal:"auto", marginTop: 5, transform:[{rotate:"-90deg"}]}}>
-        <Icon source="cone" color={colorScheme == "light" ? "#000000ff": "#ffffffff"} size={width-5}/>
+      <View style={{width:width-5, height:width-5, marginHorizontal:"auto", marginTop: 5, transform:[{rotate:"90deg"}]}}>
+        <Icon source="ruler" color={colorScheme == "light" ? "#000000ff": "#ffffffff"} size={width-5}/>
       </View>
       <Slider
         onValueChange={(n)=>{props.setFocusDepth(n)}}

@@ -1,7 +1,9 @@
 import { RNMLKitObjectDetectionObject } from "@infinitered/react-native-mlkit-object-detection"
 import { Canvas, Group, Image, Line, matchFont, Rect, Skia, SkImage, vec, Text as TextDraw, CanvasRef } from "@shopify/react-native-skia"
 import { createRef, useEffect, useRef, useState } from "react"
-import { Button, Dimensions, View } from "react-native"
+import { Button, Dimensions, View, Text as ReactText } from "react-native"
+
+const INCLUIR_RECONOCIMIENTOS_SIN_LABELS = false;
 
 type ScanLabelsProps = {
   rects: RNMLKitObjectDetectionObject[],
@@ -24,8 +26,8 @@ const ScanLabels = (props: ScanLabelsProps)=>{
   // if(props.rects.lenght == 0){return null}
   //const obj = props.rects[0]
   const data = props.rects.map((obj)=>{
-    const x= obj.frame.origin.x * props.scale ;
-    const y= obj.frame.origin.y * props.scale ;
+    const x = obj.frame.origin.x * props.scale;
+    const y = obj.frame.origin.y * props.scale ;
     return {
       point : rotatePointAroundPlaneCenter({x,y},{width:props.imageDims.width,height:props.imageDims.width},90),
       height : obj.frame.size.y * props.scale,
@@ -35,28 +37,34 @@ const ScanLabels = (props: ScanLabelsProps)=>{
     }
   });
 
-  return (data != null) ? data.map((obj)=>{
+  return (data != null) ? data.map((obj,id)=>{
     if(obj.text == ""){
       return null;
     }
-    return <>
+    let y = obj.point.y;
+    if(y-18 < 0){
+      y = 18;
+    }
+
+
+    return <Group key={"ScanLabel"+id}>
       <Rect
         x={obj.point.x-obj.height-2}
-        y={obj.point.y-18}
+        y={y-18}
         width={obj.height+4}
         height={18}
         color={"green"}
-        key={"labelRect"+Math.random()}
+        key={"labelRect"+id}
       />
       <TextDraw
         text={obj.text}
         font={font}
         x={obj.point.x-obj.height+4}
-        y={obj.point.y-4}
+        y={y-4}
         color={"white"}
-        key={"labelText"+Math.random()}
+        key={"labelText"+id}
         />
-    </>
+    </Group>
   }) : null
 }
 
@@ -66,13 +74,18 @@ type ScanRectsProps = {
 }
 
 const ScanRects = (props: ScanRectsProps)=>{
-  return props.rects.map((obj)=>{
+  return props.rects.map((obj,id)=>{
+    if(!INCLUIR_RECONOCIMIENTOS_SIN_LABELS && obj.labels.length == 0){
+      return null;
+    }
+    // const id = performance.now()+Math.random();
     const x= obj.frame.origin.x * props.scale ;//-70
     const y= obj.frame.origin.y * props.scale ;//+70
     const xEnd = obj.frame.size.x * props.scale +x;
     const yEnd= obj.frame.size.y * props.scale +y;
-    return <>
+    return <Group key={"rects"+id}>
       <Line
+        key={"lineA"+id}
         p1={vec(x, y)}
         p2={vec(xEnd, y)}
         color="green"
@@ -80,6 +93,7 @@ const ScanRects = (props: ScanRectsProps)=>{
         strokeWidth={4}
       />
       <Line
+        key={"lineB"+id}
         p1={vec(xEnd, y)}
         p2={vec(xEnd, yEnd)}
         color="green"
@@ -87,6 +101,7 @@ const ScanRects = (props: ScanRectsProps)=>{
         strokeWidth={4}
       />
       <Line
+        key={"lineC"+id}
         p1={vec(xEnd, yEnd)}
         p2={vec(x, yEnd)}
         color="green"
@@ -94,13 +109,14 @@ const ScanRects = (props: ScanRectsProps)=>{
         strokeWidth={4}
       />
       <Line
+        key={"lineD"+id}
         p1={vec(x, yEnd)}
         p2={vec(x, y)}
         color="green"
         style="stroke"
         strokeWidth={4}
       />
-    </>
+    </Group>
   })
 }
 
@@ -163,6 +179,7 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
   },[])
 
   return  <View style={{position:"absolute", width:"100%", height:"100%", bottom:0, display:"flex"}}>
+    <ReactText style={{color:"white", marginHorizontal:"auto", fontSize:24, marginVertical:"auto"}}>Resultados de Reconocimiento</ReactText>
     {(image && dims && scale) ?  
     <Canvas ref={canvasRef} style={{width:dims.x, height:dims.y, backgroundColor:"black", marginTop:"auto", marginBottom:"auto"}}>
       <Group 
