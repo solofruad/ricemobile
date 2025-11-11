@@ -7,3 +7,8 @@ parchear paquete:
 en      node_modude/react-native-worklets-core/android/CMakeList.txt
 
 https://github.com/margelo/react-native-worklets-core/issues/261
+
+
+buildear para release:
+  cd .\android\
+  ./gradlew assembleRelease
