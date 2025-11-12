@@ -1,41 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import { Camera,  useCameraDevices} from 'react-native-vision-camera';
-import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler'
-import { StyleSheet, View, Text, Button} from 'react-native';
+import { StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Camera, useCameraDevices } from 'react-native-vision-camera';
 
 import {
   RNMLKitObjectDetectionObject,
   useObjectDetection,
 } from "@infinitered/react-native-mlkit-object-detection";
-import type { MyModelsConfig } from "../_layout";
-import { writeAsync, readAsync} from '@lodev09/react-native-exify';
+import { writeAsync } from '@lodev09/react-native-exify';
 import { runOnJS } from 'react-native-worklets';
+import type { MyModelsConfig } from "../_layout";
 
-import {IconButton, MD3DarkTheme} from "react-native-paper";
-import FocusSlider from "../cameraScan/FocusSlider";
-import ScanCanvas from '../cameraScan/ScanCanvas';
+import { IconButton, MD3DarkTheme } from "react-native-paper";
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import ScanCanvas from './ScanCanvas';
+import TopToolbar from './TopToolbar';
 
-type CamSelectorProps = {
-  setCamIndex: (idx:number)=>void,
-  cameraCount: number
-}
-
-const CamSelector = (props: CamSelectorProps)=> {
-  return <>
-    {
-      [...new Array(props.cameraCount)].map((_,idx)=>(
-        <Button 
-          key={idx}
-          onPress={() => {
-            props.setCamIndex(idx);
-          }}
-          title={`Lente${idx+1}`}
-        />
-      ))
-    }
-  </>
-}
 
 const CamScan = () => {
   const [camIndex, setCamIndex] = useState(0);
@@ -45,11 +25,11 @@ const CamScan = () => {
 
   const [isDetecting,setIsDetecting] = useState(false);
 
-  
   const detector = useObjectDetection<MyModelsConfig>("furnitureDetector");
 
   const devices = useCameraDevices()
   const camera = useRef(null);
+  const colorScheme = useColorScheme();
           
   const requestPermission = async () => {
     const newCameraPermission = await Camera.requestCameraPermission();
@@ -91,13 +71,23 @@ const CamScan = () => {
   const focus = (point: {x:number, y:number}) => {
     const c = camera.current as unknown as Camera;
     if (c == null) {return}
-    c.focus(point);
+    try {
+      c.focus(point).catch(()=>{});  
+    } catch (error) {
+      
+    }
+    
   }
 
   const gesture = Gesture.Tap()
     .onEnd(({ x, y }) => {
       //?El ident aconseja usar "scheduleOnRN()" en su lugar, pero dicho metodo internamente emplea "runOnJS()"... bruh
-      runOnJS(focus)({ x, y })
+      try {
+              runOnJS(focus)({ x, y })
+      } catch (error) {
+        
+      }
+
     });
   if (devices == null) return <View><Text>No camera device</Text></View>;
   return (
@@ -116,7 +106,7 @@ const CamScan = () => {
                 photoQualityBalance={"quality"}
                 outputOrientation='preview'
                 enableLocation={false}
-                focusable={true}
+                focusable={false}
               />
             </GestureDetector>
           </GestureHandlerRootView>
@@ -124,12 +114,18 @@ const CamScan = () => {
           <View style={{ display:"flex", gap:10, flexDirection:"row", position:"absolute", bottom:0, width:"100%"}}>
             <IconButton icon={"camera"} onPress={takePicture} mode='outlined' theme={MD3DarkTheme} size={50} style={{marginHorizontal:"auto"}}/>
           </View>
-          <FocusSlider setFocusDepth={(n)=>{(camera.current as unknown as Camera).focusDepth(n);}} height={270} minFocusDistance={minFocusDistance*1.1}/>
+          <TopToolbar 
+            minFocusDistance={minFocusDistance} 
+            setFocusDepth={(n)=>{(camera.current as unknown as Camera).focusDepth(n);}}
+            />
         </>
         :null}
         {isDetecting ? 
           <View style={{width:"100%",height:"100%",backgroundColor:"#363636ff"}}>
-            <Text style={{color:"white", fontSize:32, marginHorizontal:"auto",marginVertical:"auto"}}>Analizando Fotografía</Text>
+            <Text style={{color:"white", fontSize:32, marginHorizontal:"auto",marginVertical:"auto"}}>
+              Analizando Fotografía
+            </Text>
+            
           </View>
           :null}
         {detection && photoUri ? 

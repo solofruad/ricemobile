@@ -49,6 +49,7 @@ export default function ScanLabels (props: ScanLabelsProps){
     return {
       point : rotatePointAroundPlaneCenter({x,y},{width:props.imageDims.width,height:props.imageDims.width},90),
       height : obj.frame.size.y * props.scale,
+      width : obj.frame.size.x * props.scale,
       text: obj.labels?.map(e=>e.text)[0] || ""
     }
   });
@@ -68,7 +69,7 @@ export default function ScanLabels (props: ScanLabelsProps){
         x={obj.point.x-obj.height-2}
         y={y-18}
         width={obj.height+4}
-        height={18}
+        height={20}
         color={"green"}
         key={"labelRect"+id}
       />
@@ -79,6 +80,22 @@ export default function ScanLabels (props: ScanLabelsProps){
         y={y-4}
         color={"white"}
         key={"labelText"+id}
+        />
+      <Rect
+        x={obj.point.x-obj.height-2}
+        y={y-18+obj.width}
+        width={obj.height+4}
+        height={20}
+        color={"green"}
+        key={"labelRectB"+id}
+      />
+      <Text
+        text={"Clasificación: "+3}
+        font={font}
+        x={obj.point.x-obj.height+4}
+        y={y+obj.width-3}
+        color={"white"}
+        key={"labelTextClasif"+id}
         />
     </Group>
   }) : null

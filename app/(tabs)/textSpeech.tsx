@@ -5,19 +5,15 @@ export default function App() {
   const speak = () => {
     const thingToSay = `
 
-Lunes: 💘bromas💘
+El otro dia me volvi a ver la pelicula de Smile 2 ya que estuve un tiempo ahorrando para comprarme un reproductor blu-ray por que estaba harta de tener que descargarme todas las aplicaciones y aun asi no tener para ver las peliculas que quiero
 
-Martes: 😝guerras de audios
+El caso esque mientras estaba comprando las peluculas me encontre con Smile 2 y la verdad esque pense que era una pelicula buena para volver a ver,yo la vi en su estreno y me gusto
 
-Miércoles: ✨chicos escogen a chicas✨
+Total,salgo de comprarlas y en eso por el camino me encuentro a un conocido y me pregunta como estoy y sobre las peliculas que compre
 
-Jueves:🤓 fotos🤓
+Pero en cuento le mencione que me compre la de smile 2 se me pone a decir cosas como que malgaste el dinero por que esa pelicula no da miedo,que el se quedo dormido viendola y no se que mas
 
-Viernes: 🥳guerra de emojis🥰
-
-Sábado: 😊juegan🥰
-
-Domingo: 🥰Ilamadas🥰
+No entiendo,gente que ya esta en edad de trabajar tratando de demostrar valentia con una pelicula de miedo,ya sabemos que eres muy valiente,ya sabemos que no tienes doce años,logicamente yo no me voy a quedar sin dormir por verla por que se que no es real,simplemente quiero disfrutar de la pelicula
 `;
     Speech.speak(thingToSay);
   };

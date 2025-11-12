@@ -17,7 +17,7 @@ export default function TabLayout() {
         tabBarButton: HapticTab,
       }}>
       <Tabs.Screen
-        name="camscan"
+        name="index"
         options={{
           title: 'Camara',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="camera.fill" color={color} />,
