@@ -29,7 +29,6 @@ const CamScan = () => {
 
   const devices = useCameraDevices()
   const camera = useRef(null);
-  const colorScheme = useColorScheme();
           
   const requestPermission = async () => {
     const newCameraPermission = await Camera.requestCameraPermission();
@@ -37,7 +36,7 @@ const CamScan = () => {
       await Camera.requestCameraPermission();
     }
       // ... handle permission result
-    };
+  };
   useEffect(() => { 
     requestPermission().then(()=>{
       setMinFocusDistance(devices[camIndex].minFocusDistance * 1.5);
