@@ -32,7 +32,7 @@ export default function TopToolbar(props: TopToolbarProps){
 
   return <>
       <Animated.View style={[{position:"absolute",bottom:120, right:-50},{transform: [{ translateX: fadeAnim }]}]}>
-        <FocusSlider setFocusDepth={props.setFocusDepth} height={270} minFocusDistance={props.minFocusDistance*1.1}/>
+        <FocusSlider setFocusDepth={props.setFocusDepth} height={270} minFocusDistance={props.minFocusDistance}/>
       </Animated.View>
     <View style={{position:"absolute",right:20,bottom:20}}>
       <Button icon="ruler" mode="contained-tonal" theme={MD3DarkTheme} onPress={showing ? fadeOutFn : fadeInFn}>
