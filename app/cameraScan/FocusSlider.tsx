@@ -1,5 +1,5 @@
 import { useColorScheme, View } from 'react-native';
-import Slider from '../(tabs)/slider';
+import Slider from './Slider';
 import { Icon } from 'react-native-paper';
 
 
@@ -26,17 +26,13 @@ const FocusSlider = (props:FocusSliderProps) => {
         <Icon source="ruler" color={colorScheme == "light" ? "#000000ff": "#ffffffff"} size={width-5}/>
 
       </View>
-      {/* <Slider
-        minimumTrackTintColor={colorScheme == "light" ? "#000000a7": "#ffffffa3"}
-        maximumTrackTintColor={colorScheme == "light" ? "#000000ff": "#ffffffff"}
-      /> */}
       <View style={{paddingVertical:15}}>
         <Slider 
           width={width} 
           height={props.height} 
-          min={0.1} 
+          min={0.001} 
           max={props.minFocusDistance} 
-          step={props.minFocusDistance/10} 
+          steps={10} 
           thumb={{width:40,height:15}} 
           onChange={(n)=>{props.setFocusDepth(n)}}/>
       </View>
