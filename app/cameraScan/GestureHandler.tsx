@@ -8,11 +8,9 @@ import {
 } from "@shopify/react-native-skia";
 import { Platform } from "react-native";
 import { Gesture, GestureDetector} from "react-native-gesture-handler";
-import { type SharedValue, useDerivedValue } from "react-native-reanimated";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-} from "react-native-reanimated";
+import Animated, { type SharedValue, useDerivedValue, useAnimatedStyle, useSharedValue} from "react-native-reanimated";
+
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const multiply = (...matrices: Matrix4[]) => {
   "worklet";
@@ -20,13 +18,14 @@ const multiply = (...matrices: Matrix4[]) => {
 };
 
 interface GestureHandlerProps {
-  matrix:SharedValue<Matrix4>;
   reset:(f:any)=>void
   size: { x: number; y: number, width:number, height:number };
   children: any;
 }
 
-export default function GestureHandler ({ matrix, size, reset, children }: GestureHandlerProps) {
+export default function GestureHandler ({ size, reset, children }: GestureHandlerProps) {
+  let matrix:SharedValue<Matrix4> = useSharedValue(Matrix4());
+
   const currentPosition = useSharedValue({ x: 0, y: 0 });
   const previousPosition = useSharedValue({ x: 0, y: 0 });
 
@@ -120,10 +119,12 @@ export default function GestureHandler ({ matrix, size, reset, children }: Gestu
     };
   });
   return (
-      <GestureDetector gesture={gesture}>
-        <Animated.View style={style}>
-        {children}
-        </Animated.View>
-      </GestureDetector>
+      <GestureHandlerRootView>
+        <GestureDetector gesture={gesture}>
+          <Animated.View style={style}>
+          {children}
+          </Animated.View>
+        </GestureDetector>
+      </GestureHandlerRootView>
   );
 };
