@@ -105,7 +105,6 @@ export default function GestureHandler ({ matrix, size, reset, children }: Gestu
     const m4 = convertToColumnMajor(m);
 
     return {
-      position: "absolute",
       width: size.width,
       height: size.height,
       top: size.y,
