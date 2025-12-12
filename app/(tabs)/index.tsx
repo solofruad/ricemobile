@@ -5,12 +5,16 @@ import {
   useObjectDetectionModels,
   useObjectDetectionProvider,
 } from "@infinitered/react-native-mlkit-object-detection";
+import { useEffect } from 'react';
 import { Text } from 'react-native';
+
+
+const modelFile = require("../../assets/models/2.tflite");
 
 // Define your custom models if needed (see "Using a Custom Model" for more details)
 const MODELS: ObjectDetectionConfig = {
-  furnitureDetector: {
-    model: require("../../assets/models/2.tflite"),
+  elementsDetector: {
+    model: modelFile,
     options:{
       shouldEnableClassification:true,
       shouldEnableMultipleObjects:true,
@@ -34,9 +38,10 @@ export default function HomeScreen() {
       detectorMode: "singleImage",
     },
   });
+
   const { ObjectDetectionProvider } = useObjectDetectionProvider(models);
 
-  if(models && ObjectDetectionProvider) return <ObjectDetectionProvider>
+  if(!!(models.elementsDetector) && ObjectDetectionProvider) return <ObjectDetectionProvider>
     <CamScan/>
   </ObjectDetectionProvider>;
 
