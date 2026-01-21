@@ -21,7 +21,7 @@ export default function SaveModal ({isModalVisible,setIsModalVisible}: SaveModal
         clearTimeout(timer);
       }
     };
-  }, [isModalVisible]); // Re-run effect when isModalVisible changes
+  }, [isModalVisible]);
 
   return <Modal
             animationType="fade"
