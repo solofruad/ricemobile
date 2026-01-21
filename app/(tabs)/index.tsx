@@ -5,7 +5,6 @@ import {
   useObjectDetectionModels,
   useObjectDetectionProvider,
 } from "@infinitered/react-native-mlkit-object-detection";
-import { useEffect } from 'react';
 import { Text } from 'react-native';
 
 
