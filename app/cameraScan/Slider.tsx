@@ -47,7 +47,6 @@ export default function Slider(props:SliderProps){
       setY(newY)
       onChange(newY)
     }
-
   }
 
   return <View style={{
@@ -57,8 +56,7 @@ export default function Slider(props:SliderProps){
     marginHorizontal:"auto"
   }}>
     <View style={{height:"100%", marginHorizontal:"auto", width:6, backgroundColor:"white",borderRadius:3}}>
-      <View 
-      style={{width:"100%", height:y, backgroundColor:"#757575ff", position:"absolute",borderRadius:3}} />
+      <View style={{width:"100%", height:y, backgroundColor:"#757575ff", position:"absolute",borderRadius:3}} />
     </View>
 
     <View 
@@ -84,12 +82,10 @@ export default function Slider(props:SliderProps){
           borderColor:"black",
           borderWidth:2
         }}
-      >
-
-      </View>
+      />
     </View>
     
-    <View
+    <View //? Que es lo que hace esto?
       style={{width:"100%", height:"100%", position:"absolute"}}
     />
   </View>
