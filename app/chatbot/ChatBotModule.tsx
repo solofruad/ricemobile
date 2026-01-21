@@ -1,5 +1,7 @@
 import React, { useState } from "react";
+import { View } from "react-native";
 import { GiftedChat, IMessage } from "react-native-gifted-chat";
+import { Button, IconButton, MD3DarkTheme } from "react-native-paper";
 
 type Dialog = {
 	text:string,
@@ -118,10 +120,16 @@ export default function ChatBotModule () {
 	};
 
 	return (
-		<GiftedChat
-			messages={messages}
-			onSend={handleSend}
-			user={{ _id: 1, name: "User" }}
-		/>
+		<View style={{width:"100%", height:"100%",backgroundColor:"#152712ff"}}>
+			<GiftedChat
+				messages={messages}
+				onSend={handleSend}
+				user={{ _id: 1, name: "User" }}
+			/>
+			<View style={{position:"absolute", bottom:-2, right:0, display:"flex", flexDirection:"row"}}>
+				<IconButton icon="paperclip" mode="contained-tonal" theme={MD3DarkTheme}/>
+				<IconButton icon="microphone" mode="contained-tonal" theme={MD3DarkTheme}/>
+			</View>
+		</View>
 	);
 };
