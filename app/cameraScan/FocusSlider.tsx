@@ -23,9 +23,12 @@ const FocusSlider = (props:FocusSliderProps) => {
         display:"flex"
         }}>
       <View style={{width:width-5, height:width-5, marginHorizontal:"auto", marginTop: 5, transform:[{rotate:"90deg"}]}}>
-        <Icon source="ruler" color={colorScheme == "light" ? "#000000ff": "#ffffffff"} size={width-5}/>
-
+        <Icon 
+          source="ruler" 
+          color={colorScheme == "light" ? "#000000ff": "#ffffffff"} 
+          size={width-5}/>
       </View>
+      
       <View style={{paddingVertical:15}}>
         <Slider 
           width={width} 
