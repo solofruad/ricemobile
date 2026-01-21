@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Camera, useCameraDevices, useCameraPermission } from 'react-native-vision-camera';
 
@@ -9,65 +9,75 @@ import {
 } from "@infinitered/react-native-mlkit-object-detection";
 import { writeAsync } from '@lodev09/react-native-exify';
 import { runOnJS } from 'react-native-worklets';
-import type { MyModelsConfig } from "../_layout";
+import type { MyModelsConfig } from "../(tabs)/index";
 
 import { IconButton, MD3DarkTheme } from "react-native-paper";
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ScanCanvas from './ScanCanvas';
 import TopToolbar from './TopToolbar';
-import PermissionModal from './PermissionModal';
+import CameraPermisionUI from './CameraPermisionUI';
 
-const CamScan = () => {
+type CameraSafeAreaProps = {
+  children: any
+}
+
+function CameraSafeArea({children}:CameraSafeAreaProps) {
+  return <SafeAreaProvider>
+      <SafeAreaView style={{width:"100%",height:"100%", display:"flex", gap:8, position:"relative" }}>
+        {children}
+      </SafeAreaView>
+    </SafeAreaProvider>
+}
+
+export default function CamScan () {
   const [permissionGranted,setPermissionGranted] = useState(false);
   const [timesPermissionRejected, setTimesPermissionRejected] = useState(0);
   const [detection, setDetection] = useState<RNMLKitObjectDetectionObject[] | null>(null);
-  const [minFocusDistance,setMinFocusDistance] = useState(0.0001);
+  const [minFocusDistance,setMinFocusDistance] = useState(0.01);
   const [photoUri, setPhotoUri] = useState('');
-
   const [isDetecting,setIsDetecting] = useState(false);
 
   const { hasPermission } = useCameraPermission()
 
-  const detector = useObjectDetection<MyModelsConfig>("furnitureDetector");
+  const detector = useObjectDetection<MyModelsConfig>("elementsDetector");
 
   const devices = useCameraDevices()
   const camera = useRef(null);
 
-
   const requestPermission = (requestions = 1)=>{
     return new Promise((resolve)=>{
-      Camera.requestCameraPermission().then((cameraPermission)=>{
-        console.log(cameraPermission);
-        if(cameraPermission != "granted"){
-          setTimesPermissionRejected(timesPermissionRejected +1);
-          //Se puede denegar 2 veces el permiso a camara, luego el permiso
-          //será rechazado automaticamente
-          if(requestions > 2){
-            resolve(false);
-            return
+      Camera.requestCameraPermission()
+        .then((cameraPermission)=>{
+          console.log(cameraPermission, requestions);
+          if(cameraPermission != "granted"){
+            setTimesPermissionRejected(timesPermissionRejected +1);
+            //Se puede denegar 2 veces el permiso a camara, luego la petición
+            //será rechazado automaticamente por el dispositivo
+            if(requestions > 2){
+              resolve(false);
+              return
+            }else{
+              setPermissionGranted(false);        
+              requestPermission(requestions+1).then(res=>{
+                resolve(res);
+              });
+            }
           }else{
-            setPermissionGranted(false);        
-            requestPermission(requestions+1).then(res=>{
-              resolve(res);
-            });
+            setTimesPermissionRejected(0)
+            setPermissionGranted(true);
+            console.log("Device focal distance",devices[0].minFocusDistance);
+            setMinFocusDistance(devices[0].minFocusDistance *1.5 || 15);
+            resolve(true);
           }
-        }else{
-          setTimesPermissionRejected(0)
-          setPermissionGranted(true);
-          resolve(true);
-        }
-      })
+      }).catch((err)=>{console.log(err);})
     }) as Promise<boolean>
   }
 
   useEffect(() => { 
-    requestPermission().then((res)=>{
-      if(!res) {return}
-      setMinFocusDistance(devices[0].minFocusDistance || 15);
-    });
+    requestPermission(1);
   }, []);
 
-  const detectAndSetUri = (uri:string)=>{
+  const detectAndSetPhotoRoute = (uri:string)=>{
     detector!.detectObjects(uri).then((res)=>{
       setDetection(res);
       setPhotoUri(uri);
@@ -81,52 +91,45 @@ const CamScan = () => {
       (camera.current as Camera).takePhoto({}).then((photo)=>{
         var uri = `file://${photo.path}`
         writeAsync(uri,{Orientation:0}).then(()=>{
-          detectAndSetUri(uri);
+          detectAndSetPhotoRoute(uri);
         });
-        // CameraRoll.saveAsset(`file://${photo.path}`, {
-        //   type: 'photo',
-        // });
       });
     }
   };
 
+  //Permite conservar el ajuste de contraste automatico, dado que el enfoque automatico 
+  // controla el punto focal y el ajuste del contraste (tiempo de )
   const focus = (point: {x:number, y:number}) => {
     const c = camera.current as unknown as Camera;
     if (c == null) {return}
     try {
       c.focus(point).catch(()=>{});  
-    } catch (error) {
-      
-    }
-    
+    } catch (error) {}
   }
 
   const gesture = Gesture.Tap()
     .onEnd(({ x, y }) => {
       //?El ident aconseja usar "scheduleOnRN()" en su lugar, pero dicho metodo internamente emplea "runOnJS()"... bruh
       try {
-        runOnJS(focus)({ x, y })
-      } catch (error) {
-        
-      }
-
+        runOnJS(focus)({ x, y });
+      } catch (error) { }
     });
 
-  const [switcher,setSwitcher] = useState(true);
   if(!permissionGranted && timesPermissionRejected >= 1){
-    return <View style={{height:"100%", backgroundColor:"gray",alignContent:"center", justifyContent:"center",gap:25}}>
-              <PermissionModal visible={switcher}/>
-      <Text style={{maxWidth:"70%",marginHorizontal:"auto",textAlign:"center", color:"white",fontSize:20}}>Actualmente, no se tiene permiso para el uso de la camara del dispositivo</Text>
-      <View style={{marginHorizontal:"auto"}}>
-        <Button title="Comprobar Permiso" onPress={()=>{requestPermission(2).then(res=>{if(!res){setSwitcher(!switcher)}})}} />
-      </View>
-    </View>;
+    return <CameraPermisionUI 
+              permissionGranted={permissionGranted} 
+              timesPermissionRejected={timesPermissionRejected} 
+              requestPermission={requestPermission}/>
   }
   
-  if (devices == null) return <View style={{height:"100%"}}><Text style={{color:"white",marginHorizontal:"auto",marginVertical:"auto"}}>No camera device</Text></View>;
+  if (devices.length == 0) return <View style={{height:"100%"}}>
+    <Text style={{color:"white", marginHorizontal:"auto", marginVertical:"auto"}}>
+      No camera device
+    </Text>
+  </View>;
+
   if (hasPermission) return (
-    <SafeAreaProvider>
-      <SafeAreaView style={{width:"100%",height:"100%", display:"flex", gap:8, position:"relative" }}>
+    <CameraSafeArea>
         {!(detection && photoUri) ? <>
           <GestureHandlerRootView>
             <GestureDetector gesture={gesture}>
@@ -146,11 +149,18 @@ const CamScan = () => {
           </GestureHandlerRootView>
 
           <View style={{ display:"flex", gap:10, flexDirection:"row", position:"absolute", bottom:0, width:"100%"}}>
-            <IconButton icon={"camera"} onPress={takePicture} mode='outlined' theme={MD3DarkTheme} size={50} style={{marginHorizontal:"auto"}}/>
+            <IconButton 
+              icon={"camera"} 
+              onPress={takePicture} 
+              mode='outlined' 
+              theme={MD3DarkTheme} 
+              size={50} 
+              style={{marginHorizontal:"auto"}}/>
           </View>
           <TopToolbar 
             minFocusDistance={minFocusDistance} 
-            setFocusDepth={(n)=>{(camera.current as unknown as Camera).focusDepth(n); console.log(n)}}
+            //@ts-ignore
+            setFocusDepth={ n =>{(camera.current as unknown as Camera).focusDepth(n);} }
             />
         </>
         :null}
@@ -159,7 +169,6 @@ const CamScan = () => {
             <Text style={{color:"white", fontSize:32, marginHorizontal:"auto",marginVertical:"auto"}}>
               Analizando Fotografía
             </Text>
-            
           </View>
           :null}
         {detection && photoUri ? 
@@ -168,11 +177,6 @@ const CamScan = () => {
             photoUri={photoUri} 
             deleteData={()=>{setDetection(null); setPhotoUri('');}}/> 
         : null}
-      </SafeAreaView>
-    </SafeAreaProvider>
+      </CameraSafeArea>
   );
 };
-
-
-
-export default CamScan;

@@ -1,7 +1,7 @@
 import { RNMLKitObjectDetectionObject } from "@infinitered/react-native-mlkit-object-detection"
 import { Canvas, CanvasRef, Group, Image, ImageFormat, Skia, SkImage } from "@shopify/react-native-skia"
 import { useEffect, useRef, useState } from "react"
-import { Button, Dimensions, View, Text as ReactText } from "react-native"
+import { Button, Dimensions, View, Text } from "react-native"
 import ScanLabels from "./ScanLabels";
 import ScanRects from "./ScanRects";
 import GestureHandler from "./GestureHandler";
@@ -40,7 +40,7 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
 
   let resetter: any;
 
-  const canvas = (image && dims && scale) ?  
+  const canvas = (image && dims) ?  
     <GestureHandler size={{width:dims.x, height:dims.y,x:0,y:0}} reset={(f)=>{resetter = f;}}>
       <Canvas ref={canvasRef} style={{width:dims.x, height:dims.y, backgroundColor:"black", marginTop:"auto", marginBottom:"auto", position:"relative"}}>
           <Group 
@@ -84,7 +84,7 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
       bottom:0, 
       display:"flex",
       gap:50}}>
-        <ReactText style={{color:"white", marginHorizontal:"auto", fontSize:24}}>Resultados de Reconocimiento</ReactText>
+        <Text style={{color:"white", marginHorizontal:"auto", fontSize:24}}>Resultados de Reconocimiento</Text>
         <View style={{flex:2, display:"flex",alignItems:"center"}}>
           {canvas}
         </View>

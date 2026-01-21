@@ -13,7 +13,6 @@ export default function ScanRects (props: ScanRectsProps){
     if(!INCLUIR_RECONOCIMIENTOS_SIN_LABELS && obj.labels.length == 0){
       return null;
     }
-    // const id = performance.now()+Math.random();
     const x= obj.frame.origin.x * props.scale ;//-70
     const y= obj.frame.origin.y * props.scale ;//+70
     const xEnd = obj.frame.size.x * props.scale +x;
