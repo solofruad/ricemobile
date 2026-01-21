@@ -12,9 +12,11 @@
     "postinstall": "patch-package"
   },
   "dependencies": {
+    "@allsquare/react-native-image-gallery": "^3.1.0",
     "@expo/vector-icons": "^15.0.3",
     "@infinitered/react-native-mlkit-object-detection": "^3.1.0",
     "@lodev09/react-native-exify": "^0.2.7",
+    "@react-native-camera-roll/camera-roll": "^7.10.2",
     "@react-native-community/slider": "^5.1.0",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
@@ -53,7 +55,6 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
-    "@types/react-native-canvas": "^0.1.14",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"
