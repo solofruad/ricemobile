@@ -3,12 +3,15 @@ Activar menú de desarrollador: adb shell input keyevent 82
 Reconectar dispositivo de desarrollo : adb reverse tcp:8081 tcp:8081
 
 rebuildear proyecto: npm run android
-parchear paquete: 
+parchear paquete, se requiere para habilitar el enfoque manual de la camara: 
 en      node_modude/react-native-worklets-core/android/CMakeList.txt
-
 https://github.com/margelo/react-native-worklets-core/issues/261
 
 
 buildear para release:
   cd .\android\
   ./gradlew assembleRelease
+
+
+
+  adb reverse tcp:8081 tcp:8081
