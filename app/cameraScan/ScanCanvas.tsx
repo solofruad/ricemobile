@@ -19,6 +19,7 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
   const [image,setImage] = useState<SkImage|null>(null);
   const [scale,setScale] = useState(1);
   const [dims, setDims] = useState<{x:number,y:number}|null>(null);
+  const [saving,setIsSaving] = useState(false);
   const [saved,setIsSaved] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   
@@ -58,7 +59,7 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
     : null ;
 
   const save = ()=>{
-    setIsSaved(true);
+    setIsSaving(true);
     (canvasRef.current as unknown as CanvasRef).makeImageSnapshotAsync()
       .then(res => res.encodeToBase64(ImageFormat.PNG,80))
       .then(base64String=>{
@@ -67,13 +68,15 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
         const photoScansDir = `${appDataDir}photoScans/`;
         const dirInfo = new FileSystem.Directory(photoScansDir);
         if(!dirInfo.exists){
-          if(dirInfo.createDirectory("photoScans").exists){
+          if(!dirInfo.createDirectory("photoScans").exists){
             throw new Error("El directorio 'photoScans' no logró ser creado");
           }
         }
         const tempPath = `${photoScansDir}saved_image_${Date.now()}.png`;
         (new FileSystem.File(tempPath)).write(base64String,{encoding:"base64"});
       }).then(()=>{
+        setIsSaving(false);
+        setIsSaved(true);
         setIsModalVisible(true);
       });
   }
@@ -97,8 +100,8 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
             title='Reiniciar Vista' 
             onPress={()=>resetter()}/>
           <Button 
-            disabled={saved}
-            title='Guardar' 
+            disabled={saved || saving}
+            title={saving ? 'Guardando' : (saved ? 'Guardado' : 'Guardar')}
             onPress={save}/>
         </View>
 
