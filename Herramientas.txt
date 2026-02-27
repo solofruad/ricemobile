@@ -15,3 +15,7 @@ buildear para release:
 
 
   adb reverse tcp:8081 tcp:8081
+
+
+https://stackoverflow.com/questions/63932162/setting-camera-focus-distance-in-android
+https://developer.android.com/reference/android/hardware/camera2/CameraMetadata#REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR
