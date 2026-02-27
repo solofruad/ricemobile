@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Camera, useCameraDevices, useCameraPermission } from 'react-native-vision-camera';
+import { Camera, TakePhotoOptions, useCameraDevices, useCameraPermission } from 'react-native-vision-camera';
 
 import {
   RNMLKitObjectDetectionObject,
@@ -21,6 +21,13 @@ type CameraSafeAreaProps = {
   children: any
 }
 
+const takePhotoOptions:TakePhotoOptions = {
+  flash: "off",
+  enableAutoRedEyeReduction: false,
+  enableAutoDistortionCorrection: false,
+  enableShutterSound: false,
+}
+
 function CameraSafeArea({children}:CameraSafeAreaProps) {
   return <SafeAreaProvider>
       <SafeAreaView style={{width:"100%",height:"100%", display:"flex", gap:8, position:"relative" }}>
@@ -36,6 +43,7 @@ export default function CamScan () {
   const [minFocusDistance,setMinFocusDistance] = useState(0.01);
   const [photoUri, setPhotoUri] = useState('');
   const [isDetecting,setIsDetecting] = useState(false);
+  const [isTakingPhoto,setIsTakingPhoto] = useState(false);
 
   const { hasPermission } = useCameraPermission()
 
@@ -87,9 +95,11 @@ export default function CamScan () {
 
   const takePicture = async () => {
     if (camera.current) {
-      setIsDetecting(true);
-      (camera.current as Camera).takePhoto({}).then((photo)=>{
-        var uri = `file://${photo.path}`
+      setIsTakingPhoto(true);
+      (camera.current as Camera).takePhoto(takePhotoOptions).then((photo)=>{
+        setIsTakingPhoto(false);
+        var uri = `file://${photo.path}`;
+        setIsDetecting(true);
         writeAsync(uri,{Orientation:0}).then(()=>{
           detectAndSetPhotoRoute(uri);
         });
@@ -164,10 +174,10 @@ export default function CamScan () {
             />
         </>
         :null}
-        {isDetecting ? 
-          <View style={{width:"100%",height:"100%",backgroundColor:"#363636ff"}}>
+        {isDetecting || isTakingPhoto ? 
+          <View style={{width:"100%",height:"100%",position:"absolute",bottom:0,backgroundColor:(isTakingPhoto? "rgba(54, 54, 54, 0.75)" : "#363636ff")}}>
             <Text style={{color:"white", fontSize:32, marginHorizontal:"auto",marginVertical:"auto"}}>
-              Analizando Fotografía
+              {isTakingPhoto ? "Tomando Foto" : "Analizando Fotografía"}
             </Text>
           </View>
           :null}
