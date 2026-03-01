@@ -1,21 +1,34 @@
-Comprobar conexión con el dispositivo de desarrollo: adb devices
-Activar menú de desarrollador: adb shell input keyevent 82
-Reconectar dispositivo de desarrollo : adb reverse tcp:8081 tcp:8081
+#Comprobar conexión con el dispositivo de desarrollo: 
+  adb devices
+#Activar menú de desarrollador manualmente: 
+  adb shell input keyevent 82
+#Reconectar dispositivo de desarrollo: 
+  adb reverse tcp:8081 tcp:8081
 
-rebuildear proyecto: npm run android
+#rebuildear proyecto: 
+  npx expo run:android
+
+#En caso de haber buildeado el proyecto correctamente, pero por un error 
+#no se logró instalar en el dispositivo, use: 
+          #deviceId                          |=====Ruta al apk===========================================|
+  adb -s R9TMA060M7J install -r -d --user 0  .\android\app\build\outputs\apk\debug\app-arm64-v8a-debug.apk
+
+#arrancar el proyecto con la dev build ya hecha: 
+  npx expo start
+
 parchear paquete, se requiere para habilitar el enfoque manual de la camara: 
 en      node_modude/react-native-worklets-core/android/CMakeList.txt
 https://github.com/margelo/react-native-worklets-core/issues/261
 
 
-buildear para release:
+#buildear para release:
   cd .\android\
   ./gradlew assembleRelease
 
-
-
-  adb reverse tcp:8081 tcp:8081
-
-
+#Informacion util para la implementacion de distancia focal manual
 https://stackoverflow.com/questions/63932162/setting-camera-focus-distance-in-android
 https://developer.android.com/reference/android/hardware/camera2/CameraMetadata#REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR
+
+
+
+iconos que usa react-native-paper: https://pictogrammers.com/library/mdi/
