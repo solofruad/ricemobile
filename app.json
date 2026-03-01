@@ -43,10 +43,13 @@
       [
         "react-native-vosk",
         {
-          "models": ["assets/model-es-es"],
+          "models": [
+            "assets/model-es-es"
+          ],
           "iOSMicrophonePermission": "Nous avons besoin d'accéder à votre microphone"
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -56,7 +59,9 @@
   "build": {
     "android": {
       "ndk": {
-        "abiFilters": ["arm64-v8a"] // Only target 64-bit ARM
+        "abiFilters": [
+          "arm64-v8a"
+        ]
       }
     }
   }
