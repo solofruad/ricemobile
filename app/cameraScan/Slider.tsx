@@ -84,9 +84,5 @@ export default function Slider(props:SliderProps){
         }}
       />
     </View>
-    
-    <View //? Que es lo que hace esto?
-      style={{width:"100%", height:"100%", position:"absolute"}}
-    />
   </View>
 }
