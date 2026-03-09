@@ -1,4 +1,3 @@
-import { RNMLKitObjectDetectionObject } from "@infinitered/react-native-mlkit-object-detection"
 import { Canvas, CanvasRef, Group, Image, ImageFormat, Skia, SkImage } from "@shopify/react-native-skia"
 import { useEffect, useRef, useState } from "react"
 import { Button, Dimensions, View, Text } from "react-native"
@@ -8,9 +7,10 @@ import GestureHandler from "./GestureHandler";
 
 import * as FileSystem from 'expo-file-system';
 import SaveModal from "./SaveModal";
+import { ObjectDetectionResult } from "@/types/types";
 
 type ScanCanvasProps = {
-  detection: RNMLKitObjectDetectionObject[],
+  detection: ObjectDetectionResult[],
   photoUri: string
   deleteData: ()=>void
 }

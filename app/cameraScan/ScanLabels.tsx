@@ -1,4 +1,4 @@
-import { RNMLKitObjectDetectionObject } from "@infinitered/react-native-mlkit-object-detection";
+import { ObjectDetectionResult } from "@/types/types";
 import { Group, matchFont, Rect, Text } from "@shopify/react-native-skia";
 
 function rotatePointAroundPlaneCenter(
@@ -31,7 +31,7 @@ function rotatePointAroundPlaneCenter(
 }
 
 type ScanLabelsProps = {
-  rects: RNMLKitObjectDetectionObject[],
+  rects: ObjectDetectionResult[],
   scale: number
   imageDims: {width:number, height:number}
 }

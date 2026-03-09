@@ -1,10 +1,10 @@
-import { RNMLKitObjectDetectionObject } from "@infinitered/react-native-mlkit-object-detection";
+import { ObjectDetectionResult } from "@/types/types";
 import { Line, vec, Group } from "@shopify/react-native-skia";
 
 const INCLUIR_RECONOCIMIENTOS_SIN_LABELS = false;
 
 type ScanRectsProps = {
-  rects: RNMLKitObjectDetectionObject[],
+  rects: ObjectDetectionResult[],
   scale: number
 }
 
