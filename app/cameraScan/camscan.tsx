@@ -1,45 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { NativeModules, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Camera, TakePhotoOptions, useCameraDevices, useCameraPermission } from 'react-native-vision-camera';
 
-import {
-  RNMLKitObjectDetectionObject,
-  useObjectDetection,
-} from "@infinitered/react-native-mlkit-object-detection";
 import { writeAsync } from '@lodev09/react-native-exify';
 import { runOnJS } from 'react-native-worklets';
-import type { MyModelsConfig } from "../(tabs)/index";
 
 import { IconButton, MD3DarkTheme } from "react-native-paper";
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ScanCanvas from './ScanCanvas';
 import TopToolbar from './TopToolbar';
 import CameraPermisionUI from './CameraPermisionUI';
+import { ObjectDetectionResult } from '@/types/types';
+const { ObjectDetectionModule } = NativeModules;
 
 type CameraSafeAreaProps = {
   children: any
 }
 
-const takePhotoOptions:TakePhotoOptions = {
-  flash: "off",
-  enableAutoRedEyeReduction: false,
-  enableAutoDistortionCorrection: false,
-  enableShutterSound: false,
-}
-
 function CameraSafeArea({children}:CameraSafeAreaProps) {
   return <SafeAreaProvider>
-      <SafeAreaView style={{width:"100%",height:"100%", display:"flex", gap:8, position:"relative" }}>
-        {children}
-      </SafeAreaView>
-    </SafeAreaProvider>
+          <SafeAreaView style={{width:"100%",height:"100%", display:"flex", gap:8, position:"relative" }}>
+            {children}
+          </SafeAreaView>
+        </SafeAreaProvider>
 }
 
 export default function CamScan () {
   const [permissionGranted,setPermissionGranted] = useState(false);
   const [timesPermissionRejected, setTimesPermissionRejected] = useState(0);
-  const [detection, setDetection] = useState<RNMLKitObjectDetectionObject[] | null>(null);
+  const [detection, setDetection] = useState<ObjectDetectionResult[] | null>(null);
   const [minFocusDistance,setMinFocusDistance] = useState(0.01);
   const [photoUri, setPhotoUri] = useState('');
   const [isDetecting,setIsDetecting] = useState(false);
@@ -47,10 +37,9 @@ export default function CamScan () {
 
   const { hasPermission } = useCameraPermission()
 
-  const detector = useObjectDetection<MyModelsConfig>("elementsDetector");
-
   const devices = useCameraDevices()
   const camera = useRef(null);
+
 
   const requestPermission = (requestions = 1)=>{
     return new Promise((resolve)=>{
@@ -86,7 +75,10 @@ export default function CamScan () {
   }, []);
 
   const detectAndSetPhotoRoute = (uri:string)=>{
-    detector!.detectObjects(uri).then((res)=>{
+    ObjectDetectionModule.detectObjects(uri)
+    .then((res:Array<{label: string, confidence: number}>)=>{
+      console.log(res);
+      //@ts-ignore
       setDetection(res);
       setPhotoUri(uri);
       setIsDetecting(false);
@@ -96,7 +88,8 @@ export default function CamScan () {
   const takePicture = async () => {
     if (camera.current) {
       setIsTakingPhoto(true);
-      (camera.current as Camera).takePhoto(takePhotoOptions).then((photo)=>{
+      (camera.current as Camera).takePhoto().then((photo)=>{
+        console.log(photo.width, photo.height);
         setIsTakingPhoto(false);
         var uri = `file://${photo.path}`;
         setIsDetecting(true);
