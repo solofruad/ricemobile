@@ -32,3 +32,15 @@ https://developer.android.com/reference/android/hardware/camera2/CameraMetadata#
 
 
 iconos que usa react-native-paper: https://pictogrammers.com/library/mdi/
+
+
+
+Debido a dificultades usando librerias ya creadas para implementar la deteccion de objetos usando el mismo 
+modelo que está funcionando en el proyecto de las gafas vuzix, se decidio por implementar como modulo nativo 
+la funcionalidad de deteccion de objetos usando MLKit de Google.
+
+Se debe de tomar en cuenta que el modelo se guarda en la carpeta assets/models/ del proyecto, y que el modelo 
+debe de tener metadatos con las etiquetas para que se puedan mostrar los labels de los objetos detectados.
+
+Se debe de configurar el builder de cada plataforma para que incluya la carpeta de los modelos en los assets del proyecto.
+(ese cambio se hace en android/app/build.gradle)
