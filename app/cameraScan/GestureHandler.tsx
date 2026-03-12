@@ -11,6 +11,7 @@ import { Gesture, GestureDetector} from "react-native-gesture-handler";
 import Animated, { type SharedValue, useDerivedValue, useAnimatedStyle, useSharedValue} from "react-native-reanimated";
 
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useRef } from "react";
 
 const multiply = (...matrices: Matrix4[]) => {
   "worklet";
@@ -18,12 +19,11 @@ const multiply = (...matrices: Matrix4[]) => {
 };
 
 interface GestureHandlerProps {
-  reset:(f:any)=>void
   size: { x: number; y: number, width:number, height:number };
   children: any;
 }
 
-export default function GestureHandler ({ size, reset, children }: GestureHandlerProps) {
+export default function GestureHandler ({ size, children }: GestureHandlerProps) {
   let matrix:SharedValue<Matrix4> = useSharedValue(Matrix4());
 
   const currentPosition = useSharedValue({ x: 0, y: 0 });
@@ -36,6 +36,7 @@ export default function GestureHandler ({ size, reset, children }: GestureHandle
   const previousScale = useSharedValue(1);
 
   const resetValue = ()=>{
+    "worklet";
     currentPosition.value = { x: 0, y: 0 };
     previousPosition.value = { x: 0, y: 0 };
 
@@ -45,8 +46,17 @@ export default function GestureHandler ({ size, reset, children }: GestureHandle
     currentScale.value = 1;
     previousScale.value = 1;
   }
+  const lastTap = useRef(0);//Allows to update lastTap inside tapping method
 
-  reset(resetValue);
+  const tapping = Gesture.Tap()
+    .onEnd(()=>{
+      const temp = Date.now();
+      if(temp - lastTap.current <400){ //max delay between taps <400ms
+        lastTap.current = 0;
+        resetValue()
+      }
+      lastTap.current = temp;
+    })
 
   const pan = Gesture.Pan()
     .onChange((e) => {
@@ -75,7 +85,7 @@ export default function GestureHandler ({ size, reset, children }: GestureHandle
       previousScale.value = currentScale.value;
     });
 
-  const gesture = Gesture.Simultaneous(pan, rotate, pinch);
+  const gesture = Gesture.Simultaneous(pan, rotate, pinch, tapping);
 
   const newMatrix = useDerivedValue(() => {
     return processTransform3d([
