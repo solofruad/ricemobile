@@ -4,30 +4,24 @@ import { Button, MD3DarkTheme } from "react-native-paper";
 
 import PagerView from 'react-native-pager-view';
 
-import * as FileSystem from 'expo-file-system';
+import {File} from 'expo-file-system';
 import { useIsFocused } from "@react-navigation/native";
+import Database, { DetectionRecord } from "@/database/db";
+import ScanCanvas from "../cameraScan/ScanCanvas";
 
-function getFileURIsFromDirectory(directoryUri: string): Array<FileSystem.File> {
-  const dir = new FileSystem.Directory(directoryUri);
-  if(!dir.exists){
-    return [];
-  }else{
-    return dir.list() as Array<FileSystem.File>;
-  }
-}
-
-function PhotoSliderViewer(items:Array<{uri:string}>, selectedIndex:number, setViewing:(index:number)=>void){
+function PhotoSliderViewer(items:Array<DetectionRecord>, selectedIndex:number, setViewing:(index:number)=>void){
   return <PagerView style={{width:"100%", height:"100%"}} initialPage={selectedIndex} onPageSelected={(e)=>console.log(e.nativeEvent.position)}>
-    {items.map((image, index)=>(
+    {items.map((data, index)=>(
       <View key={index} style={{width:"100%", height:"100%"}}>
-        <Image style={{width:"100%", height:"100%", resizeMode:"contain"}} source={{uri:image.uri}} />
+        <ScanCanvas detection={data.result_json} photoUri={data.photo_dir}/>
       </View>
     ))}
   </PagerView>
 }
 
 export default function AlbumModule(){
-  const [images, setImages] = useState<Array<FileSystem.File>>([]);
+  const [images, setImages] = useState<Array<File>>([]);
+  const [databaseData, setDatabaseData] = useState<Array<DetectionRecord>>([]);
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
   const [viewing, setViewing] = useState<number>(-1);
   const isFocused = useIsFocused();
@@ -35,21 +29,29 @@ export default function AlbumModule(){
   useEffect(()=>{
     if(isFocused){
       console.log("Checking directory...");
-      checkDir();
+      checkDatabase();
     }
   },[isFocused]);
 
-  const checkDir = ()=>{
-    const documentDir = FileSystem.Paths.document.uri + "photoScans/";
-    setImages(getFileURIsFromDirectory(documentDir));
+  const checkDatabase = ()=>{
+    Database.getInstance().getAllDetections()
+      .then( dbInfo =>{
+        setDatabaseData(dbInfo);
+        setImages( dbInfo.map(e=> new File(e.photo_dir)) );
+      })
+      .catch( e => console.log(e));
   }
 
   const deleteImage = ()=>{
     try{
-      const file = new FileSystem.File(images[viewing].uri);
-      file.delete();
+      const detectionId = databaseData[viewing].id;
+      Database.getInstance().deleteDetection(detectionId).then(_=>{
+        const file = new File(databaseData[viewing].photo_dir);
+        file.delete();
+      });
+      
       setSelectedImage(null);
-      checkDir();
+      checkDatabase();
     }catch(error){
       console.log(images[viewing], viewing)
       console.error("Error deleting file:", error);
@@ -62,16 +64,18 @@ export default function AlbumModule(){
       numColumns={3}
       renderItem={({item, index})=>(
         <TouchableOpacity onPress={()=>{setSelectedImage(index); setViewing(index);}} style={{width:'33.33%', aspectRatio:1}}>
-        <Image 
-        style={{width:"100%", height:"100%"}}
-          source={{uri:item.uri}} 
-          />
+          
+          <Image 
+            style={{width:"100%", height:"100%", transform:[{rotate:"90deg"}]}}
+            source={{uri:item.uri}} 
+            />
+
         </TouchableOpacity>
       )}
     />
 
     {selectedImage !== null && <View style={{position:"absolute", bottom:0, left:0, width:"100%", height:"100%", backgroundColor:"rgba(0,0,0,0.8)", display:"flex", justifyContent:"center", alignItems:"center"}}>
-      {PhotoSliderViewer(images, selectedImage, setViewing)}
+      {PhotoSliderViewer(databaseData, selectedImage, setViewing)}
       <Button style={{position:"absolute", bottom:10, left:10}} icon="delete" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
         deleteImage();
       }}>
