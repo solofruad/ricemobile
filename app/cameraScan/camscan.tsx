@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { NativeModules, StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Camera, TakePhotoOptions, useCameraDevices, useCameraPermission } from 'react-native-vision-camera';
+import { Camera, useCameraDevices, useCameraPermission } from 'react-native-vision-camera';
 
 import { writeAsync } from '@lodev09/react-native-exify';
 import { runOnJS } from 'react-native-worklets';
 
 import { IconButton, MD3DarkTheme } from "react-native-paper";
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import ScanCanvas from './ScanCanvas';
+import ScanControledCanvas from './ScanControledCanvas';
 import TopToolbar from './TopToolbar';
 import CameraPermisionUI from './CameraPermisionUI';
 import { ObjectDetectionResult } from '@/types/types';
@@ -77,7 +77,6 @@ export default function CamScan () {
   const detectAndSetPhotoRoute = (uri:string)=>{
     ObjectDetectionModule.detectObjects(uri)
     .then((res:Array<{label: string, confidence: number}>)=>{
-      console.log(res);
       //@ts-ignore
       setDetection(res);
       setPhotoUri(uri);
@@ -89,11 +88,11 @@ export default function CamScan () {
     if (camera.current) {
       setIsTakingPhoto(true);
       (camera.current as Camera).takePhoto().then((photo)=>{
-        console.log(photo.width, photo.height);
         setIsTakingPhoto(false);
         var uri = `file://${photo.path}`;
         setIsDetecting(true);
-        writeAsync(uri,{Orientation:0}).then(()=>{
+        //*PARA FORZAR A QUE TODAS LAS IMAGENES TENGAN LA MISMA ORIENTACION
+        writeAsync(uri,{Orientation:1}).then(()=>{
           detectAndSetPhotoRoute(uri);
         });
       });
@@ -175,7 +174,7 @@ export default function CamScan () {
           </View>
           :null}
         {detection && photoUri ? 
-          <ScanCanvas 
+          <ScanControledCanvas 
             detection={detection} 
             photoUri={photoUri} 
             deleteData={()=>{setDetection(null); setPhotoUri('');}}/> 
