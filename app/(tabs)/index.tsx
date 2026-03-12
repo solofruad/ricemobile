@@ -1,48 +1,23 @@
-import CamScan from '../cameraScan/CamScan';
-
-import {
-  ObjectDetectionConfig,
-  useObjectDetectionModels,
-  useObjectDetectionProvider,
-} from "@infinitered/react-native-mlkit-object-detection";
+import { useEffect, useState } from 'react';
 import { Text } from 'react-native';
-
-
-const modelFile = require("../../assets/models/2.tflite");
-
-// Define your custom models if needed (see "Using a Custom Model" for more details)
-const MODELS: ObjectDetectionConfig = {
-  elementsDetector: {
-    model: modelFile,
-    options:{
-      shouldEnableClassification:true,
-      shouldEnableMultipleObjects:true,
-      detectorMode:"singleImage",
-      maxPerObjectLabelCount:5,
-      classificationConfidenceThreshold:0.2
-    }
-  },
-};
-
-// Export this type so we can use it with our hooks later
-export type MyModelsConfig = typeof MODELS;
+import { ObjectDetection } from '../../src/ObjectDetection';
+import CamScan from '../cameraScan/CamScan';
+import Database from '@/database/db';
 
 export default function HomeScreen() {
-  const models = useObjectDetectionModels<MyModelsConfig>({
-    assets: MODELS,
-    loadDefaultModel: true, // whether to load the default model
-    defaultModelOptions: {
-      shouldEnableMultipleObjects: true,
-      shouldEnableClassification: true,
-      detectorMode: "singleImage",
-    },
-  });
-
-  const { ObjectDetectionProvider } = useObjectDetectionProvider(models);
-
-  if(!!(models.elementsDetector) && ObjectDetectionProvider) return <ObjectDetectionProvider>
-    <CamScan/>
-  </ObjectDetectionProvider>;
-
-  return <Text>Cargando</Text>
+  const [initialized, setInitialized] = useState(false);  
+  useEffect(() => {
+      new Database();
+      //Inicializamos el detector de objetos al iniciar la app
+      ObjectDetection.initializeDetector(7, 0.2)
+      .then(()=>{
+        setInitialized(true);
+      }).catch((err)=>{
+        console.log("Error initializing object detection model", err);
+      })
+  }, []);
+  if(!initialized){
+    return <Text style={{color:"white"}}>Initializing object detection model...</Text>
+  }
+  return <CamScan/>
 }
