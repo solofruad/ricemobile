@@ -1,7 +1,10 @@
-import React, { useState } from "react";
-import { View } from "react-native";
+import { DetectionRecord } from "@/database/db";
+import SpeechText from "@/src/SpeechText";
+import { TtsVoices } from "@/src/TtsVoices";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { TextInput, View } from "react-native";
 import { GiftedChat, IMessage } from "react-native-gifted-chat";
-import { Button, IconButton, MD3DarkTheme } from "react-native-paper";
+import { Button, IconButton, MD3Colors, MD3DarkTheme } from "react-native-paper";
 
 type Dialog = {
 	text:string,
@@ -29,23 +32,17 @@ const map:Dialog = {
 		{text:"1 - Ver Colombia", next:"colombia"}
 	]
 }
-const colombia:Dialog = {
-	text:"Ahora mismo ves a Colombia",
-	// options:[]
-}
+
 
 const botResponses: {[key:string]:Dialog} = {
 	hello,
 	map,
-	colombia,
 }
 
 class Bot {
 	lastResponse:Dialog = hello; //El bot siempre iniciará la conversación con el mensaje de bienvenida
 	route: Array<string> = ["hello"]; //Pila de respuestas del bot (Excluyendo byDefault)
-	// constructor(){
 
-	// }
 	responseLogic(userMessage:string){
 		userMessage = userMessage.toLowerCase();
 		let option:number;
@@ -83,9 +80,16 @@ class Bot {
 
 }
 
+type ChatBotModuleProps = {
+	detection?: DetectionRecord
+}
 
-export default function ChatBotModule () {
-	const bot = new Bot();
+export default function ChatBotModule (props: ChatBotModuleProps) {
+	const bot = useMemo(() => new Bot(), []);
+	const inputRef = useRef<TextInput>(null);
+	const [speechDetect, setSpeechDetect] = useState<SpeechText|null>(null);
+	const [recording, setRecording] = useState(false);
+	// 
 	const [messages, setMessages] = useState([
 		{
 			_id: 1,
@@ -94,6 +98,31 @@ export default function ChatBotModule () {
 			user: { _id: 2, name: "Chatbot" },
 		},
 	]);
+
+	useEffect(()=>{
+		setSpeechDetect( 
+			new SpeechText((text)=>{
+				if (inputRef.current) {
+					inputRef.current.setNativeProps({ text });
+				}
+
+			}, (text)=>{
+				if (inputRef.current) {
+					setRecording(false);
+					inputRef.current.setNativeProps({ text });
+					TtsVoices.speak(text);
+				}
+
+			})
+		)
+	},[]);
+
+	useEffect(()=>{
+		if(props.detection){
+			console.log("Received detection data in ChatBotModule:", props.detection);
+			//Aquí se podría modificar el estado del bot o enviar un mensaje específico dependiendo de la detección recibida
+		}
+	},[props.detection])
 
 	const handleSend = (newMessages:Array<IMessage> = []) => {
 		setMessages((previousMessages) =>
@@ -122,13 +151,24 @@ export default function ChatBotModule () {
 	return (
 		<View style={{width:"100%", height:"100%",backgroundColor:"#152712ff"}}>
 			<GiftedChat
+				textInputRef={inputRef as React.RefObject<TextInput>}
 				messages={messages}
 				onSend={handleSend}
 				user={{ _id: 1, name: "User" }}
 			/>
 			<View style={{position:"absolute", bottom:-2, right:0, display:"flex", flexDirection:"row"}}>
-				<IconButton icon="paperclip" mode="contained-tonal" theme={MD3DarkTheme}/>
-				<IconButton icon="microphone" mode="contained-tonal" theme={MD3DarkTheme}/>
+				<IconButton icon="microphone" iconColor={recording?MD3Colors.error50: MD3Colors.neutral50} onPress={()=>{
+					if(!recording){
+						speechDetect?.record();
+					}else{
+						const text = speechDetect?.stop() ?? "";
+						if (inputRef.current) {
+							inputRef.current.setNativeProps({ text });
+							TtsVoices.speak(text);
+						}
+					}
+					setRecording(!recording);
+					}}/>
 			</View>
 		</View>
 	);
