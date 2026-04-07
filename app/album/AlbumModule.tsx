@@ -8,9 +8,10 @@ import {File} from 'expo-file-system';
 import { useIsFocused } from "@react-navigation/native";
 import Database, { DetectionRecord } from "@/database/db";
 import ScanCanvas from "../cameraScan/ScanCanvas";
+import { router } from 'expo-router';
 
 function PhotoSliderViewer(items:Array<DetectionRecord>, selectedIndex:number, setViewing:(index:number)=>void){
-  return <PagerView style={{width:"100%", height:"100%"}} initialPage={selectedIndex} onPageSelected={(e)=>console.log(e.nativeEvent.position)}>
+  return <PagerView style={{width:"100%", height:"100%"}} initialPage={selectedIndex} onPageSelected={(e)=>setViewing(e.nativeEvent.position)}>
     {items.map((data, index)=>(
       <View key={index} style={{width:"100%", height:"100%"}}>
         <ScanCanvas detection={data.result_json} photoUri={data.photo_dir}/>
@@ -81,6 +82,17 @@ export default function AlbumModule(){
       }}>
         Borrar
       </Button>
+      
+      <Button style={{position:"absolute", bottom:10,left:"50%", transform:[{translateX:"-50%"}]}} icon="layers" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
+        router.push({
+          pathname: '/(tabs)/chatbot',
+          params: {detection: JSON.stringify(databaseData[viewing])}
+        });
+
+        }}>
+        Chatbot
+      </Button>
+
       <Button style={{position:"absolute", bottom:10, right:10}} icon="close" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{setSelectedImage(null)}}>
         Cerrar
       </Button>
