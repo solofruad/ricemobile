@@ -44,3 +44,19 @@ debe de tener metadatos con las etiquetas para que se puedan mostrar los labels 
 
 Se debe de configurar el builder de cada plataforma para que incluya la carpeta de los modelos en los assets del proyecto.
 (ese cambio se hace en android/app/build.gradle)
+
+
+
+
+
+##*TEXTO A VOZ
+
+Speech.getAvailableVoices() 
+#Devuelve las voces disponibles, que no significa que esten instaladas
+#esto sucede cuando el motor elegido es el TTS de google.
+
+#Para arreglar ello se creo otro modulo nativo que devuelve una lista con las voces instaladas
+#Ingresando el nombre del motor de TTS
+https://developer.android.com/reference/android/speech/tts/TextToSpeech.Engine#KEY_FEATURE_NOT_INSTALLED
+
+!voice.features.contains( TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED )
