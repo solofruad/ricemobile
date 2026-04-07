@@ -50,7 +50,8 @@ export default function ScanLabels (props: ScanLabelsProps){
       point : rotatePointAroundPlaneCenter({x,y},{width:props.imageDims.width,height:props.imageDims.width},90),
       height : obj.frame.size.y * props.scale,
       width : obj.frame.size.x * props.scale,
-      text: obj.labels?.map(e=>e.text)[0] || ""
+      text: obj.labels?.map(e=>e.text)[0] || "",
+      confidence: obj.labels?.map(e=>e.confidence)[0] || ""
     }
   });
 
@@ -90,7 +91,7 @@ export default function ScanLabels (props: ScanLabelsProps){
         key={"labelRectB"+id}
       />
       <Text
-        text={"Clasificación: "+3}
+        text={`Confianza: ${obj.confidence}`}
         font={font}
         x={obj.point.x-obj.height+4}
         y={y+obj.width-3}
