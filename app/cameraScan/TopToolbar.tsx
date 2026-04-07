@@ -6,6 +6,8 @@ import { Button, MD3DarkTheme } from "react-native-paper"
 type TopToolbarProps = {
   setFocusDepth: (n:number)=>void
   minFocusDistance: number,
+  onShow?: ()=>void,
+  onHide?: ()=>void
 }
 
 export default function TopToolbar(props: TopToolbarProps){
@@ -13,6 +15,7 @@ export default function TopToolbar(props: TopToolbarProps){
   const [showing,setShowing] = useState(false);
   
   const fadeInFn = ()=>{
+    props.onShow?.();
     setShowing(true);
     Animated.timing(fadeAnim, {
       toValue: -60,
@@ -22,6 +25,7 @@ export default function TopToolbar(props: TopToolbarProps){
   }
 
   const fadeOutFn = ()=>{
+    props.onHide?.();
     setShowing(false);
     Animated.timing(fadeAnim, {
       toValue: 0,
