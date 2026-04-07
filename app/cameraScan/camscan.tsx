@@ -14,6 +14,10 @@ import CameraPermisionUI from './CameraPermisionUI';
 import { ObjectDetectionResult } from '@/types/types';
 const { ObjectDetectionModule } = NativeModules;
 
+import Reanimated, { useSharedValue, useAnimatedProps } from 'react-native-reanimated';
+
+const ReanimatedCamera = Reanimated.createAnimatedComponent(Camera);
+
 type CameraSafeAreaProps = {
   children: any
 }
@@ -34,12 +38,20 @@ export default function CamScan () {
   const [photoUri, setPhotoUri] = useState('');
   const [isDetecting,setIsDetecting] = useState(false);
   const [isTakingPhoto,setIsTakingPhoto] = useState(false);
+  // const [zoom, setZoom] = useState(1)
 
   const { hasPermission } = useCameraPermission()
 
   const devices = useCameraDevices()
   const camera = useRef(null);
 
+  const zoom = useSharedValue(1);
+  const animatedProps = useAnimatedProps(
+    () => ({
+      zoom: zoom.value,
+    }),
+    [zoom]
+  );
 
   const requestPermission = (requestions = 1)=>{
     return new Promise((resolve)=>{
@@ -135,7 +147,7 @@ export default function CamScan () {
         {!(detection && photoUri) ? <>
           <GestureHandlerRootView>
             <GestureDetector gesture={gesture}>
-              <Camera
+              <ReanimatedCamera
                 ref={camera}
                 style={[StyleSheet.absoluteFill,{ backgroundColor:"#206758ff"}]}
                 device={devices[0]}
@@ -146,6 +158,7 @@ export default function CamScan () {
                 outputOrientation='preview'
                 enableLocation={false}
                 focusable={true}
+                animatedProps={animatedProps}
               />
             </GestureDetector>
           </GestureHandlerRootView>
@@ -160,6 +173,8 @@ export default function CamScan () {
               style={{marginHorizontal:"auto"}}/>
           </View>
           <TopToolbar 
+            onShow={()=>{zoom.value = 2}}
+            onHide={()=>{zoom.value = 1}}
             minFocusDistance={minFocusDistance} 
             //@ts-ignore
             setFocusDepth={ n =>{(camera.current as unknown as Camera).focusDepth(n);} }
