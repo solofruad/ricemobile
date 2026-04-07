@@ -1,5 +1,4 @@
 import { Gesture, GestureDetector} from "react-native-gesture-handler";
-import { useSharedValue } from "react-native-reanimated";
 
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Point } from "@/types/types";
@@ -16,19 +15,22 @@ interface GestureHandlerProps {
 export default function GestureHandler (props: GestureHandlerProps) {
 
   const pan = Gesture.Pan()
+    .minDistance(11)
     .onStart((e)=> {
-      runOnJS(props.panStart)({x:e.x, y:e.y});
+      runOnJS(props.panStart)({x:Math.floor(e.x), y: Math.floor(e.y)});
     })
     .onChange((e) => {
-      runOnJS(props.pan)({x:e.x, y:e.y});
+      // (props.pan)({x:Math.floor(e.x), y: Math.floor(e.y)});
+      (props.pan)({x:e.x, y: e.y});
     })
     .onEnd((e) => {
-      runOnJS(props.panEnd)({x:e.x, y:e.y});
+      runOnJS(props.panEnd)({x: Math.floor(e.x), y: Math.floor(e.y)});
     });
 
   const tap = Gesture.Tap()
+    .maxDistance(10)
     .onEnd((e) => {
-      runOnJS(props.tap)({x:e.x, y:e.y});
+      runOnJS(props.tap)({x: Math.floor(e.x), y: Math.floor(e.y)});
     });
 
   const gesture = Gesture.Simultaneous(pan, tap);

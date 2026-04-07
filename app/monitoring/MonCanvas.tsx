@@ -1,243 +1,218 @@
 import { Point } from "@/types/types";
-import { Canvas, Group, Line, Rect, vec, Text, matchFont, CanvasRef } from "@shopify/react-native-skia";
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { Canvas, Skia, Path as SkPath } from "@shopify/react-native-skia";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Dimensions, View } from "react-native";
 import GestureHandler from "./GestureHandler";
+import { SharedValue, useDerivedValue, useSharedValue } from "react-native-reanimated";
+import { Button } from "react-native-paper";
+import Path, { VERTEX_ADD } from "./Path";
+import History, { PATH_OP } from "./History";
 
-class Vertex{
-  id:string;
-  x:number;
-  y:number;
+import { Vibration } from 'react-native';
 
-  constructor(x:number, y:number){
-    this.id = `vertex${window.performance.now().toString()}`;
-    this.x = x;
-    this.y = y;
-  }
+const rectPoints = [
+                {x: 50, y: 200},
+                {x: 350, y: 200},
+                {x: 350, y: 500},
+                {x: 50, y: 500}
+              ];
 
-  getAsVec(){
-    return vec(this.x,this.y);
-  }
+const wPoints = [
+  {x: 280, y: 250},
+  {x: 110, y: 290},
+  {x: 280, y: 350},
+  {x: 110, y: 410},
+  {x: 280, y: 450}
+]
 
-  equalsTo(testVertex: Vertex){
-    return this.id == testVertex.id;
-  }
+export enum EDIT_PATH {
+  NONE,     //Ninguno
+  POLYGON,  //Terreno
+  W_PATH    //Ruta de toma de muestras
 }
 
+type VertexSharedValue = {
+    x:number,
+    y:number,
+    id:string
+}
+type PolygonSharedValue = Array<VertexSharedValue>
 
-const DISTANCE_CRITERION_FOR_VERTEX_ADD = 32;
+//* UI THREAD RELATED METHODS
 
-class Edge {
-  vertices: {A:Vertex, B:Vertex}
+const generatePath = (pointsList: PolygonSharedValue, isClosedPath: boolean)=>{
+  "worklet";
+  const skPath = Skia.Path.Make();
+  const pts = pointsList;
+  if (pts.length === 0) return skPath;
 
-  constructor(vertexA: Vertex, vertexB: Vertex){
-    this.vertices = {A: vertexA, B: vertexB};
+  skPath.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) {
+    skPath.lineTo(pts[i].x, pts[i].y);
   }
+  if(isClosedPath)
+    skPath.close();
 
-  private getVertexAngleWithVertical(vertexA: Vertex, vertexB: Vertex){
-    const distanceAK = vertexB.y - vertexA.y;
-    const distanceBK = vertexB.x - vertexA.x;
-    return Math.atan(distanceBK/distanceAK);
-  }
+  return skPath;
+}
+const generateHandlers = (pointsList: PolygonSharedValue) => {
+  "worklet";
+  const skPath = Skia.Path.Make();
+  const pts = pointsList;
+  if (pts.length === 0) return skPath;
 
-  private getVerticesDistance(vertexA: Vertex = this.vertices.A, vertexB: Vertex = this.vertices.B){
-    return Math.sqrt( ( (vertexA.x - vertexB.x) **2) + ( (vertexA.y - vertexB.y) **2) );
-  }
-
-
-  vertexCouldBeAdded(newVertex: Vertex){
-    //K and L are illusionary angles that are conveniently aligned to the A vertex vertical.
-    const angleBAK = this.getVertexAngleWithVertical(this.vertices.A, this.vertices.B);
-    const angleCAL = this.getVertexAngleWithVertical(this.vertices.A, newVertex);
-
-    const newVertexAngle = Math.abs(angleBAK - angleCAL);
-
-    const AC_Distance = this.getVerticesDistance(this.vertices.A, newVertex);
-
-    const newVertexPerpendicularDistanceWithEdge = AC_Distance * Math.sin(newVertexAngle);
-
-    console.log(newVertexPerpendicularDistanceWithEdge);
-
-    return newVertexPerpendicularDistanceWithEdge < DISTANCE_CRITERION_FOR_VERTEX_ADD;
-  }
-
-  
-  addVertex(newVertex: Vertex){
-    const newEdge = new Edge(newVertex,this.vertices.B);
-    this.vertices.B = newVertex;
-    return newEdge;
-  }
-
-  ifHaveThisVertexGimmeTheOther(vertexToSearch: Vertex){
-    if(vertexToSearch.equalsTo(this.vertices.A)){
-      return this.vertices.B;
-    }
-    if(vertexToSearch.equalsTo(this.vertices.B)){
-      return this.vertices.A;
-    }
-    return null;
-  }
-
-  getAsLine(){
-    return <Line 
-            key={`edge-${this.vertices.A.id}-${this.vertices.B.id}`} 
-            p1={this.vertices.A.getAsVec()}
-            p2={this.vertices.B.getAsVec()}
-            color="white"
-            style="stroke"
-            strokeWidth={4}
-          />
-  }
+  pts.forEach(v => {
+    skPath.addCircle(v.x, v.y, 8); 
+  });
+  return skPath;
 }
 
-class Polygon {
-  vertices: Map<string,Vertex> = new Map();
-  edges: Array<Edge> = [];
+const isPointInsidePolygon = (pointsList: PolygonSharedValue, point: Point): boolean =>{
+  let inside = false;
+  const { x, y } = point;
 
-  constructor(){
-    this.instanceBasePolygon();
+  for (let i = 0, j = pointsList.length - 1; i < pointsList.length; j = i++) {
+    const xi = pointsList[i].x, yi = pointsList[i].y;
+    const xj = pointsList[j].x, yj = pointsList[j].y;
+
+    // Check if the ray intersects with the edge between i and j
+    const intersect = ((yi > y) !== (yj > y)) &&
+                      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
   }
 
-  private instanceBasePolygon(){
-    const vxA = new Vertex(100,100);
-    const vxB = new Vertex(400,100);
-    const vxC = new Vertex(400,400);
-    const vxD = new Vertex(100,400);
-
-    this.vertices.set(vxA.id,vxA);
-    this.vertices.set(vxB.id,vxB);
-    this.vertices.set(vxC.id,vxC);
-    this.vertices.set(vxD.id,vxD);
-    
-    this.edges.push(new Edge(vxA, vxB));
-    this.edges.push(new Edge(vxB, vxC));
-    this.edges.push(new Edge(vxC, vxD));
-    this.edges.push(new Edge(vxD, vxA));
-  }
-
-  getVertexNearCoord(point: Point){
-    let res = null
-    this.vertices.forEach(vertex => {
-      const distance = Math.sqrt( ( (vertex.x - point.x) **2) + ( (vertex.y - point.y) **2) );
-      if(distance<40){
-        res = vertex;
-      }
-    });
-    return res;
-  }
-
-  addVertex (point:Point) {
-    const newVertex = new Vertex(point.x, point.y);
-
-    //For each edge ask if the vertex could be added between it's two vertices
-    //Until it could be a added
-    //Or not
-
-    for (const edge of this.edges) {
-      if(edge.vertexCouldBeAdded(newVertex)){
-        //adding a new vertex between two connected vertex creates a new edge, so..
-        this.vertices.set(newVertex.id, newVertex);
-        const newEdge = edge.addVertex(newVertex);
-        this.edges.push(newEdge);
-        return;
-      }
-    }
-  }
-
-  deleteVertex(vertexToDelete: Vertex){
-    //find the two edges that shares that vertex
-    //then, delete both edges and create a new edge
-    //with the not-to-delete vertices that was present in both edges
-    let vertex: Vertex | null;
-    let vertices: Array<Vertex> = [];
-
-    for (let index = 0; index < this.edges.length; index++) {
-      const edge = this.edges[index];
-      if(vertex = edge.ifHaveThisVertexGimmeTheOther(vertexToDelete)){
-        vertices.push(vertex);
-        if(vertices.length == 2){
-          const newEdge = new Edge(vertices[0], vertices[1]);
-          this.edges.splice(index, 1, newEdge);
-
-          this.vertices.delete(vertexToDelete.id);
-          break;
-        }
-        this.edges.splice(index, 1);
-        index--;
-      }
-    }
-  }
+  return inside;
 }
 
 export default function MonCanvas() {
   const [dims, setDims] = useState<{ x: number; y: number } | null>(null);
-  const [vertexToEdit, setVertexToEdit] = useState<Vertex | null>(null);
-  const polygon = useRef(new Polygon());
-
-  const canvasRef = useRef(null);
-  const [data, setData] = useState(0);
-  
-  // Track if a render is already scheduled
-  const rafRef = useRef<number | null>(null);
-  const isDraggingRef = useRef(false);
-
   useEffect(() => {
     const screen = Dimensions.get("screen");
     setDims({
       x: screen.width,
       y: screen.height,
     });
+      generateSharedValue();
   }, []);
 
-  // Schedule a render using requestAnimationFrame
-  const scheduleRender = useCallback(() => {
-    if (rafRef.current === null) {
-      rafRef.current = requestAnimationFrame(() => {
-        setData((prev) => prev + 1);
-        rafRef.current = null;
-      });
+  const vertexToEditId = useSharedValue<string | null>(null);
+  const pathToEdit = useSharedValue<EDIT_PATH>(EDIT_PATH.NONE)
+  const polygon = useRef(new Path(rectPoints)); //JS THREAD
+  const wPath = useRef(new Path(wPoints)); //JS THREAD
+  const history = useRef(new History());
+
+  const polygonSharedData: SharedValue<PolygonSharedValue> = useSharedValue(([] as PolygonSharedValue)); //UI THREAD
+  const wPathSharedData: SharedValue<PolygonSharedValue> = useSharedValue(([] as PolygonSharedValue)); //UI THREAD
+
+  // Build the path dynamically based on vertex shared value
+  const gPath = useDerivedValue(() => generatePath(polygonSharedData.value, true) ); //UI THREAD
+  const gPathW = useDerivedValue(() => generatePath(wPathSharedData.value, false) ); //UI THREAD
+  const gVertexes = useDerivedValue(() => generateHandlers(polygonSharedData.value) ); //UI THREAD
+  const gVertexesW = useDerivedValue(() => generateHandlers(wPathSharedData.value) ); //UI THREAD
+
+  const generateSharedValue = () =>{
+    polygonSharedData.set(polygon.current.generateLinkedList());
+    wPathSharedData.set(wPath.current.generateLinkedList())
+  }
+
+  const isOnePathInsideAnother = (outerPath: PolygonSharedValue, innerPath: PolygonSharedValue) =>{
+    for (const vertex of innerPath) {
+      if(!isPointInsidePolygon(outerPath,vertex))
+        return false;
+    }
+    return true;
+  }
+
+  const handlePanStart = useCallback((point: Point) => {
+    //Search near vertex in the polygon and the path
+    let vertex;
+    if(vertex = polygon.current.getVertexNearCoord(point)){
+      pathToEdit.value = EDIT_PATH.POLYGON;
+    }else if(vertex = wPath.current.getVertexNearCoord(point)){
+      pathToEdit.value = EDIT_PATH.W_PATH;
+    }else{
+      pathToEdit.value = EDIT_PATH.NONE;
+    }
+    vertexToEditId.value = vertex ? vertex.id : null;
+  }, []);
+
+  const handlePan = useCallback((point: Point) => {
+    'worklet';//Corre sobre el hilo de UI
+    const sharedData = pathToEdit.value == EDIT_PATH.POLYGON ? polygonSharedData: wPathSharedData;
+    if (vertexToEditId.value) {
+      const currentData = [...sharedData.value];
+      const index = currentData.findIndex(v => v.id === vertexToEditId.value);
+      
+      if (index !== -1) {
+        currentData[index] = { 
+          ...currentData[index], 
+          x: point.x, 
+          y: point.y 
+        };
+        sharedData.value = currentData;
+      }
     }
   }, []);
 
-  // Clean up RAF on unmount
-  useEffect(() => {
-    return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
+  const handlePanEnd = useCallback((point: Point) => {
+    if(vertexToEditId.value && pathToEdit.value != EDIT_PATH.NONE){
+      let before: Point | undefined;
+      const sharedData = pathToEdit.value == EDIT_PATH.POLYGON ? polygonSharedData: wPathSharedData;
+      const dataJS = pathToEdit.value == EDIT_PATH.POLYGON ? polygon: wPath;
+
+      if( 
+          ( pathToEdit.value == EDIT_PATH.POLYGON && isOnePathInsideAnother(polygonSharedData.value, wPathSharedData.value)) || 
+          ( pathToEdit.value == EDIT_PATH.W_PATH && isPointInsidePolygon(polygonSharedData.value, point))
+        ){
+        before = dataJS.current.vertices.get(vertexToEditId.value)?.getAsPoint() as Point;
+        dataJS.current = new Path( sharedData.value.map(v => ({ x: v.x, y: v.y })) );
+      }else{  //If the Vertex movement wasn't valid
+        Vibration.vibrate(50);
       }
-    };
-  }, []);
 
-  const handlePanStart = useCallback((point: Point) => {
-    const vertex = polygon.current.getVertexNearCoord(point);
-    setVertexToEdit(vertex);
-    isDraggingRef.current = true;
-  }, []);
-
-  const handlePan = useCallback(
-    (point: Point) => {
-      if (vertexToEdit && isDraggingRef.current) {
-        vertexToEdit.x = point.x;
-        vertexToEdit.y = point.y;
-        scheduleRender();
+      if(before){
+        //know who moved and where (before and after move)
+        history.current.addElement({  path: pathToEdit.value, 
+                                      operation:PATH_OP.MOVE, 
+                                      vertexId: vertexToEditId.value,
+                                      before: before as Point,
+                                      after: point})
       }
-    },
-    [vertexToEdit, scheduleRender]
-  );
-
-  const handlePanEnd = useCallback(() => {
-    isDraggingRef.current = false;
-    setVertexToEdit(null);
+      vertexToEditId.value = null;
+      generateSharedValue();
+    }
   }, []);
 
   const handleTap = useCallback((point: Point) => {
-    setVertexToEdit(null);
-    polygon.current.addVertex(point);
-    setData((prev) => prev + 1);
+    vertexToEditId.value = null; //? Que hace esto aca?
+    let pathToAddVertex = EDIT_PATH.NONE;
+    let result: VERTEX_ADD;
+    if(( result = polygon.current.addVertex(point) ) == VERTEX_ADD.POINT_TOO_FAR){
+      if(isPointInsidePolygon(polygonSharedData.value, point) && (result = wPath.current.addVertex(point)) == VERTEX_ADD.VERTEX_ADDED){
+        //Know  where added
+        pathToAddVertex = EDIT_PATH.W_PATH;
+      }
+    } else if(result == VERTEX_ADD.VERTEX_ADDED){
+      //Know where added
+      pathToAddVertex = EDIT_PATH.POLYGON;
+    }
+
+    if(result == VERTEX_ADD.VERTEX_ADDED){
+      const dataJS = pathToAddVertex == EDIT_PATH.POLYGON ? polygon: wPath;
+      history.current.addElement({  path: pathToAddVertex, 
+                operation:PATH_OP.INSERT, 
+                vertexId: dataJS.current.lastVertexAdded?.id as string, //From JS Thread
+                prevId: dataJS.current.lastEdgesEdited[0].vertices.A.id as string, //From JS Thread
+                nextId: dataJS.current.lastEdgesEdited[0].vertices.B.id as string, //From JS Thread
+                after: point})
+      generateSharedValue();
+    }
   }, []);
 
+
+
   if (dims) {
-    return (
+    return (<>
       <GestureHandler
         panStart={handlePanStart}
         pan={handlePan}
@@ -245,7 +220,6 @@ export default function MonCanvas() {
         tap={handleTap}
       >
         <Canvas
-          ref={canvasRef}
           style={{
             width: dims.x,
             height: dims.y,
@@ -255,11 +229,40 @@ export default function MonCanvas() {
             position: "relative",
           }}
         >
-          {polygon.current.edges.map((edge) => edge.getAsLine())}
+          <SkPath path={gPath} color="lightblue" style="fill" />
+          <SkPath path={gPath} color="brown" style="stroke" strokeWidth={4} />
+          <SkPath path={gVertexes} color="orange" style="stroke" strokeWidth={3} />
+          <SkPath path={gPathW} color="green" style="stroke" strokeWidth={4} />
+          <SkPath path={gVertexesW} color="lime" style="stroke" strokeWidth={3} />
         </Canvas>
       </GestureHandler>
+      <Button onPress={()=>{ 
+        polygon.current = new Path(rectPoints);
+        wPath.current = new Path(wPoints);
+        generateSharedValue(); 
+        }}>Reset</Button>
+
+      <Button onPress={()=>{console.log(history.current.elements)}}>console table vertexes coords</Button>
+    </>
     );
   }
 
   return <View style={{ backgroundColor: "#1c100fff" }} />;
 }
+
+/**
+ * Para mostrar el poligono y mover los vectores estoy usando la shared memory (el poligono en el Hilo de la UI) 
+ * que es el un array con los puntos del poligono
+ * 
+ * para editar el poligono (agregar vector, quitar vector, seleccionar el vector a correr) estoy usando una clase 
+ * llamada Path la cual almacena los vectores y los Edges por separado (En el Hilo de JS)
+ * 
+ * la actualizacion de la posicion se realiza en tiempo real para la shared memory
+ * 
+ * cuando termina de moverse actualizo la representacion del poligono en el Hilo de JS
+ * 
+ * y cuando se hace la representacion del poligono en el Hilo de JS tengo que actualizar los cambios para la 
+ * representtacion del poligono en el Hilo de UI
+ */
+
+//TODO: Agregar 
