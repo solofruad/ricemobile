@@ -1,5 +1,7 @@
 import { Point } from "@/types/types"
 import { EDIT_PATH } from "./MonCanvas"
+import Path from "./Path";
+import Vertex from "./Vertex";
 
 export enum PATH_OP {
   INSERT,
@@ -20,13 +22,6 @@ export default class History{
   elements: Array<HistoryElement> = [];
 
   addElement(element: HistoryElement){
-    console.warn(`element.path      = ${element.path}`);
-    console.warn(`element.operation = ${element.operation}`);
-    console.warn(`!element.vertexId = ${!element.vertexId}`);
-    console.warn(`!element.prevId   = ${!element.prevId}`);
-    console.warn(`!element.nextId   = ${!element.nextId}`);
-    console.warn(`!element.before   = ${!element.before}`);
-    console.warn(`!element.after    = ${!element.after}`);
     if(element.operation == PATH_OP.INSERT){
       if(!element.after){
         //!throw err
@@ -43,10 +38,45 @@ export default class History{
 
     this.elements.push(element);
   }
-  private removeElement(){
 
-  }
-  before(){
-
+  undo(paths: Map<EDIT_PATH, Path>): [EDIT_PATH, Path] | null {
+    const element = this.elements.pop();
+    if(!element){
+      return null;
+    }
+    const path = paths.get(element.path);
+    console.log(path?.printVertexConections())
+    if(!path){
+      //!throw err
+      return null;
+    }
+    if(element.operation == PATH_OP.INSERT){
+      if(!element.after){
+        //!throw err
+        return null;
+      }
+      console.log(element.vertexId);
+      console.log(element.prevId, element.nextId);
+      console.log(path.deleteVertexBetween(element.prevId!, element.nextId!));
+    }else if(element.operation == PATH_OP.MOVE){
+      if(!element.before || !element.after){
+        //!throw err
+        return null;
+      }
+      console.log("moving vertex with id "+element.vertexId+" to before coords");
+      console.log(path.vertices);
+      console.log(path.vertices.get(element.vertexId)?.getAsPoint());
+      path.moveVertex(element.vertexId, element.before.x, element.before.y);
+      console.log(path.vertices.get(element.vertexId)?.getAsPoint());
+    }else if(element.operation == PATH_OP.DELETE){
+      if(!element.before){
+        //!throw err
+        return null;
+      }
+      console.log("adding vertex with id "+element.vertexId+" to before coords");
+      console.log(element.prevId, element.nextId);
+      path.addVertexBetween(new Vertex(element.before.x, element.before.y, element.vertexId), element.prevId!, element.nextId!) ;
+    }
+    return [element.path, path];
   }
 }
