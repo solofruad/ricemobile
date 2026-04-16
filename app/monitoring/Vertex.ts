@@ -4,8 +4,8 @@ export default class Vertex{
   x:number;
   y:number;
 
-  constructor(x:number, y:number){
-    this.id = `v${window.performance.now().toString()}`;
+  constructor(x:number, y:number, id?:string){
+    this.id = id ?? `v${window.performance.now().toString()}`;
     this.x = x;
     this.y = y;
   }
