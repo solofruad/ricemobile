@@ -1,14 +1,15 @@
 import { Point } from "@/types/types";
-import { Canvas, Skia, Path as SkPath } from "@shopify/react-native-skia";
+import { Canvas, matchFont, Skia, Path as SkPath } from "@shopify/react-native-skia";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, View } from "react-native";
-import GestureHandler from "./GestureHandler";
+import { Dimensions, ToastAndroid, View } from "react-native";
+import { IconButton, MD2Colors, MD3Colors } from "react-native-paper";
 import { SharedValue, useDerivedValue, useSharedValue } from "react-native-reanimated";
-import { Button } from "react-native-paper";
-import Path, { VERTEX_ADD } from "./Path";
+import GestureHandler from "./GestureHandler";
 import History, { PATH_OP } from "./History";
+import Path, { VERTEX_OPERATION } from "./Path";
 
 import { Vibration } from 'react-native';
+import Vertex from "./Vertex";
 
 const rectPoints = [
                 {x: 50, y: 200},
@@ -24,6 +25,12 @@ const wPoints = [
   {x: 110, y: 410},
   {x: 280, y: 450}
 ]
+
+enum MONITOR_MODE{
+  EDIT,     //Move and add vertexes
+  DELETE,
+  LOCK    //Edition disabled
+}
 
 export enum EDIT_PATH {
   NONE,     //Ninguno
@@ -67,6 +74,30 @@ const generateHandlers = (pointsList: PolygonSharedValue) => {
   return skPath;
 }
 
+const fontStyle = {
+  fontFamily: "arial",
+  fontWeight: "bold",
+  fontSize: 12
+} as const;
+const font = matchFont(fontStyle);
+
+const generateVertexLabels = (pointsList: PolygonSharedValue) => {
+  "worklet";
+  const path = Skia.Path.Make();
+  if (pointsList.length === 0) return path;
+
+  pointsList.forEach((v) => {
+    const textPath = Skia.Path.MakeFromText(v.id, 0, 0, font);
+    if (textPath) {
+      const matrix = Skia.Matrix();
+      matrix.translate(v.x + 10, v.y - 10);
+      textPath.transform(matrix);
+      path.addPath(textPath);
+    }
+  });
+  return path;
+};
+
 const isPointInsidePolygon = (pointsList: PolygonSharedValue, point: Point): boolean =>{
   let inside = false;
   const { x, y } = point;
@@ -84,8 +115,12 @@ const isPointInsidePolygon = (pointsList: PolygonSharedValue, point: Point): boo
   return inside;
 }
 
+
+
 export default function MonCanvas() {
   const [dims, setDims] = useState<{ x: number; y: number } | null>(null);
+  const mode = useSharedValue<MONITOR_MODE>(MONITOR_MODE.EDIT);
+  const [modeJS, setModeJS] = useState<MONITOR_MODE>(MONITOR_MODE.EDIT);
   useEffect(() => {
     const screen = Dimensions.get("screen");
     setDims({
@@ -109,10 +144,12 @@ export default function MonCanvas() {
   const gPathW = useDerivedValue(() => generatePath(wPathSharedData.value, false) ); //UI THREAD
   const gVertexes = useDerivedValue(() => generateHandlers(polygonSharedData.value) ); //UI THREAD
   const gVertexesW = useDerivedValue(() => generateHandlers(wPathSharedData.value) ); //UI THREAD
+  // const gLabels = useDerivedValue(() => generateVertexLabels(polygonSharedData.value)); //UI THREAD
+  // const gLabelsW = useDerivedValue(() => generateVertexLabels(wPathSharedData.value)); //UI THREAD
 
   const generateSharedValue = () =>{
-    polygonSharedData.set(polygon.current.generateLinkedList());
-    wPathSharedData.set(wPath.current.generateLinkedList())
+    polygonSharedData.set( polygon.current.generateLinkedList() );
+    wPathSharedData.set( wPath.current.generateLinkedList() );
   }
 
   const isOnePathInsideAnother = (outerPath: PolygonSharedValue, innerPath: PolygonSharedValue) =>{
@@ -124,11 +161,13 @@ export default function MonCanvas() {
   }
 
   const handlePanStart = useCallback((point: Point) => {
+    if(mode.value != MONITOR_MODE.EDIT)
+      return;
     //Search near vertex in the polygon and the path
     let vertex;
-    if(vertex = polygon.current.getVertexNearCoord(point)){
+    if(vertex = polygon.current.getNearestVertexToGivenPoint(point)){
       pathToEdit.value = EDIT_PATH.POLYGON;
-    }else if(vertex = wPath.current.getVertexNearCoord(point)){
+    }else if(vertex = wPath.current.getNearestVertexToGivenPoint(point)){
       pathToEdit.value = EDIT_PATH.W_PATH;
     }else{
       pathToEdit.value = EDIT_PATH.NONE;
@@ -142,7 +181,7 @@ export default function MonCanvas() {
     if (vertexToEditId.value) {
       const currentData = [...sharedData.value];
       const index = currentData.findIndex(v => v.id === vertexToEditId.value);
-      
+      //the vertex array is mutating its id's
       if (index !== -1) {
         currentData[index] = { 
           ...currentData[index], 
@@ -165,13 +204,15 @@ export default function MonCanvas() {
           ( pathToEdit.value == EDIT_PATH.W_PATH && isPointInsidePolygon(polygonSharedData.value, point))
         ){
         before = dataJS.current.vertices.get(vertexToEditId.value)?.getAsPoint() as Point;
-        dataJS.current = new Path( sharedData.value.map(v => ({ x: v.x, y: v.y })) );
+        dataJS.current = new Path( sharedData.value.map(v => ({ x: v.x, y: v.y, id: v.id })) );
       }else{  //If the Vertex movement wasn't valid
         Vibration.vibrate(50);
       }
 
       if(before){
         //know who moved and where (before and after move)
+        // console.warn(vertexToEditId.value);
+        // console.warn(dataJS.current.vertices);
         history.current.addElement({  path: pathToEdit.value, 
                                       operation:PATH_OP.MOVE, 
                                       vertexId: vertexToEditId.value,
@@ -182,33 +223,95 @@ export default function MonCanvas() {
       generateSharedValue();
     }
   }, []);
-
+  
   const handleTap = useCallback((point: Point) => {
-    vertexToEditId.value = null; //? Que hace esto aca?
-    let pathToAddVertex = EDIT_PATH.NONE;
-    let result: VERTEX_ADD;
-    if(( result = polygon.current.addVertex(point) ) == VERTEX_ADD.POINT_TOO_FAR){
-      if(isPointInsidePolygon(polygonSharedData.value, point) && (result = wPath.current.addVertex(point)) == VERTEX_ADD.VERTEX_ADDED){
-        //Know  where added
-        pathToAddVertex = EDIT_PATH.W_PATH;
+    if(mode.value == MONITOR_MODE.LOCK)
+      return;
+
+    let pathToChange = EDIT_PATH.NONE;
+    let result: VERTEX_OPERATION;
+
+    if(mode.value == MONITOR_MODE.DELETE){
+      let vertex: Vertex | null;
+      if( vertex = polygon.current.getNearestVertexToGivenPoint(point) ){
+        pathToChange = EDIT_PATH.POLYGON;
+      }else if( vertex = wPath.current.getNearestVertexToGivenPoint(point) ){
+        pathToChange = EDIT_PATH.W_PATH;
       }
-    } else if(result == VERTEX_ADD.VERTEX_ADDED){
-      //Know where added
-      pathToAddVertex = EDIT_PATH.POLYGON;
+      if(vertex){
+        const sharedData = pathToChange == EDIT_PATH.POLYGON ? polygonSharedData: wPathSharedData;
+
+        const currentData = [...sharedData.value];
+        const index = currentData.findIndex(v => v.id === vertex?.id);
+
+        if (index !== -1) {
+          currentData.splice(index, 1);
+          sharedData.value = currentData;
+        }
+
+        let pathIsContained = true;
+
+        if( pathToChange == EDIT_PATH.POLYGON && (pathIsContained = isOnePathInsideAnother(currentData, wPathSharedData.value)) ){
+          result = polygon.current.deleteVertex(vertex);
+          //OK
+        }else if( pathToChange == EDIT_PATH.W_PATH ){
+          result = wPath.current.deleteVertex(vertex);
+        }
+        //@ts-ignore
+        if(!pathIsContained || result != VERTEX_OPERATION.VERTEX_DELETED){  //If the Vertex deletion wasn't valid
+          ToastAndroid.show("No se puede eliminar ese vértice", ToastAndroid.SHORT);
+          Vibration.vibrate(50);
+        }else{
+          const dataJS = pathToChange == EDIT_PATH.POLYGON ? polygon: wPath;
+          dataJS.current.printVertexConections();
+          history.current.addElement({  path: pathToChange, 
+                                        operation:PATH_OP.DELETE, 
+                                        vertexId: dataJS.current.lastVertexDeleted?.id as string, //From JS Thread
+                                        prevId: dataJS.current.lastEdgesEdited[0] as string, //From JS Thread
+                                        nextId: dataJS.current.lastEdgesEdited[1] as string, //From JS Thread
+                                        before: point});
+          dataJS.current.printVertexConections();
+        }
+      }
+      generateSharedValue();      
+      return;
     }
 
-    if(result == VERTEX_ADD.VERTEX_ADDED){
-      const dataJS = pathToAddVertex == EDIT_PATH.POLYGON ? polygon: wPath;
-      history.current.addElement({  path: pathToAddVertex, 
+    //EDITION LOGIC
+    vertexToEditId.value = null; //? Que hace esto aca?
+    if(( result = polygon.current.addVertexInPoint(point) ) == VERTEX_OPERATION.POINT_TOO_FAR_OF_PATH){
+      if(isPointInsidePolygon(polygonSharedData.value, point) && (result = wPath.current.addVertexInPoint(point)) == VERTEX_OPERATION.VERTEX_ADDED){
+        //Know  where added
+        pathToChange = EDIT_PATH.W_PATH;
+      }
+    } else if(result == VERTEX_OPERATION.VERTEX_ADDED){
+      //Know where added
+      pathToChange = EDIT_PATH.POLYGON;
+    }
+
+    if(result == VERTEX_OPERATION.VERTEX_ADDED){
+      const dataJS = pathToChange == EDIT_PATH.POLYGON ? polygon: wPath;
+      dataJS.current.printVertexConections();
+      history.current.addElement({  path: pathToChange, 
                 operation:PATH_OP.INSERT, 
                 vertexId: dataJS.current.lastVertexAdded?.id as string, //From JS Thread
-                prevId: dataJS.current.lastEdgesEdited[0].vertices.A.id as string, //From JS Thread
-                nextId: dataJS.current.lastEdgesEdited[0].vertices.B.id as string, //From JS Thread
-                after: point})
+                prevId: dataJS.current.lastEdgesEdited[0] as string, //From JS Thread
+                nextId: dataJS.current.lastEdgesEdited[1] as string, //From JS Thread
+                after: point});
       generateSharedValue();
+      dataJS.current.printVertexConections();
     }
   }, []);
 
+  const changeMode = (mo: MONITOR_MODE)=>{
+    mode.value = mo;
+    setModeJS(mo);
+    // console.log(`Monitor mode now: ${mode.value}`);
+  }
+
+  const colorBasedInMonitorMode = (desiredMode: MONITOR_MODE)=>{
+    return modeJS == desiredMode ? MD2Colors.lightGreen700 : MD3Colors.neutral80;
+  }
 
 
   if (dims) {
@@ -234,15 +337,47 @@ export default function MonCanvas() {
           <SkPath path={gVertexes} color="orange" style="stroke" strokeWidth={3} />
           <SkPath path={gPathW} color="green" style="stroke" strokeWidth={4} />
           <SkPath path={gVertexesW} color="lime" style="stroke" strokeWidth={3} />
+
+          {/* FOR DEBUG */}
+          {/* <SkPath path={gLabels} color="white" />
+          <SkPath path={gLabelsW} color="white" /> */}
         </Canvas>
       </GestureHandler>
-      <Button onPress={()=>{ 
-        polygon.current = new Path(rectPoints);
-        wPath.current = new Path(wPoints);
-        generateSharedValue(); 
-        }}>Reset</Button>
 
-      <Button onPress={()=>{console.log(history.current.elements)}}>console table vertexes coords</Button>
+
+      <View style={{display:"flex", flexDirection:"column",position:"absolute", left:5,bottom:5}}>
+        <IconButton mode="outlined" iconColor={MD3Colors.neutral80} icon="undo" onPress={_=>{
+          const res = history.current.undo(new Map([
+            [EDIT_PATH.POLYGON,polygon.current],
+            [EDIT_PATH.W_PATH,wPath.current]
+          ]));
+
+          if(res){
+            const [pathEdited, path] = res;
+            pathEdited == EDIT_PATH.POLYGON ? polygon.current = path : wPath.current = path;
+            generateSharedValue();
+          }
+        }} />
+      </View>
+
+      <View style={{display:"flex", flexDirection:"column",position:"absolute", right:5,bottom:5}}>
+        <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.EDIT)} icon="pencil" onPress={_=>changeMode(MONITOR_MODE.EDIT)} />
+
+        <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.DELETE)} icon="trash-can-outline" onPress={_=>changeMode(MONITOR_MODE.DELETE)} />
+
+        <IconButton mode="outlined" iconColor={MD3Colors.neutral80} icon="restart" onPress={()=>{ 
+          history.current = new History();
+          polygon.current = new Path(rectPoints);
+          wPath.current = new Path(wPoints);
+          generateSharedValue(); 
+          }} />
+
+        <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.LOCK)} icon="lock" onPress={_=>changeMode(MONITOR_MODE.LOCK)} />
+      
+      </View>
+
+
+
     </>
     );
   }
@@ -264,5 +399,3 @@ export default function MonCanvas() {
  * y cuando se hace la representacion del poligono en el Hilo de JS tengo que actualizar los cambios para la 
  * representtacion del poligono en el Hilo de UI
  */
-
-//TODO: Agregar 
