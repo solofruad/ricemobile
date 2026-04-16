@@ -54,12 +54,21 @@ export default class Edge {
     return newEdge;
   }
 
-  ifHaveThisVertexGimmeTheOther(vertexToSearch: Vertex){
-    if(vertexToSearch.equalsTo(this.vertices.A)){
-      return this.vertices.B;
-    }
-    if(vertexToSearch.equalsTo(this.vertices.B)){
-      return this.vertices.A;
+  ifHaveThisVertexGimmeTheOther(vertexToSearch: Vertex|string){
+    if(vertexToSearch instanceof String){
+      if(vertexToSearch == this.vertices.A.id){
+        return this.vertices.B;
+      }
+      if(vertexToSearch == this.vertices.B.id){
+        return this.vertices.A;
+      }
+    }else if(vertexToSearch instanceof Vertex){
+      if(vertexToSearch.equalsTo(this.vertices.A)){
+        return this.vertices.B;
+      }
+      if(vertexToSearch.equalsTo(this.vertices.B)){
+        return this.vertices.A;
+      }
     }
     return null;
   }
