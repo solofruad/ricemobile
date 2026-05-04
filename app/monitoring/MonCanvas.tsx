@@ -372,8 +372,8 @@ export default function MonCanvas() {
           generateSharedValue(); 
           }} />
 
-        <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.LOCK)} icon="lock" onPress={_=>changeMode(MONITOR_MODE.LOCK)} />
-      
+        {/* <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.LOCK)} icon="lock" onPress={_=>changeMode(MONITOR_MODE.LOCK)} /> */}
+        <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.LOCK)} icon="check-outline" onPress={_=>changeMode(MONITOR_MODE.LOCK)} />
       </View>
 
 
