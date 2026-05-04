@@ -5,7 +5,7 @@ import { useState } from "react";
 type CameraPermisionUIProps = {
   permissionGranted:boolean,
   timesPermissionRejected: number,
-  requestPermission: (requestions?: number) => Promise<boolean>
+  requestPermission: (requestions: number) => Promise<boolean>
 }
 
 export default function CameraPermisionUI(props:CameraPermisionUIProps){
