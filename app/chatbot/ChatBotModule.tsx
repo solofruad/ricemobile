@@ -1,10 +1,12 @@
 import { DetectionRecord } from "@/database/db";
 import SpeechText from "@/src/SpeechText";
 import { TtsVoices } from "@/src/TtsVoices";
+import { useHeaderHeight } from "@react-navigation/elements";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
 import { GiftedChat, IMessage } from "react-native-gifted-chat";
-import { Button, IconButton, MD3Colors, MD3DarkTheme } from "react-native-paper";
+import { IconButton, MD3Colors } from "react-native-paper";
 
 type Dialog = {
 	text:string,
@@ -89,6 +91,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	const inputRef = useRef<TextInput>(null);
 	const [speechDetect, setSpeechDetect] = useState<SpeechText|null>(null);
 	const [recording, setRecording] = useState(false);
+	const headerHeight = useHeaderHeight();
 	// 
 	const [messages, setMessages] = useState([
 		{
@@ -149,9 +152,21 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	};
 
 	return (
-		<View style={{width:"100%", height:"100%",backgroundColor:"#152712ff"}}>
+		<View style={{width:"100%", height:"100%"}}>
+			<View style={{position:"absolute", width:"100%", height:"100%"}}>
+        <LinearGradient
+          colors={['#ffffff','#ffeedf',  '#793d09']}
+          style={{ flex: 1 }}
+          locations={[0,  0.94, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
+      </View>
 			<GiftedChat
 				textInputRef={inputRef as React.RefObject<TextInput>}
+				// Evita que el teclado cubra el input, ajustando su posición según la altura del header de navegación
+				keyboardAvoidingViewProps={{ keyboardVerticalOffset: headerHeight }} 
+				colorScheme="light"
 				messages={messages}
 				onSend={handleSend}
 				user={{ _id: 1, name: "User" }}
