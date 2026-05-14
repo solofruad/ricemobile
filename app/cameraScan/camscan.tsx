@@ -20,7 +20,7 @@ type CameraSafeAreaProps = {
 function CameraSafeArea({children}: CameraSafeAreaProps) {
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, gap: 8, position: "relative" }}>
+      <SafeAreaView style={{ flex: 1, gap: 8, position: "relative", backgroundColor: "#091520"}}>
         {children}
       </SafeAreaView>
     </SafeAreaProvider>
@@ -116,10 +116,17 @@ export default function CamScan() {
     <CameraSafeArea>
         {!(detection && photoUri) ? (
           <>
+            
             <View style={{ flex: 1}}>
                 <Camera
                   ref={camera}
-                  style={StyleSheet.absoluteFill}
+                  style={{ 
+                    bottom: 0, 
+                    left: 0, 
+                    right: 0, 
+                    top: 0,
+                    backgroundColor: "#091520",
+                    position: "absolute" }}
                   device={device}
                   isActive={true}
                   resizeMode='contain'
@@ -177,7 +184,7 @@ export default function CamScan() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'black' },
-  buttonContainer: { position: "absolute", bottom: 20, width: "100%", flexDirection: "row" },
+  buttonContainer: { position: "absolute", bottom: 10, width: "100%", flexDirection: "row" },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   overlayText: { color: "white", fontSize: 24, fontWeight: 'bold' }
 });
