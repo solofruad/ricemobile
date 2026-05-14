@@ -45,7 +45,7 @@ export default class History{
       return null;
     }
     const path = paths.get(element.path);
-    console.log(path?.printVertexConections())
+    //console.log(path?.printVertexConections())
     if(!path){
       //!throw err
       return null;
@@ -55,26 +55,26 @@ export default class History{
         //!throw err
         return null;
       }
-      console.log(element.vertexId);
-      console.log(element.prevId, element.nextId);
-      console.log(path.deleteVertexBetween(element.prevId!, element.nextId!));
+      //console.log(element.vertexId);
+      //console.log(element.prevId, element.nextId);
+      //console.log(path.deleteVertexBetween(element.prevId!, element.nextId!));
     }else if(element.operation == PATH_OP.MOVE){
       if(!element.before || !element.after){
         //!throw err
         return null;
       }
-      console.log("moving vertex with id "+element.vertexId+" to before coords");
-      console.log(path.vertices);
-      console.log(path.vertices.get(element.vertexId)?.getAsPoint());
+      //console.log("moving vertex with id "+element.vertexId+" to before coords");
+      //console.log(path.vertices);
+      //console.log(path.vertices.get(element.vertexId)?.getAsPoint());
       path.moveVertex(element.vertexId, element.before.x, element.before.y);
-      console.log(path.vertices.get(element.vertexId)?.getAsPoint());
+      //console.log(path.vertices.get(element.vertexId)?.getAsPoint());
     }else if(element.operation == PATH_OP.DELETE){
       if(!element.before){
         //!throw err
         return null;
       }
-      console.log("adding vertex with id "+element.vertexId+" to before coords");
-      console.log(element.prevId, element.nextId);
+      //console.log("adding vertex with id "+element.vertexId+" to before coords");
+      //console.log(element.prevId, element.nextId);
       path.addVertexBetween(new Vertex(element.before.x, element.before.y, element.vertexId), element.prevId!, element.nextId!) ;
     }
     return [element.path, path];

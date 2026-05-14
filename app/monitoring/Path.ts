@@ -36,9 +36,9 @@ export default class Path {
       const vertexB = vertexes[(index + 1) % vertexes.length];
       this.edges.push(new Edge(vertexA, vertexB));
     }
-    console.info("vertexes", vertexes);
+    //console.info("vertexes", vertexes);
     this.endVertexes = [vertexes[0], vertexes.at(-1) as Vertex];
-    console.info("end vertexes", this.endVertexes);
+    //console.info("end vertexes", this.endVertexes);
   }
 
   getNearestVertexToGivenPoint(point: Point): Vertex | null {
@@ -103,7 +103,7 @@ export default class Path {
       }
     }
     //If we reach this line, then something went really wrong
-    console.log(vertex, vertexAId, vertexBId);
+    //console.log(vertex, vertexAId, vertexBId);
     // throw new Error("Error adding vertex: the edge with both vertexes was not found");
     return VERTEX_OPERATION.NO_AB_VERTEXES_FOUND;
   }
@@ -114,7 +114,7 @@ export default class Path {
    * with the not-to-delete vertices that was present in both edges
    * @param vertexToDelete 
    */
-  deleteVertex(vertexToDelete: Vertex){
+  deleteVertex(vertexToDelete: Vertex){ //*Check this
     this.lastVertexDeleted = null;
     if(this.vertices.size == 2){
       return VERTEX_OPERATION.NOT_ENOUGH_VERTEXES;
@@ -150,6 +150,9 @@ export default class Path {
 
     this.lastVertexDeleted = vertexToDelete;
     this.vertices.delete(vertexToDelete.id);
+    if(this.endVertexes[0].equalsTo(vertexToDelete)){
+      this.endVertexes[0] = nextVertex;
+    }
 
     this.addEdgeWithGivenVertexes(previousVertex, nextVertex);
 
@@ -180,12 +183,12 @@ export default class Path {
         this.vertices.delete(vertexToDelete!.id);
         this.addEdgeWithGivenVertexes(vertexA, vertexB);
         
-        console.log(vertexA ?? vertexAId, vertexB ?? vertexBId, vertexToDelete);
+        //console.log(vertexA ?? vertexAId, vertexB ?? vertexBId, vertexToDelete);
         return VERTEX_OPERATION.VERTEX_DELETED;
       }
     }
     //If we reach this line, then something went really wrong
-    console.log(vertexA ?? vertexAId, vertexB ?? vertexBId, vertexToDelete);
+    //console.log(vertexA ?? vertexAId, vertexB ?? vertexBId, vertexToDelete);
     // throw new Error("Error deleting vertex: the edge with both vertexes was not found");
     return VERTEX_OPERATION.NO_AB_VERTEXES_FOUND;
   }
@@ -213,7 +216,6 @@ export default class Path {
   generateLinkedList(){
     const linkedList: Array<Vertex> = [];
     let currentVertex = this.endVertexes[0];
-    console.log(this.endVertexes)
     //until we get to the first vertex again, if it's a closed path, otherwise we will break when no next vertex is found
     //The problem is when the path is open and the edges are not in order
     do {
@@ -257,10 +259,10 @@ export default class Path {
   }
 
   printVertexConections(){ //INTENDED
-    console.warn("-------");
+    //console.warn("-------");
     this.edges.forEach(edge => {
-      console.log(`vertex ${edge.vertices.A.id} --------> ${edge.vertices.B.id}`);
+      //console.log(`vertex ${edge.vertices.A.id} --------> ${edge.vertices.B.id}`);
     });
-    console.warn("-------");
+    //console.warn("-------");
   }
 }
