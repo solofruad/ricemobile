@@ -1,9 +1,11 @@
 import { Point } from "@/types/types";
-import { Canvas, matchFont, Skia, Path as SkPath } from "@shopify/react-native-skia";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, ToastAndroid, View } from "react-native";
-import { IconButton, MD2Colors, MD3Colors } from "react-native-paper";
+import { Canvas, ImageShader, matchFont, useImage, Skia, Path as SkPath} from "@shopify/react-native-skia";
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Dimensions, ToastAndroid, View, Text, Button } from "react-native";
+import { IconButton, MD2Colors, MD3Colors} from "react-native-paper";
 import { SharedValue, useDerivedValue, useSharedValue } from "react-native-reanimated";
+import {Modal} from "react-native-reanimated-modal"
 import GestureHandler from "./GestureHandler";
 import History, { PATH_OP } from "./History";
 import Path, { VERTEX_OPERATION } from "./Path";
@@ -118,16 +120,20 @@ const isPointInsidePolygon = (pointsList: PolygonSharedValue, point: Point): boo
 
 
 export default function MonCanvas() {
+  const [modalVisible, setModalVisible] = useState(true);
   const [dims, setDims] = useState<{ x: number; y: number } | null>(null);
   const mode = useSharedValue<MONITOR_MODE>(MONITOR_MODE.EDIT);
   const [modeJS, setModeJS] = useState<MONITOR_MODE>(MONITOR_MODE.EDIT);
+  const image = useImage(require('../../assets/textures/field.jpg'));
+  
   useEffect(() => {
+    setModalVisible(false);
     const screen = Dimensions.get("screen");
     setDims({
       x: screen.width,
       y: screen.height,
     });
-      generateSharedValue();
+    generateSharedValue();
   }, []);
 
   const vertexToEditId = useSharedValue<string | null>(null);
@@ -144,9 +150,10 @@ export default function MonCanvas() {
   const gPathW = useDerivedValue(() => generatePath(wPathSharedData.value, false) ); //UI THREAD
   const gVertexes = useDerivedValue(() => generateHandlers(polygonSharedData.value) ); //UI THREAD
   const gVertexesW = useDerivedValue(() => generateHandlers(wPathSharedData.value) ); //UI THREAD
-  // const gLabels = useDerivedValue(() => generateVertexLabels(polygonSharedData.value)); //UI THREAD
-  // const gLabelsW = useDerivedValue(() => generateVertexLabels(wPathSharedData.value)); //UI THREAD
+  const gLabels = useDerivedValue(() => generateVertexLabels(polygonSharedData.value)); //UI THREAD
+  const gLabelsW = useDerivedValue(() => generateVertexLabels(wPathSharedData.value)); //UI THREAD
 
+  
   const generateSharedValue = () =>{
     polygonSharedData.set( polygon.current.generateLinkedList() );
     wPathSharedData.set( wPath.current.generateLinkedList() );
@@ -211,8 +218,6 @@ export default function MonCanvas() {
 
       if(before){
         //know who moved and where (before and after move)
-        // console.warn(vertexToEditId.value);
-        // console.warn(dataJS.current.vertices);
         history.current.addElement({  path: pathToEdit.value, 
                                       operation:PATH_OP.MOVE, 
                                       vertexId: vertexToEditId.value,
@@ -239,6 +244,7 @@ export default function MonCanvas() {
         pathToChange = EDIT_PATH.W_PATH;
       }
       if(vertex){
+        //console.log("Deleting vertex with id: ", vertex.id);
         const sharedData = pathToChange == EDIT_PATH.POLYGON ? polygonSharedData: wPathSharedData;
 
         const currentData = [...sharedData.value];
@@ -250,8 +256,10 @@ export default function MonCanvas() {
         }
 
         let pathIsContained = true;
+        const dataJS = pathToChange == EDIT_PATH.POLYGON ? polygon: wPath;
+        dataJS.current.printVertexConections();
 
-        if( pathToChange == EDIT_PATH.POLYGON && (pathIsContained = isOnePathInsideAnother(currentData, wPathSharedData.value)) ){
+        if( pathToChange == EDIT_PATH.POLYGON && (pathIsContained = isOnePathInsideAnother(currentData, wPathSharedData.value)) ){  
           result = polygon.current.deleteVertex(vertex);
           //OK
         }else if( pathToChange == EDIT_PATH.W_PATH ){
@@ -262,15 +270,15 @@ export default function MonCanvas() {
           ToastAndroid.show("No se puede eliminar ese vértice", ToastAndroid.SHORT);
           Vibration.vibrate(50);
         }else{
-          const dataJS = pathToChange == EDIT_PATH.POLYGON ? polygon: wPath;
-          dataJS.current.printVertexConections();
           history.current.addElement({  path: pathToChange, 
                                         operation:PATH_OP.DELETE, 
                                         vertexId: dataJS.current.lastVertexDeleted?.id as string, //From JS Thread
                                         prevId: dataJS.current.lastEdgesEdited[0] as string, //From JS Thread
                                         nextId: dataJS.current.lastEdgesEdited[1] as string, //From JS Thread
                                         before: point});
+          //console.log("W Path edges:", wPath.current.edges);
           dataJS.current.printVertexConections();
+          //console.log("Linked List for W Path:", wPath.current.generateLinkedList());
         }
       }
       generateSharedValue();      
@@ -306,16 +314,25 @@ export default function MonCanvas() {
   const changeMode = (mo: MONITOR_MODE)=>{
     mode.value = mo;
     setModeJS(mo);
-    // console.log(`Monitor mode now: ${mode.value}`);
   }
 
   const colorBasedInMonitorMode = (desiredMode: MONITOR_MODE)=>{
-    return modeJS == desiredMode ? MD2Colors.lightGreen700 : MD3Colors.neutral80;
+    return modeJS == desiredMode ? MD2Colors.green600 : MD3Colors.neutral80;
   }
 
 
-  if (dims) {
-    return (<>
+  if (dims && image) {
+    return (<View style={{ flex: 1, display:"flex", flexDirection:"row" }}>
+      <View style={{position:"absolute", width:"100%", height:"100%"}}>
+        <LinearGradient
+          colors={['#ffffff','#dffaff', '#0386CB', '#090979', '#020024']}
+          style={{ flex: 1 }}
+          locations={[0, 0.87, 0.9, 0.94, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
+      </View>
+        
       <GestureHandler
         panStart={handlePanStart}
         pan={handlePan}
@@ -326,26 +343,35 @@ export default function MonCanvas() {
           style={{
             width: dims.x,
             height: dims.y,
-            backgroundColor: "black",
             marginTop: "auto",
             marginBottom: "auto",
             position: "relative",
           }}
         >
-          <SkPath path={gPath} color="lightblue" style="fill" />
+          <SkPath path={gPath} color={"white"}  style="fill" >
+            <ImageShader
+              image={image}
+              tx="repeat" // Horizontal tiling: 'repeat', 'mirror', or 'clamp'
+              ty="repeat" // Vertical tiling: 'repeat', 'mirror', or 'clamp'
+              rect={{ x: 0, y: 0, width: 250, height: 250 }}
+              fit={"scaleDown"}
+            />
+          </SkPath>
           <SkPath path={gPath} color="brown" style="stroke" strokeWidth={4} />
           <SkPath path={gVertexes} color="orange" style="stroke" strokeWidth={3} />
-          <SkPath path={gPathW} color="green" style="stroke" strokeWidth={4} />
-          <SkPath path={gVertexesW} color="lime" style="stroke" strokeWidth={3} />
-
           {/* FOR DEBUG */}
-          {/* <SkPath path={gLabels} color="white" />
-          <SkPath path={gLabelsW} color="white" /> */}
+          <SkPath path={gPathW} color="#28d102" style="stroke" strokeWidth={5} />
+          <SkPath path={gVertexesW} color="#8aea15" style="stroke" strokeWidth={4} />
+          <SkPath path={gLabels} color="white" />
+          <SkPath path={gLabelsW} color="white" />
         </Canvas>
       </GestureHandler>
 
+      
 
-      <View style={{display:"flex", flexDirection:"column",position:"absolute", left:5,bottom:5}}>
+
+
+      <View style={{display:"flex", flexDirection:"column",position:"absolute", left:4,bottom:4}}>
         <IconButton mode="outlined" iconColor={MD3Colors.neutral80} icon="undo" onPress={_=>{
           const res = history.current.undo(new Map([
             [EDIT_PATH.POLYGON,polygon.current],
@@ -360,25 +386,52 @@ export default function MonCanvas() {
         }} />
       </View>
 
-      <View style={{display:"flex", flexDirection:"column",position:"absolute", right:5,bottom:5}}>
-        <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.EDIT)} icon="pencil" onPress={_=>changeMode(MONITOR_MODE.EDIT)} />
+      <View style={{display:"flex", flexDirection:"column",position:"absolute", right:4,bottom:4}}>
+        <Text style={{color:"white", fontSize:16, fontStyle:"italic", marginLeft:"auto", marginRight:4}}>
+          {MONITOR_MODE.EDIT == modeJS ? "MOVER o AGREGAR PUNTO" : ""}
+          {MONITOR_MODE.DELETE == modeJS ? "ELIMINAR PUNTO" : ""}
+          {MONITOR_MODE.LOCK == modeJS ? "EDICIÓN BLOQUEADA" : ""}
+        </Text>
+        <View style={{display:"flex", flexDirection:"row", marginLeft:"auto"}}>   
+          <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.EDIT)} icon="pencil" onPress={_=>changeMode(MONITOR_MODE.EDIT)} />
 
-        <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.DELETE)} icon="trash-can-outline" onPress={_=>changeMode(MONITOR_MODE.DELETE)} />
+          <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.DELETE)} icon="trash-can-outline" onPress={_=>changeMode(MONITOR_MODE.DELETE)} />
 
-        <IconButton mode="outlined" iconColor={MD3Colors.neutral80} icon="restart" onPress={()=>{ 
-          history.current = new History();
-          polygon.current = new Path(rectPoints);
-          wPath.current = new Path(wPoints);
-          generateSharedValue(); 
-          }} />
+          <IconButton mode="outlined" iconColor={MD3Colors.neutral80} icon="restart" onPress={()=>{ 
+              setModalVisible(true);
+            }} />
 
-        {/* <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.LOCK)} icon="lock" onPress={_=>changeMode(MONITOR_MODE.LOCK)} /> */}
-        <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.LOCK)} icon="check-outline" onPress={_=>changeMode(MONITOR_MODE.LOCK)} />
+          <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.LOCK)} icon="check-outline" onPress={_=>changeMode(MONITOR_MODE.LOCK)} />
+        </View>
       </View>
 
+      <Modal visible={modalVisible} >
+        <View
+          style={{
+            backgroundColor: 'white',
+            padding: 20,
+            borderRadius: 10,
+            margin: 20,
+          }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: "bold", marginHorizontal:"auto" }}>
+            Reiniciar Trazado
+          </Text>
+          <Text style={{ fontSize: 16, textAlign:"center", marginVertical:30}}>Está seguro de que desea reiniciar el polígono?</Text>
+          <View style={{display:"flex", flexDirection:"row", marginTop:10, marginHorizontal:"auto", gap:10}}>
+            <Button title="Aceptar" onPress={() => {
+              history.current = new History();
+              polygon.current = new Path(rectPoints);
+              wPath.current = new Path(wPoints);
+              generateSharedValue(); 
+              setModalVisible(false);
+            }} />
+            <Button title="Cancelar" onPress={() => setModalVisible(false)} />
+          </View>
+        </View>
+      </Modal>
 
-
-    </>
+    </View>
     );
   }
 
