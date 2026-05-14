@@ -76,29 +76,29 @@ const generateHandlers = (pointsList: PolygonSharedValue) => {
   return skPath;
 }
 
-const fontStyle = {
-  fontFamily: "arial",
-  fontWeight: "bold",
-  fontSize: 12
-} as const;
-const font = matchFont(fontStyle);
+// const fontStyle = {
+//   fontFamily: "arial",
+//   fontWeight: "bold",
+//   fontSize: 12
+// } as const;
+// const font = matchFont(fontStyle);
 
-const generateVertexLabels = (pointsList: PolygonSharedValue) => {
-  "worklet";
-  const path = Skia.Path.Make();
-  if (pointsList.length === 0) return path;
+// const generateVertexLabels = (pointsList: PolygonSharedValue) => {
+//   "worklet";
+//   const path = Skia.Path.Make();
+//   if (pointsList.length === 0) return path;
 
-  pointsList.forEach((v) => {
-    const textPath = Skia.Path.MakeFromText(v.id, 0, 0, font);
-    if (textPath) {
-      const matrix = Skia.Matrix();
-      matrix.translate(v.x + 10, v.y - 10);
-      textPath.transform(matrix);
-      path.addPath(textPath);
-    }
-  });
-  return path;
-};
+//   pointsList.forEach((v) => {
+//     const textPath = Skia.Path.MakeFromText(v.id, 0, 0, font);
+//     if (textPath) {
+//       const matrix = Skia.Matrix();
+//       matrix.translate(v.x + 10, v.y - 10);
+//       textPath.transform(matrix);
+//       path.addPath(textPath);
+//     }
+//   });
+//   return path;
+// };
 
 const isPointInsidePolygon = (pointsList: PolygonSharedValue, point: Point): boolean =>{
   let inside = false;
@@ -145,13 +145,13 @@ export default function MonCanvas() {
   const polygonSharedData: SharedValue<PolygonSharedValue> = useSharedValue(([] as PolygonSharedValue)); //UI THREAD
   const wPathSharedData: SharedValue<PolygonSharedValue> = useSharedValue(([] as PolygonSharedValue)); //UI THREAD
 
-  // Build the path dynamically based on vertex shared value
+  //* Build the path dynamically based on vertex shared value
   const gPath = useDerivedValue(() => generatePath(polygonSharedData.value, true) ); //UI THREAD
   const gPathW = useDerivedValue(() => generatePath(wPathSharedData.value, false) ); //UI THREAD
   const gVertexes = useDerivedValue(() => generateHandlers(polygonSharedData.value) ); //UI THREAD
   const gVertexesW = useDerivedValue(() => generateHandlers(wPathSharedData.value) ); //UI THREAD
-  const gLabels = useDerivedValue(() => generateVertexLabels(polygonSharedData.value)); //UI THREAD
-  const gLabelsW = useDerivedValue(() => generateVertexLabels(wPathSharedData.value)); //UI THREAD
+  // const gLabels = useDerivedValue(() => generateVertexLabels(polygonSharedData.value)); //UI THREAD
+  // const gLabelsW = useDerivedValue(() => generateVertexLabels(wPathSharedData.value)); //UI THREAD
 
   
   const generateSharedValue = () =>{
@@ -257,7 +257,6 @@ export default function MonCanvas() {
 
         let pathIsContained = true;
         const dataJS = pathToChange == EDIT_PATH.POLYGON ? polygon: wPath;
-        dataJS.current.printVertexConections();
 
         if( pathToChange == EDIT_PATH.POLYGON && (pathIsContained = isOnePathInsideAnother(currentData, wPathSharedData.value)) ){  
           result = polygon.current.deleteVertex(vertex);
@@ -276,9 +275,6 @@ export default function MonCanvas() {
                                         prevId: dataJS.current.lastEdgesEdited[0] as string, //From JS Thread
                                         nextId: dataJS.current.lastEdgesEdited[1] as string, //From JS Thread
                                         before: point});
-          //console.log("W Path edges:", wPath.current.edges);
-          dataJS.current.printVertexConections();
-          //console.log("Linked List for W Path:", wPath.current.generateLinkedList());
         }
       }
       generateSharedValue();      
@@ -299,7 +295,6 @@ export default function MonCanvas() {
 
     if(result == VERTEX_OPERATION.VERTEX_ADDED){
       const dataJS = pathToChange == EDIT_PATH.POLYGON ? polygon: wPath;
-      dataJS.current.printVertexConections();
       history.current.addElement({  path: pathToChange, 
                 operation:PATH_OP.INSERT, 
                 vertexId: dataJS.current.lastVertexAdded?.id as string, //From JS Thread
@@ -307,7 +302,6 @@ export default function MonCanvas() {
                 nextId: dataJS.current.lastEdgesEdited[1] as string, //From JS Thread
                 after: point});
       generateSharedValue();
-      dataJS.current.printVertexConections();
     }
   }, []);
 
@@ -359,11 +353,10 @@ export default function MonCanvas() {
           </SkPath>
           <SkPath path={gPath} color="brown" style="stroke" strokeWidth={4} />
           <SkPath path={gVertexes} color="orange" style="stroke" strokeWidth={3} />
-          {/* FOR DEBUG */}
           <SkPath path={gPathW} color="#28d102" style="stroke" strokeWidth={5} />
           <SkPath path={gVertexesW} color="#8aea15" style="stroke" strokeWidth={4} />
-          <SkPath path={gLabels} color="white" />
-          <SkPath path={gLabelsW} color="white" />
+          {/* <SkPath path={gLabels} color="white" />
+          <SkPath path={gLabelsW} color="white" /> */}
         </Canvas>
       </GestureHandler>
 
