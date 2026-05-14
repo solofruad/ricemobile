@@ -20,7 +20,6 @@ export default function GestureHandler (props: GestureHandlerProps) {
       runOnJS(props.panStart)({x:Math.floor(e.x), y: Math.floor(e.y)});
     })
     .onChange((e) => {
-      // (props.pan)({x:Math.floor(e.x), y: Math.floor(e.y)});
       (props.pan)({x:e.x, y: e.y});
     })
     .onEnd((e) => {
