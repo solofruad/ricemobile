@@ -36,10 +36,8 @@ export default function CamScan() {
   const [isDetecting, setIsDetecting] = useState(false);
   const [isTakingPhoto, setIsTakingPhoto] = useState(false);
 
-  // V5: Permission Hook mejorado
   const { hasPermission, requestPermission: askPermission } = useCameraPermission();
   
-  // V5: Seleccionamos el dispositivo trasero
   const device = useCameraDevice('back');
   const photoOutput = usePhotoOutput()
   //@ts-ignore

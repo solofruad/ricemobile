@@ -236,19 +236,15 @@ export default class Path {
   }
 
   clone(): Path {
-    // Creamos una nueva instancia
     const newPath = new Path();
     
-    // Limpiamos lo que el constructor pudo haber creado por defecto
     newPath.vertices = new Map();
     newPath.edges = [];
 
-    // Clonamos los vértices (preservando los mismos IDs y coordenadas)
     this.vertices.forEach((v, id) => {
       newPath.vertices.set(v.id, new Vertex(v.x, v.y, v.id));
     });
 
-    // Reconstruimos los Edges usando las nuevas referencias de vértices
     this.edges.forEach(edge => {
       const vA = newPath.vertices.get(edge.vertices.A.id)!;
       const vB = newPath.vertices.get(edge.vertices.B.id)!;
@@ -258,11 +254,11 @@ export default class Path {
     return newPath;
   }
 
-  printVertexConections(){ //INTENDED
-    //console.warn("-------");
+  printVertexConections(){ //Enlazado esperado
+    console.warn("-------");
     this.edges.forEach(edge => {
-      //console.log(`vertex ${edge.vertices.A.id} --------> ${edge.vertices.B.id}`);
+      console.log(`vertex ${edge.vertices.A.id} --------> ${edge.vertices.B.id}`);
     });
-    //console.warn("-------");
+    console.warn("-------");
   }
 }
