@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NativeModules, Text, ToastAndroid } from 'react-native';
 import { ObjectDetection } from '../../src/ObjectDetection';
-import CamScan from '../cameraScan/CamScan';
+import CamScan from '../cameraScan/camscan';
 import Database from '@/database/db';
 import * as vosk from 'react-native-vosk';
 import { TtsVoices } from '@/src/TtsVoices';
