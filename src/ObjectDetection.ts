@@ -19,6 +19,9 @@ export class ObjectDetection {
   }
   
   static detectObjects(imageUri:string):Promise<Array<ObjectDetectionResult>>{
-    return ObjectDetectionModule.detectObjects(imageUri);
+    const final = ObjectDetectionModule.detectObjects(imageUri);
+
+    final.then(e=>console.log("resukt",e));
+    return final;
   }
 }

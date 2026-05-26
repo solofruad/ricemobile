@@ -10,8 +10,7 @@ import ScanControledCanvas from './ScanControledCanvas';
 import TopToolbar from './TopToolbar';
 import CameraPermisionUI from './CameraPermisionUI';
 import { ObjectDetectionResult } from '@/types/types';
-
-const { ObjectDetectionModule } = NativeModules;
+import { ObjectDetection } from '@/src/ObjectDetection';
 
 type CameraSafeAreaProps = {
   children: any
@@ -59,8 +58,10 @@ export default function CamScan() {
   }, []);
 
   const detectAndSetPhotoRoute = (uri: string) => {
-    ObjectDetectionModule.detectObjects(uri)
+    ObjectDetection.detectObjects(uri)
+      //@ts-ignore
       .then((res: Array<{ label: string, confidence: number }>) => {
+        console.log(res);
         setDetection(res as any);
         setPhotoUri(uri);
         setIsDetecting(false);

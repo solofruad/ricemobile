@@ -123,6 +123,7 @@ android {
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
+            //noinspection ProguardAndroidTxtUsage
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'
             crunchPngs enablePngCrunchInRelease.toBoolean()
@@ -201,8 +202,11 @@ dependencies {
     } else {
         implementation jscFlavor
     }
-
-    // La librería que ya estabas usando en tu ejemplo de Kotlin
+    //Libreria que permite usar ImageProxy
+    implementation 'androidx.camera:camera-core:1.5.3'
+    //Librería de mediapipe
+    implementation 'com.google.mediapipe:tasks-vision:0.10.32'
+    // Librería de tensorflow
     implementation 'org.tensorflow:tensorflow-lite-task-vision:0.4.4'
     // Opcional: GPU delegate para mayor velocidad
     implementation 'org.tensorflow:tensorflow-lite-gpu:2.9.0'

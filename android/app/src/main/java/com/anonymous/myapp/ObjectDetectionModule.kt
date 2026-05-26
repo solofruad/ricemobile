@@ -9,30 +9,8 @@ import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.task.vision.detector.ObjectDetector
 import org.tensorflow.lite.task.core.BaseOptions
 
-data class Label(
-    val text: String,
-    val confidence: Float
-)
-
-data class Point(
-    val x: Double,
-    val y: Double
-)
-
-data class Frame(
-    val origin: Point,
-    val size: Point
-)
-
-data class DetectionData(
-    val frame: Frame,
-    val labels: List<Label>
-)
 
 class ObjectDetectionModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
-    companion object {
-        var detector: ObjectDetector? = null
-    }
 
     // Nombre del modulo en JS: NativeModules.ObjectDetectionModule
     override fun getName(): String = "ObjectDetectionModule"
@@ -40,32 +18,11 @@ class ObjectDetectionModule(reactContext: ReactApplicationContext) : ReactContex
     @ReactMethod
     fun initializeDetector(maxResults: Int, scoreThreshold: Float, promise: Promise) {
         try {
-            if (ObjectDetectionModule.detector != null) {
-                //Reinicializar el detector si ya existe, esto es útil para cambiar parámetros sin reiniciar la app
-                ObjectDetectionModule.detector = null
-            }
-
-            val threads = Runtime.getRuntime().availableProcessors()
-
-            var usedThreads = (threads/2).toInt() // Usar la mitad de los núcleos disponibles para no saturar el dispositivo 
-            if(usedThreads == 0) usedThreads = 1 // Asegurar al menos 1 hilo
-            // Configurar numero de hilos para procesamiento (opcional, dependiendo del modelo y dispositivo)
-            val baseOptionsBuilder = BaseOptions.builder()
-                .setNumThreads(usedThreads) //TODO: Ajusta según el dispositivo
-
-            // Configuracion del detector de objetos
-            val options = ObjectDetector.ObjectDetectorOptions.builder()
-                .setBaseOptions(baseOptionsBuilder.build())
-                .setMaxResults(maxResults)
-                .setScoreThreshold(scoreThreshold)
-                .build()
-
-            ObjectDetectionModule.detector = ObjectDetector.createFromFileAndOptions(
+            ObjectDetection().setupObjectDetector(
                 reactApplicationContext,
-                "model.tflite", // Nombre del modelo que se encuentra en ./assets/models/
-                options
+                maxResults,
+                scoreThreshold
             )
-
             promise.resolve(null) // Resolviendo sin datos, solo indicando éxito
         } catch (e: Exception) {
             promise.reject("INITIALIZATION_ERROR", e.message, e)
@@ -74,7 +31,7 @@ class ObjectDetectionModule(reactContext: ReactApplicationContext) : ReactContex
 
     @ReactMethod
     fun detectObjects(imageUri: String, promise: Promise) {
-        val currentDetector = ObjectDetectionModule.detector
+        val currentDetector = ObjectDetection.detector
         if (currentDetector == null) {
             promise.reject("DETECTOR_NOT_INITIALIZED", "El detector no ha sido inicializado. Llama a initializeDetector primero.")
             return
@@ -82,53 +39,42 @@ class ObjectDetectionModule(reactContext: ReactApplicationContext) : ReactContex
         try {
             // Cargar imagen usando uri suministrada
             println("Detecting objects in image: $imageUri");
-            val uri = Uri.parse(imageUri)
-            val inputStream: InputStream? = reactApplicationContext.contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
+            val bitmap = PhotoFixer.generateBitmapFromURI(reactApplicationContext,imageUri)
 
-            // Procesar imagen
-            val image = TensorImage.fromBitmap(bitmap)
-            val results = currentDetector.detect(image)
+            val detectionResults = ObjectDetection().runObjectDetection(bitmap)
+            bitmap.recycle()
 
-            // 4. Convertir resultados a un formato que React Native entienda (WritableArray)
-            val response = Arguments.createArray()
+            val result = Arguments.createArray()
+            for (detection in detectionResults) {
+                val detectionMap = Arguments.createMap()
 
-            for (detection in results) {
-                val item = Arguments.createMap()
+                val frameMap = Arguments.createMap()
 
-                val labels = Arguments.createArray()                
-                for (category in detection.categories) {
-                    val label = Arguments.createMap()
-                    label.putString("text", category.label)
-                    label.putDouble("confidence", category.score.toDouble())
-                    labels.pushMap(label)
+                val originMap = Arguments.createMap()
+                originMap.putInt("x", detection.frame.origin.x)
+                originMap.putInt("y", detection.frame.origin.y)
+                frameMap.putMap("origin", originMap)
+
+                val sizeMap = Arguments.createMap()
+                sizeMap.putInt("x", detection.frame.size.x)
+                sizeMap.putInt("y", detection.frame.size.y)
+                frameMap.putMap("size", sizeMap)
+
+                detectionMap.putMap("frame", frameMap)
+
+                val labelsArray = Arguments.createArray()
+                for (label in detection.labels) {
+                    val labelMap = Arguments.createMap()
+                    labelMap.putString("text", label.text)
+                    labelMap.putDouble("confidence", label.confidence.toDouble())
+                    labelsArray.pushMap(labelMap)
                 }
-                item.putArray("labels", labels)//Esto requiere que el modelo tenga metadatos con las etiquetas
-                
-                val top = detection.boundingBox.top.toDouble()
-                val left = detection.boundingBox.left.toDouble()
-                val right = detection.boundingBox.right.toDouble()
-                val bottom = detection.boundingBox.bottom.toDouble()
+                detectionMap.putArray("labels", labelsArray)
 
-                // Enviar coordenadas del cuadro delimitador
-                val frame = Arguments.createMap()
-                val origin = Arguments.createMap()
-                origin.putDouble("y", top)
-                origin.putDouble("x", left)
-
-                val size = Arguments.createMap()
-                size.putDouble("y", bottom  - top)
-                size.putDouble("x", right - left)
-
-                frame.putMap("origin", origin)
-                frame.putMap("size", size)
-                
-                item.putMap("frame", frame)
-
-                response.pushMap(item)
+                result.pushMap(detectionMap)
             }
 
-            promise.resolve(response)
+            promise.resolve(result)
 
         } catch (e: Exception) {
             promise.reject("DETECTION_ERROR", e.message, e)
