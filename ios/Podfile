@@ -1,0 +1,42 @@
+platform :ios, '13.0'
+
+target 'RiceMobile' do
+  pod 'React', :path => '../node_modules/react-native', :subspecs => [
+    'Core',
+    'CxxBridge',
+    'DevSupport',
+    'RCTActionSheetIOS',
+    'RCTAnimation',
+    'RCTAppState',
+    'RCTBlobManager',
+    'RCTCameraRoll',
+    'RCTEventDispatcher',
+    'RCTGeolocation',
+    'RCTImage',
+    'RCTLinking',
+    'RCTNetwork',
+    'RCTPushNotification',
+    'RCTSettings',
+    'RCTStatusBarManager',
+    'RCTText',
+    'RCTVibration',
+    'RCTWebSocket',
+  ]
+
+  pod 'yoga', :path => '../node_modules/react-native/ReactCommon/yoga'
+  
+  pod 'DoubleConversion', :podspec => '../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec'
+  pod 'glog', :podspec => '../node_modules/react-native/third-party-podspecs/glog.podspec'
+  pod 'Folly', :podspec => '../node_modules/react-native/third-party-podspecs/Folly.podspec'
+
+  # TensorFlow Lite para detección de objetos
+  pod 'TensorFlowLiteSwift', '~> 2.14.0'
+  pod 'TensorFlowLiteGpu', '~> 2.14.0'
+
+  # AVFoundation y CoreML ya están incluidas en iOS
+
+  post_install do |installer|
+    react_native_post_install(installer)
+    __apply_Xcode_12_5_M1_post_install_workaround(installer)
+  end
+end

@@ -39,4 +39,4 @@ yarn-error.*
 app-example
 
 # generated native folders
-/ios
+
