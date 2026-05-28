@@ -1,5 +1,5 @@
 import { Point } from "@/types/types"
-import { EDIT_PATH } from "./MonCanvas"
+import { EDIT_PATH } from "../MonCanvas"
 import Path from "./Path";
 import Vertex from "./Vertex";
 

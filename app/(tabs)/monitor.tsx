@@ -1,7 +1,7 @@
-import MonCanvas from "../monitoring/MonCanvas";
+import MonEdit from "../monitoring/MonEdit";
+import Sampling from "../monitoring/Sampling";
 
 export default function Monitor(){
-  return <MonCanvas>
-    
-  </MonCanvas>
+  return <MonEdit />
+  // return <Sampling />
 }

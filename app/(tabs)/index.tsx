@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { NativeModules, Text, ToastAndroid } from 'react-native';
+import { Text } from 'react-native';
 import { ObjectDetection } from '../../src/ObjectDetection';
 import CamScan from '../cameraScan/camscan';
 import Database from '@/database/db';
 import * as vosk from 'react-native-vosk';
 import { TtsVoices } from '@/src/TtsVoices';
-TtsVoices
 
 function startTtsVoice():Promise<void>{
   return new Promise(resolve=>{
