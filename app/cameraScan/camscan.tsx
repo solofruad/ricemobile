@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { NativeModules, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Camera, CameraController, useCameraDevice, useCameraPermission, usePhotoOutput } from 'react-native-vision-camera';
 
 import { writeAsync } from '@lodev09/react-native-exify';
 
-import { IconButton, MD3DarkTheme } from "react-native-paper";
+import { IconButton, MD3Colors, MD3DarkTheme } from "react-native-paper";
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ScanControledCanvas from './ScanControledCanvas';
 import TopToolbar from './TopToolbar';
@@ -61,7 +61,6 @@ export default function CamScan() {
     ObjectDetection.detectObjects(uri)
       //@ts-ignore
       .then((res: Array<{ label: string, confidence: number }>) => {
-        console.log(res);
         setDetection(res as any);
         setPhotoUri(uri);
         setIsDetecting(false);
@@ -138,8 +137,8 @@ export default function CamScan() {
               <IconButton 
                 icon="camera" 
                 onPress={takePicture} 
-                mode='outlined' 
-                theme={MD3DarkTheme} 
+                mode='contained' 
+                iconColor={MD3Colors.neutral40}
                 size={50} 
                 style={{ marginHorizontal: "auto" }}/>
             </View>

@@ -18,7 +18,7 @@ const FocusSlider = (props:FocusSliderProps) => {
     <View style={{
         width:"auto", 
         height:"auto", 
-        backgroundColor:(colorScheme == "dark" ? "#57111167": "#ffffff7a"), 
+        backgroundColor:(colorScheme == "dark" ? "#11355767": "#ffffff7a"), 
         borderRadius:5,
         display:"flex"
         }}>
