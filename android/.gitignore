@@ -11,6 +11,7 @@ app/src/debug
 app/src/debugOptimized
 app/src/main/res
 
+
 local.properties
 *.iml
 *.hprof
