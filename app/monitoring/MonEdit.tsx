@@ -3,7 +3,7 @@ import { Dimensions, ToastAndroid, View, Text, Button, Vibration } from "react-n
 import { IconButton, MD2Colors, MD3Colors } from "react-native-paper";
 import { Skia } from "@shopify/react-native-skia";
 import { LinearGradient } from "expo-linear-gradient";
-import { useDerivedValue, useSharedValue } from "react-native-reanimated";
+import { SharedValue, useDerivedValue, useSharedValue } from "react-native-reanimated";
 import { Modal } from "react-native-reanimated-modal";
 
 import { Point } from "@/types/types";
@@ -284,28 +284,20 @@ export default function MonEdit() {
   };
 
   const colorBasedInMonitorMode = (desiredMode: MONITOR_MODE) => {
-    return modeJS === desiredMode ? MD2Colors.green600 : MD3Colors.neutral40;
+    return modeJS === desiredMode ? MD2Colors.green600 : MD3Colors.neutral80;
   };
-
-  const undoAction = ()=>{
-    const res = history.current.undo(
-      new Map([
-        [EDIT_PATH.POLYGON, polygon.current],
-        [EDIT_PATH.W_PATH, wPath.current],
-      ])
-    );
-
-    if (res) {
-      const [pathEdited, path] = res;
-      pathEdited === EDIT_PATH.POLYGON ? (polygon.current = path) : (wPath.current = path);
-      generateSharedValue();
-    }
-  }
 
   return (
     <View style={{ flex: 1, display: "flex", flexDirection: "row" }}>
-      {/* #0386CB */}
-      <View style={{ position: "absolute", width: "100%", height: "100%", backgroundColor:"#fffbf0" }} />
+      <View style={{ position: "absolute", width: "100%", height: "100%" }}>
+        <LinearGradient
+          colors={["#ffffff", "#dffaff", "#0386CB", "#090979", "#020024"]}
+          style={{ flex: 1 }}
+          locations={[0, 0.87, 0.9, 0.94, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+        />
+      </View>
 
       {/* RENDERIZADO DEL CANVAS SEPARADO */}
       <MonCanvas
@@ -320,51 +312,42 @@ export default function MonEdit() {
         onTap={handleTap}
       />
 
-      <Text style={{ position:"absolute", width:"100%", textAlign:"center", bottom:8,  color: MD3Colors.neutral30, fontSize: 16, fontStyle: "italic" }}>
-        {MONITOR_MODE.EDIT === modeJS ? "MOVER o AGREGAR PUNTO" : ""}
-        {MONITOR_MODE.DELETE === modeJS ? "ELIMINAR PUNTO" : ""}
-        {MONITOR_MODE.LOCK === modeJS ? "EDICIÓN BLOQUEADA" : ""}
-      </Text>
-
       {/* BOTÓN DESHACER (UNDO) */}
-      <View style={{ 
-          display: "flex", 
-          flexDirection: "column", 
-          gap: 5, 
-          position: "absolute", 
-          left: 4, 
-          bottom: 10, 
-          backgroundColor: "rgb(255, 255, 255)",
-          boxShadow: "0px 0px 4px 2px rgba(0, 0, 0, 0.4)",
-          borderRadius: 10, 
-          paddingHorizontal: 2, 
-          paddingVertical: 1 }}>
-        <IconButton style={{ margin: 3 }} mode="contained" containerColor="rgb(230, 230, 230)" iconColor={MD3Colors.neutral40} icon="restart" onPress={() => setModalVisible(true)} />
+      <View style={{ display: "flex", flexDirection: "column", position: "absolute", left: 4, bottom: 4 }}>
         <IconButton
-          style={{ margin: 3 }} containerColor="rgb(230, 230, 230)"
-          mode="contained"
-          iconColor={MD3Colors.neutral40}
+          mode="outlined"
+          iconColor={MD3Colors.neutral80}
           icon="undo"
-          onPress={undoAction}
+          onPress={() => {
+            const res = history.current.undo(
+              new Map([
+                [EDIT_PATH.POLYGON, polygon.current],
+                [EDIT_PATH.W_PATH, wPath.current],
+              ])
+            );
+
+            if (res) {
+              const [pathEdited, path] = res;
+              pathEdited === EDIT_PATH.POLYGON ? (polygon.current = path) : (wPath.current = path);
+              generateSharedValue();
+            }
+          }}
         />
       </View>
 
       {/* PANEL DE ACCIONES Y MODOS */}
-      <View style={{ display: "flex", flexDirection: "row", position: "absolute", right: 4, bottom: 10, gap:3 }}>
-        <View style={{ 
-            display: "flex", 
-            flexDirection: "column", 
-            gap: 5, 
-            marginLeft: "auto", 
-            backgroundColor: "rgb(255, 255, 255)",
-            boxShadow: "0px 0px 4px 2px rgba(0, 0, 0, 0.4)",
-            borderRadius: 10, 
-            paddingHorizontal: 2, 
-            paddingVertical: 1 }}>
-          <IconButton style={{ margin: 3 }} mode="contained" containerColor="rgb(230, 230, 230)" iconColor={colorBasedInMonitorMode(MONITOR_MODE.EDIT)} icon="pencil" onPress={() => changeMode(MONITOR_MODE.EDIT)} />
-          <IconButton style={{ margin: 3 }} mode="contained" containerColor="rgb(230, 230, 230)" iconColor={showWVertexInfluenceJS ? MD2Colors.green600 : MD3Colors.neutral40} icon="texture-box" onPress={toggleWVertexInfluence} />
-          <IconButton style={{ margin: 3 }} mode="contained" containerColor="rgb(230, 230, 230)" iconColor={colorBasedInMonitorMode(MONITOR_MODE.DELETE)} icon="trash-can-outline" onPress={() => changeMode(MONITOR_MODE.DELETE)} />
-          <IconButton style={{ margin: 3 }} mode="contained" containerColor="rgb(230, 230, 230)" iconColor={colorBasedInMonitorMode(MONITOR_MODE.LOCK)} icon="check-outline" onPress={() => changeMode(MONITOR_MODE.LOCK)} />
+      <View style={{ display: "flex", flexDirection: "column", position: "absolute", right: 4, bottom: 4 }}>
+        <Text style={{ color: "white", fontSize: 16, fontStyle: "italic", marginLeft: "auto", marginRight: 4 }}>
+          {MONITOR_MODE.EDIT === modeJS ? "MOVER o AGREGAR PUNTO" : ""}
+          {MONITOR_MODE.DELETE === modeJS ? "ELIMINAR PUNTO" : ""}
+          {MONITOR_MODE.LOCK === modeJS ? "EDICIÓN BLOQUEADA" : ""}
+        </Text>
+        <View style={{ display: "flex", flexDirection: "row", marginLeft: "auto" }}>
+          <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.EDIT)} icon="pencil" onPress={() => changeMode(MONITOR_MODE.EDIT)} />
+          <IconButton mode="outlined" iconColor={showWVertexInfluenceJS ? MD2Colors.green600 : MD3Colors.neutral80} icon="texture-box" onPress={toggleWVertexInfluence} />
+          <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.DELETE)} icon="trash-can-outline" onPress={() => changeMode(MONITOR_MODE.DELETE)} />
+          <IconButton mode="outlined" iconColor={MD3Colors.neutral80} icon="restart" onPress={() => setModalVisible(true)} />
+          <IconButton mode="outlined" iconColor={colorBasedInMonitorMode(MONITOR_MODE.LOCK)} icon="check-outline" onPress={() => changeMode(MONITOR_MODE.LOCK)} />
         </View>
       </View>
 
