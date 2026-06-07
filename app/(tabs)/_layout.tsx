@@ -12,6 +12,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
+        //@ts-ignore
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
@@ -35,6 +36,13 @@ export default function TabLayout() {
         options={{
           title: 'Album',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="photo.stack" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="monitor"
+        options={{
+          title: 'Monitor',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.pie" color={color} />,
         }}
       />
     </Tabs>
