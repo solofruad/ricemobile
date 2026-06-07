@@ -5,82 +5,9 @@ import { useHeaderHeight } from "@react-navigation/elements";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
-import { GiftedChat, IMessage } from "react-native-gifted-chat";
+import { GiftedChat, IMessage, Message, MessageText, Send } from "react-native-gifted-chat";
 import { IconButton, MD3Colors } from "react-native-paper";
-
-type Dialog = {
-	text:string,
-	options: Array<Option>
-};
-type Option = {
-	text:string,
-	next:string
-}
-
-const byDefault =  { //El array de opciones posibles de la anterior respuesta debe de permanecer activo
-	text:"No te he entendido. Por favor, envia denuevo tu respuesta y procura que esté dentro de las respuestas posibles.",
-};
-
-const hello:Dialog = {
-	text:"Bienvenido",
-	options:[
-		{text:"1 - Ver mapa", next:"map"}
-	]
-}
-
-const map:Dialog = {
-	text:"Ahora mismo ves el mapa",
-	options:[
-		{text:"1 - Ver Colombia", next:"colombia"}
-	]
-}
-
-
-const botResponses: {[key:string]:Dialog} = {
-	hello,
-	map,
-}
-
-class Bot {
-	lastResponse:Dialog = hello; //El bot siempre iniciará la conversación con el mensaje de bienvenida
-	route: Array<string> = ["hello"]; //Pila de respuestas del bot (Excluyendo byDefault)
-
-	responseLogic(userMessage:string){
-		userMessage = userMessage.toLowerCase();
-		let option:number;
-		if(!isNaN(option = parseInt(userMessage))){
-			console.log(this.route);
-			if(this.lastResponse.options && option > 0 && option <= this.lastResponse.options.length){
-				const nextResponseId = this.lastResponse.options[option-1].next;
-				console.log(nextResponseId);
-				this.route.push(nextResponseId);
-				const botResponse = botResponses[nextResponseId];
-				//TODO: botResponse is undefined warn
-				this.lastResponse = botResponse;
-				return this.response(botResponse);
-			}
-			if(option == -1 && this.route.length > 1){
-				this.route.pop();
-				const botResponse = botResponses[this.route.at(-1) as string];
-				this.lastResponse = botResponse;
-				return this.response(botResponse);
-			}
-		}
-		return this.response(byDefault,true);
-	}
-
-	response(dialog:{text:string, options?:Array<Option>}, isDefault = false){
-		let botMessage = dialog.text;
-		if(dialog.options){
-			botMessage += "\n"+ dialog.options.map(option => option.text).join("\n");
-		}
-		if(this.route.length > 1 && !isDefault){
-			botMessage += "\n\n -1 - Regresar";
-		}
-		return botMessage;
-	}
-
-}
+import Bot from "./Bot";
 
 type ChatBotModuleProps = {
 	detection?: DetectionRecord
@@ -91,41 +18,35 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	const inputRef = useRef<TextInput>(null);
 	const [speechDetect, setSpeechDetect] = useState<SpeechText|null>(null);
 	const [recording, setRecording] = useState(false);
+	const [inputHasContent, setInputHasContent] = useState(false);
 	const headerHeight = useHeaderHeight();
-	// 
+
 	const [messages, setMessages] = useState([
 		{
 			_id: 1,
-			text: bot.response(hello),
+			text: bot.hello(),
 			createdAt: new Date(),
 			user: { _id: 2, name: "Chatbot" },
 		},
 	]);
 
 	useEffect(()=>{
-		setSpeechDetect( 
+		setSpeechDetect(
 			new SpeechText((text)=>{
-				if (inputRef.current) {
-					inputRef.current.setNativeProps({ text });
-				}
-
+				inputRef.current?.setNativeProps({ text });
 			}, (text)=>{
-				if (inputRef.current) {
-					setRecording(false);
-					inputRef.current.setNativeProps({ text });
-					TtsVoices.speak(text);
-				}
-
+				if (!inputRef.current) { return }
+				setRecording(false);
+				inputRef.current.setNativeProps({ text });
+				TtsVoices.speak(text);
 			})
-		)
+		);
 	},[]);
-
+	
 	useEffect(()=>{
-		if(props.detection){
+		if(props.detection)
 			console.log("Received detection data in ChatBotModule:", props.detection);
-			//Aquí se podría modificar el estado del bot o enviar un mensaje específico dependiendo de la detección recibida
-		}
-	},[props.detection])
+	},[props.detection]);
 
 	const handleSend = (newMessages:Array<IMessage> = []) => {
 		setMessages((previousMessages) =>
@@ -151,6 +72,23 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 		return bot.responseLogic(userMessage);
 	};
 
+	const microphoneButtonLogic = ()=>{
+		if (inputRef.current) {
+			if(!recording){
+				inputRef.current.setNativeProps({ text:"" });
+				speechDetect?.record();
+			}else{
+				const text = speechDetect?.stop() ?? "";
+				if(!text){
+					setInputHasContent(false);
+				}
+				inputRef.current.setNativeProps({ text });
+				TtsVoices.speak(text);
+			}
+		}
+		setRecording(!recording);
+	}
+
 	return (
 		<View style={{width:"100%", height:"100%"}}>
 			<View style={{position:"absolute", width:"100%", height:"100%"}}>
@@ -168,23 +106,46 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 				keyboardAvoidingViewProps={{ keyboardVerticalOffset: headerHeight }} 
 				colorScheme="light"
 				messages={messages}
+				renderMessageText={(props)=>(
+					<MessageText {...props} textStyle={{left:{fontSize:16}, right:{fontSize:16}}}/>
+				)}
 				onSend={handleSend}
 				user={{ _id: 1, name: "User" }}
-			/>
-			<View style={{position:"absolute", bottom:-2, right:0, display:"flex", flexDirection:"row"}}>
-				<IconButton icon="microphone" iconColor={recording?MD3Colors.error50: MD3Colors.neutral50} onPress={()=>{
-					if(!recording){
-						speechDetect?.record();
-					}else{
-						const text = speechDetect?.stop() ?? "";
-						if (inputRef.current) {
-							inputRef.current.setNativeProps({ text });
-							TtsVoices.speak(text);
+				textInputProps={{
+					style:{fontSize:17, color:"black", marginBottom:4}, 
+					onChangeText:((inputText)=>{
+						setInputHasContent(inputText.length != 0)
+					}),
+					placeholder:"Escriba su mensaje aquí..."
+				}}
+				
+				renderSend={ (sendProps)=>(
+					<View style={{display:"flex", flexDirection:"row", alignItems:"center"}}>
+						{inputHasContent && !recording &&
+							<Send {...sendProps} label="Enviar">
+								<IconButton
+								size={32} 
+								icon="send"
+								mode="outlined"
+								iconColor={"#2ca4ff"} 
+								style={{ margin: 3, borderColor:"#2ca4ff", borderWidth:2 }}
+								/>
+							</Send>
 						}
-					}
-					setRecording(!recording);
-					}}/>
-			</View>
+
+						{
+							(!inputHasContent || recording) &&
+								<IconButton
+									size={32} 
+									icon="microphone" 
+									mode="outlined"
+									style={{ margin: 3, borderColor:(recording?MD3Colors.error50: MD3Colors.neutral50), borderWidth:2 }}
+									iconColor={recording?MD3Colors.error50: MD3Colors.neutral50} 
+									onPress={microphoneButtonLogic}/>
+						}
+					</View>
+				)}
+			/>
 		</View>
 	);
 };
