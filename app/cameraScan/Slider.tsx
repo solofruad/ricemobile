@@ -55,8 +55,8 @@ export default function Slider(props:SliderProps){
     display:"flex",
     marginHorizontal:"auto"
   }}>
-    <View style={{height:"100%", marginHorizontal:"auto", width:6, backgroundColor:"white",borderRadius:3}}>
-      <View style={{width:"100%", height:y, backgroundColor:"#757575ff", position:"absolute",borderRadius:3}} />
+    <View style={{height:"100%", marginHorizontal:"auto", width:12, backgroundColor:"rgb(150, 150, 150)",borderRadius:10, borderColor:"#161616", borderWidth:2}}>
+      <View style={{width:"100%", height:y, backgroundColor:"white", position:"absolute",borderRadius:3}} />
     </View>
 
     <View 
@@ -64,7 +64,7 @@ export default function Slider(props:SliderProps){
       onTouchMove={(e)=>{updateY(e.nativeEvent.pageY)}} 
       onTouchEnd={()=>{setYTouchStart(null);}}
       style={{
-        width:props.thumb.width+20, 
+        width:props.thumb.width+20,
         height:props.thumb.width+20, 
         top:yTouchEnd, 
         transform:[{translateY:"-50%"},{translateX:(props.width-props.thumb.width-20)*0.5}],
@@ -76,8 +76,8 @@ export default function Slider(props:SliderProps){
           marginVertical:"auto",
           marginHorizontal:"auto",
           height:props.thumb.height, 
-          backgroundColor:"#bfbfbf",
-          borderRadius:6,
+          backgroundColor:"#ffffff",
+          borderRadius:props.thumb.height/2,
           top:y-yTouchEnd,
           borderColor:"black",
           borderWidth:2

@@ -12,19 +12,19 @@ type FocusSliderProps = {
 
 const FocusSlider = (props:FocusSliderProps) => {
   const colorScheme = useColorScheme();
-  const width = 35;
+  const width = 46;
 
   return <View style={{width:width, height:"100%", display:"flex"}}>
     <View style={{
         width:"auto", 
         height:"auto", 
-        backgroundColor:(colorScheme == "dark" ? "#11355767": "#ffffff7a"), 
+        backgroundColor:(colorScheme == "dark" ? "#113557b0": "#ffffff7a"), 
         borderRadius:5,
         display:"flex"
         }}>
-      <View style={{width:width-5, height:width-5, marginHorizontal:"auto", marginTop: 5, transform:[{rotate:"90deg"}]}}>
+      <View style={{width:width-5, height:width-5, marginHorizontal:"auto", marginTop: 5, transform:[{rotate:"0deg"}]}}>
         <Icon 
-          source="ruler" 
+          source="image-filter-hdr" 
           color={colorScheme == "light" ? "#000000ff": "#ffffffff"} 
           size={width-5}/>
       </View>
@@ -36,10 +36,16 @@ const FocusSlider = (props:FocusSliderProps) => {
           min={0.001} 
           max={props.minFocusDistance} 
           steps={10} 
-          thumb={{width:40,height:15}} 
+          thumb={{width:24,height:24}} 
           onChange={(n)=>{props.setFocusDepth(n)}}/>
       </View>
       
+      <View style={{width:width-5, height:width-5, marginHorizontal:"auto", marginBottom: 5, transform:[{rotate:"0deg"}]}}>
+        <Icon 
+          source="leaf" 
+          color={colorScheme == "light" ? "#000000ff": "#ffffffff"} 
+          size={width-5}/>
+      </View>
     </View>
   </View>
 }

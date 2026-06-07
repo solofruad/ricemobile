@@ -4,7 +4,7 @@ import { Camera, CameraController, useCameraDevice, useCameraPermission, usePhot
 
 import { writeAsync } from '@lodev09/react-native-exify';
 
-import { IconButton, MD3Colors, MD3DarkTheme } from "react-native-paper";
+import { IconButton, MD3Colors} from "react-native-paper";
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import ScanControledCanvas from './ScanControledCanvas';
 import TopToolbar from './TopToolbar';
@@ -80,7 +80,6 @@ export default function CamScan() {
           }
         }).then((photo) => {
           const uri = `file://${photo.filePath}`;
-          console.log("Foto capturada en:", uri);
           setIsTakingPhoto(false);
           setIsDetecting(true);
           writeAsync(uri, { Orientation: 1 })
@@ -114,7 +113,6 @@ export default function CamScan() {
     <CameraSafeArea>
         {!(detection && photoUri) ? (
           <>
-            
             <View style={{ flex: 1}}>
                 <Camera
                   ref={camera}
@@ -138,24 +136,22 @@ export default function CamScan() {
                 icon="camera" 
                 onPress={takePicture} 
                 mode='contained' 
-                iconColor={MD3Colors.neutral40}
+                iconColor="rgb(230, 230, 230)"
+                containerColor={MD3Colors.neutral40}
                 size={50} 
                 style={{ marginHorizontal: "auto" }}/>
             </View>
 
             <TopToolbar 
               onShow={() => { 
-                let controller = camera.current.controller as CameraController;
-                controller.setZoom(2); 
+                (camera.current.controller as CameraController).setZoom(2); 
               }}
               onHide={() => { 
-                let controller = camera.current.controller as CameraController;
-                controller.setZoom(1); 
+                (camera.current.controller as CameraController).setZoom(1); 
               }}
               minFocusDistance={minFocusDistance} 
               setFocusDepth={(n) => {
-                let controller = camera.current.controller as CameraController;
-                controller.setFocusLocked?.(n).catch((e:any) => console.log("Focus lock error:", e));
+                (camera.current.controller as CameraController).setFocusLocked?.(n).catch((e:any) => console.log("Focus lock error:", e));
                 console.log("Ajustando distancia focal a:", n);
               }}
             />
