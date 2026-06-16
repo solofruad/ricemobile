@@ -91,7 +91,7 @@ export default function ScanLabels (props: ScanLabelsProps){
         key={"labelRectB"+id}
       />
       <Text
-        text={`Confianza: ${obj.confidence}`}
+        text={`Conf.: ${Math.round(parseFloat(obj.confidence as any)*100)}%`}
         font={font}
         x={obj.point.x-obj.height+4}
         y={y+obj.width-3}
