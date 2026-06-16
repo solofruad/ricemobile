@@ -1,25 +1,33 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, ToastAndroid, View, Text, Button, Vibration } from "react-native";
+import { Button, Text, ToastAndroid, Vibration, View } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { MD2Colors, MD3Colors } from "react-native-paper";
-import { Skia } from "@shopify/react-native-skia";
-import { useDerivedValue, useSharedValue } from "react-native-reanimated";
+import { useSharedValue } from "react-native-reanimated";
 import { Modal } from "react-native-reanimated-modal";
 
 import { Point } from "@/types/types";
+import MonCanvas from "./MonCanvas"; // Importamos el componente visual
+import EditorActionButton from "./components/EditorActionButton";
+import EditorPanel from "./components/EditorPanel";
+import MonGuide from "./components/MonGuide";
 import History, { PATH_OP } from "./path/History";
 import Path, { VERTEX_OPERATION } from "./path/Path";
 import Vertex from "./path/Vertex";
-import MonCanvas from "./MonCanvas"; // Importamos el componente visual
-import EditorActionButton from "./components/EditorActionButton";
+import MonitorDrawingsTable from "@/database/MonitorDrawingsTable";
 
-const rectPoints = [
+export type MonitorDrawingData = {
+  polygon: PolygonSharedValue;
+  wPath: PolygonSharedValue;
+}
+
+const polygonBasePoints = [
   { x: 50, y: 200 },
   { x: 350, y: 200 },
   { x: 350, y: 500 },
   { x: 50, y: 500 },
 ];
 
-const wPoints = [
+const wPathBasePoints = [
   { x: 280, y: 250 },
   { x: 110, y: 290 },
   { x: 280, y: 350 },
@@ -39,67 +47,13 @@ export enum EDIT_PATH {
   W_PATH,
 }
 
-type VertexSharedValue = { x: number; y: number; id: string };
-type PolygonSharedValue = Array<VertexSharedValue>;
-
-// WORKLETS
-const generatePath = (pointsList: PolygonSharedValue, isClosedPath: boolean) => {
-  "worklet";
-  const skPath = Skia.Path.Make();
-  if (pointsList.length === 0) return skPath;
-
-  skPath.moveTo(pointsList[0].x, pointsList[0].y);
-  for (let i = 1; i < pointsList.length; i++) {
-    skPath.lineTo(pointsList[i].x, pointsList[i].y);
-  }
-  if (isClosedPath) skPath.close();
-
-  return skPath;
-};
-
-const generateHandlers = (pointsList: PolygonSharedValue, useDistance: boolean = false) => {
-  "worklet";
-  const skPath = Skia.Path.Make();
-  if (pointsList.length === 0) return skPath;
-
-  let medianDistanceBetweenPts = 8;
-  if (useDistance) {
-    for (let i = 0; i < pointsList.length - 1; i++) {
-      const nextIndex = (i + 1) % pointsList.length;
-      const distance = Math.sqrt(
-        Math.pow(pointsList[nextIndex].x - pointsList[i].x, 2) +
-          Math.pow(pointsList[nextIndex].y - pointsList[i].y, 2)
-      );
-      medianDistanceBetweenPts += distance;
-    }
-    medianDistanceBetweenPts /= pointsList.length;
-    medianDistanceBetweenPts /= 2;
-  }
-
-  pointsList.forEach((v) => {
-    skPath.addCircle(v.x, v.y, medianDistanceBetweenPts);
-  });
-  return skPath;
-};
-
-const isPointInsidePolygon = (pointsList: PolygonSharedValue, point: Point): boolean => {
-  let inside = false;
-  const { x, y } = point;
-
-  for (let i = 0, j = pointsList.length - 1; i < pointsList.length; j = i++) {
-    const xi = pointsList[i].x, yi = pointsList[i].y;
-    const xj = pointsList[j].x, yj = pointsList[j].y;
-
-    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
-    if (intersect) inside = !inside;
-  }
-
-  return inside;
-};
+export type VertexSharedValue = { x: number; y: number; id: string };
+export type PolygonSharedValue = Array<VertexSharedValue>;
 
 export default function MonEdit() {
-  const [modalVisible, setModalVisible] = useState(true);
-  const [dims, setDims] = useState<{ x: number; y: number } | null>(null);
+  const [showEditEndModal, setShowEditEndModal] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
   const [showWVertexInfluenceJS, setShowWVertexInfluenceJS] = useState(false);
   const [modeJS, setModeJS] = useState<MONITOR_MODE>(MONITOR_MODE.EDIT);
 
@@ -109,18 +63,12 @@ export default function MonEdit() {
   const vertexToEditId = useSharedValue<string | null>(null);
   const pathToEdit = useSharedValue<EDIT_PATH>(EDIT_PATH.NONE);
   
-  const polygon = useRef(new Path(rectPoints));
-  const wPath = useRef(new Path(wPoints));
+  const polygon = useRef(new Path(polygonBasePoints));
+  const wPath = useRef(new Path(wPathBasePoints));
   const history = useRef(new History());
 
   const polygonSharedData = useSharedValue<PolygonSharedValue>([]);
   const wPathSharedData = useSharedValue<PolygonSharedValue>([]);
-
-  // Trazados dinámicos mediante Derived values heredados en el Hilo de la UI
-  const gPath = useDerivedValue(() => generatePath(polygonSharedData.value, true));
-  const gPathW = useDerivedValue(() => generatePath(wPathSharedData.value, false));
-  const gVertexes = useDerivedValue(() => generateHandlers(polygonSharedData.value));
-  const gVertexesW = useDerivedValue(() => generateHandlers(wPathSharedData.value, showWVertexInfluence.value));
 
   const generateSharedValue = () => {
     polygonSharedData.set(polygon.current.generateLinkedList());
@@ -128,18 +76,8 @@ export default function MonEdit() {
   };
 
   useEffect(() => {
-    setModalVisible(false);
-    const screen = Dimensions.get("screen");
-    setDims({ x: screen.width, y: screen.height });
     generateSharedValue();
   }, []);
-
-  const isOnePathInsideAnother = (outerPath: PolygonSharedValue, innerPath: PolygonSharedValue) => {
-    for (const vertex of innerPath) {
-      if (!isPointInsidePolygon(outerPath, vertex)) return false;
-    }
-    return true;
-  };
 
   // MANEJADORES DE GESTOS (Pasados a MonCanvas)
   const handlePanStart = useCallback((point: Point) => {
@@ -175,8 +113,8 @@ export default function MonEdit() {
       const dataJS = pathToEdit.value === EDIT_PATH.POLYGON ? polygon : wPath;
 
       if (
-        (pathToEdit.value === EDIT_PATH.POLYGON && isOnePathInsideAnother(polygonSharedData.value, wPathSharedData.value)) ||
-        (pathToEdit.value === EDIT_PATH.W_PATH && isPointInsidePolygon(polygonSharedData.value, point))
+        (pathToEdit.value === EDIT_PATH.POLYGON && Path.isOnePathInsideAnother(polygonSharedData.value, wPathSharedData.value)) ||
+        (pathToEdit.value === EDIT_PATH.W_PATH && Path.isPointInsidePolygon(polygonSharedData.value, point))
       ) {
         before = dataJS.current.vertices.get(vertexToEditId.value)?.getAsPoint() as Point;
         dataJS.current = new Path(sharedData.value.map((v) => ({ x: v.x, y: v.y, id: v.id })));
@@ -224,7 +162,7 @@ export default function MonEdit() {
         let pathIsContained = true;
         const dataJS = pathToChange === EDIT_PATH.POLYGON ? polygon : wPath;
 
-        if (pathToChange === EDIT_PATH.POLYGON && (pathIsContained = isOnePathInsideAnother(currentData, wPathSharedData.value))) {
+        if (pathToChange === EDIT_PATH.POLYGON && (pathIsContained = Path.isOnePathInsideAnother(currentData, wPathSharedData.value))) {
           result = polygon.current.deleteVertex(vertex);
         } else if (pathToChange === EDIT_PATH.W_PATH) {
           result = wPath.current.deleteVertex(vertex);
@@ -251,7 +189,7 @@ export default function MonEdit() {
 
     vertexToEditId.value = null;
     if ((result = polygon.current.addVertexInPoint(point)) === VERTEX_OPERATION.POINT_TOO_FAR_OF_PATH) {
-      if (isPointInsidePolygon(polygonSharedData.value, point) && (result = wPath.current.addVertexInPoint(point)) === VERTEX_OPERATION.VERTEX_ADDED) {
+      if (Path.isPointInsidePolygon(polygonSharedData.value, point) && (result = wPath.current.addVertexInPoint(point)) === VERTEX_OPERATION.VERTEX_ADDED) {
         pathToChange = EDIT_PATH.W_PATH;
       }
     } else if (result === VERTEX_OPERATION.VERTEX_ADDED) {
@@ -275,6 +213,8 @@ export default function MonEdit() {
   const changeMode = (mo: MONITOR_MODE) => {
     mode.value = mo;
     setModeJS(mo);
+    if (mo === MONITOR_MODE.LOCK)
+      setShowEditEndModal(true);
   };
 
   const toggleWVertexInfluence = () => {
@@ -303,17 +243,16 @@ export default function MonEdit() {
   }
 
   return (
-    <View style={{ flex: 1, display: "flex", flexDirection: "row" }}>
+    <SafeAreaProvider>
+    <SafeAreaView style={{ flex: 1, display: "flex", flexDirection: "row", position: "relative" }}>
       {/* #0386CB */}
-      <View style={{ position: "absolute", width: "100%", height: "100%", backgroundColor:"#fffbf0" }} />
+      <View style={{ position: "absolute", width: "100%", height: "100%", bottom:0, backgroundColor:"#fffbf0" }} />
 
       {/* RENDERIZADO DEL CANVAS SEPARADO */}
       <MonCanvas
-        dims={dims}
-        gPath={gPath}
-        gPathW={gPathW}
-        gVertexes={gVertexes}
-        gVertexesW={gVertexesW}
+        polygonSharedData={polygonSharedData}
+        wPathSharedData={wPathSharedData}
+        showWVertexInfluence={showWVertexInfluence}
         onPanStart={handlePanStart}
         onPan={handlePan}
         onPanEnd={handlePanEnd}
@@ -326,44 +265,41 @@ export default function MonEdit() {
         {MONITOR_MODE.LOCK === modeJS ? "EDICIÓN BLOQUEADA" : ""}
       </Text>
 
+      {/* BOTÓN AYUDA */}
+      <View style={{ position: "absolute", right: 4, top: 35 }}>
+        <EditorPanel>
+          <EditorActionButton icon="help" action={() => setShowGuide(true)} />
+        </EditorPanel>
+      </View>
+
       {/* BOTÓN DESHACER (UNDO) */}
-      <View style={{ 
-          display: "flex", 
-          flexDirection: "column", 
-          gap: 5, 
-          position: "absolute", 
-          left: 4, 
-          bottom: 10, 
-          backgroundColor: "rgb(255, 255, 255)",
-          boxShadow: "0px 0px 4px 2px rgba(0, 0, 0, 0.4)",
-          borderRadius: 10, 
-          paddingHorizontal: 2, 
-          paddingVertical: 1 }}>
-        <EditorActionButton icon="restart" action={() => setModalVisible(true)} />
-        <EditorActionButton icon="undo" action={undoAction} />
+      <View style={{ position: "absolute", left: 4, bottom: 10 }}>
+        <EditorPanel>
+          <EditorActionButton icon="restart" action={() => setShowResetModal(true)} />
+          <EditorActionButton icon="undo" action={undoAction} />
+        </EditorPanel>
       </View>
 
       {/* PANEL DE ACCIONES Y MODOS */}
-      <View style={{ display: "flex", flexDirection: "row", position: "absolute", right: 4, bottom: 10, gap:3 }}>
-        <View style={{ 
-            display: "flex", 
-            flexDirection: "column", 
-            gap: 5, 
-            marginLeft: "auto", 
-            backgroundColor: "rgb(255, 255, 255)",
-            boxShadow: "0px 0px 4px 2px rgba(0, 0, 0, 0.4)",
-            borderRadius: 10, 
-            paddingHorizontal: 2, 
-            paddingVertical: 1 }}>
+      <View style={{ position: "absolute", right: 4, bottom: 10 }}>
+        <EditorPanel>
           <EditorActionButton iconColor={colorBasedInMonitorMode(MONITOR_MODE.EDIT)} icon="pencil" action={() => changeMode(MONITOR_MODE.EDIT)} />
           <EditorActionButton iconColor={showWVertexInfluenceJS ? MD2Colors.green600 : MD3Colors.neutral40} icon="texture-box" action={toggleWVertexInfluence} />
           <EditorActionButton iconColor={colorBasedInMonitorMode(MONITOR_MODE.DELETE)} icon="trash-can-outline" action={() => changeMode(MONITOR_MODE.DELETE)} />
           <EditorActionButton iconColor={colorBasedInMonitorMode(MONITOR_MODE.LOCK)} icon="check-outline" action={() => changeMode(MONITOR_MODE.LOCK)} />
-        </View>
+        </EditorPanel>
       </View>
 
+      {/* MODAL GUÍA DE USUARIO */}
+      <Modal visible={showGuide} onBackdropPress={()=>setShowGuide(false)}>
+        <MonGuide 
+          isVisible={showGuide}
+          onClose={() => setShowGuide(false)} 
+        />
+      </Modal>
+
       {/* MODAL DE REINICIO */}
-      <Modal visible={modalVisible}>
+      <Modal visible={showResetModal} onBackdropPress={()=>setShowResetModal(false)}>
         <View style={{ backgroundColor: "white", padding: 20, borderRadius: 10, margin: 20 }}>
           <Text style={{ fontSize: 22, fontWeight: "bold", marginHorizontal: "auto" }}>Reiniciar Trazado</Text>
           <Text style={{ fontSize: 16, textAlign: "center", marginVertical: 30 }}>¿Está seguro de que desea reiniciar el polígono?</Text>
@@ -372,16 +308,48 @@ export default function MonEdit() {
               title="Aceptar"
               onPress={() => {
                 history.current = new History();
-                polygon.current = new Path(rectPoints);
-                wPath.current = new Path(wPoints);
+                polygon.current = new Path(polygonBasePoints);
+                wPath.current = new Path(wPathBasePoints);
                 generateSharedValue();
-                setModalVisible(false);
+                setShowResetModal(false);
               }}
             />
-            <Button title="Cancelar" onPress={() => setModalVisible(false)} />
+            <Button title="Cancelar" onPress={() => setShowResetModal(false)} />
           </View>
         </View>
       </Modal>
-    </View>
+
+      {/*MODAL DE FIN DE EDICION E INICIO DEL MONITOREO*/}
+      <Modal visible={showEditEndModal} onBackdropPress={()=>setShowEditEndModal(false)}>
+        <View style={{ backgroundColor: "white", padding: 20, borderRadius: 10, margin: 20 }}>
+          <Text style={{ fontSize: 22, fontWeight: "bold", marginHorizontal: "auto", marginBottom: 5 }}>Iniciar Monitoreo</Text>
+          <Text style={{ fontSize: 16, textAlign: "center", marginVertical: 10 }}>
+            ¿Desea iniciar el monitoreo con el trazado actual?
+          </Text>
+          <Text style={{ fontSize: 15, textAlign: "center", marginVertical: 5, color: MD3Colors.neutral40 }}>
+            El trazado no podrá ser editado una vez iniciado el monitoreo, pero podrá ser visualizado y utilizado para el seguimiento.
+          </Text>
+          <View style={{ display: "flex", flexDirection: "column", marginTop: 25,  marginBottom:10, marginHorizontal: "auto", gap: 10 }}>
+            <Button
+              title="Sí, iniciar monitoreo"
+              onPress={() => {
+                // Aquí iría la lógica para iniciar el monitoreo con el trazado actual
+                setShowEditEndModal(false);
+                console.log(polygon.current.generateLinkedList());
+                console.log(wPath.current.generateLinkedList());
+                return;
+                // MonitorDrawingsTable.insert({
+                //   polygon: polygon.current.generateLinkedList(),
+                //   wPath: wPath.current.generateLinkedList(),
+                //   })
+              }}
+            />
+            <Button title="No, seguir editando" onPress={() => setShowEditEndModal(false)} />
+          </View>
+        </View>
+      </Modal>
+
+    </SafeAreaView>
+    </SafeAreaProvider>
   );
 }

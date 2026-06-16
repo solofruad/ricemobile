@@ -1,6 +1,7 @@
 import { Point } from "@/types/types";
 import Edge from "./Edge";
 import Vertex from "./Vertex";
+import { PolygonSharedValue } from "../MonEdit";
 
 export enum VERTEX_OPERATION {
   VERTEX_ADDED,
@@ -260,5 +261,27 @@ export default class Path {
       console.log(`vertex ${edge.vertices.A.id} --------> ${edge.vertices.B.id}`);
     });
     console.warn("-------");
+  }
+
+  static isPointInsidePolygon (pointsList: PolygonSharedValue, point: Point): boolean {
+    let inside = false;
+    const { x, y } = point;
+
+    for (let i = 0, j = pointsList.length - 1; i < pointsList.length; j = i++) {
+      const xi = pointsList[i].x, yi = pointsList[i].y;
+      const xj = pointsList[j].x, yj = pointsList[j].y;
+
+      const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+
+    return inside;
+  }
+
+  static isOnePathInsideAnother (outerPath: PolygonSharedValue, innerPath: PolygonSharedValue) {
+    for (const vertex of innerPath) {
+      if (!Path.isPointInsidePolygon(outerPath, vertex)) return false;
+    }
+    return true;
   }
 }
