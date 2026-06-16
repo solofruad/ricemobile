@@ -2,13 +2,19 @@ import { useEffect, useState } from 'react';
 import { Text } from 'react-native';
 import { ObjectDetection } from '../../src/ObjectDetection';
 import CamScan from '../cameraScan/camscan';
-import Database from '@/database/db';
+import Database from '@/database/Database';
 import * as vosk from 'react-native-vosk';
 import { TtsVoices } from '@/src/TtsVoices';
+import DetectionsTable from '@/database/DetectionsTable';
+import MonitorDrawingsTable from '@/database/MonitorDrawingsTable';
+
+const TTS_LANGUAGE = "es";
+const OBJECT_DETECTOR_MAX_RESULTS = 7;
+const OBJECT_DETECTOR_SCORE_THRESHOLD = 0.4;
 
 function startTtsVoice():Promise<void>{
   return new Promise(resolve=>{
-    TtsVoices.init("es")
+    TtsVoices.init(TTS_LANGUAGE)
       .then((_)=>{
         resolve();
         TtsVoices.speak("Bienvenido nuevamente.");
@@ -24,28 +30,40 @@ function startTtsVoice():Promise<void>{
 
 export default function HomeScreen() {
   const [initialized, setInitialized] = useState(false);  
+  const [loadPhase, setLoadPhase] = useState("");
   useEffect(() => {
       new Database();
-      //@ts-ignore
-
-      startTtsVoice()
-      .then(_=>{
-        //Inicializamos el detector de objetos al iniciar la app
-        ObjectDetection.initializeDetector(7, 0.4)
-        .then(()=>{
-          vosk
-            .loadModel('model-es-es')
-            .then(_ => setInitialized(true))
-            .catch((e) => console.error(e));
+      //Inciamos la tabla de detecciones de la base de datos
+      setLoadPhase("DetectionsTable");
+      DetectionsTable.initTable().then(_=>{
+        //Inciamos la tabla de trazados para el monitoreo
+        setLoadPhase("MonitorDrawingsTable");
+        MonitorDrawingsTable.initTable().then(_=>{
+          //Iniciamos el motor de text-to-speech
+          setLoadPhase("TtsVoices");
+          startTtsVoice().then(_=>{
+            //Inicializamos el detector de objetos al iniciar la app
+            setLoadPhase("ObjectDetection");
+            ObjectDetection.initializeDetector(OBJECT_DETECTOR_MAX_RESULTS, OBJECT_DETECTOR_SCORE_THRESHOLD)
+            .then(_=>{
+              //Inicializamos el modelo de reconocimiento de dictado por voz
+              setLoadPhase("VoskSTT");
+              vosk
+                .loadModel('model-es-es')
+                .then(_ => setInitialized(true))
+                .catch((e) => console.error(e));
+            })
+            .catch((err)=>{
+              console.log("Error initializing object detection model", err);
+            });
+          });
         })
-        .catch((err)=>{
-          console.log("Error initializing object detection model", err);
-        });
       })
+      
   
   }, []);
   if(!initialized){
-    return <Text style={{color:"white", position:"absolute", top:"50%", width:"100%", textAlign:"center", fontSize:32}}>Cargando...</Text>
+    return <Text style={{color:"white", position:"absolute", top:"50%", width:"100%", textAlign:"center", fontSize:28}}>Cargando... {loadPhase}</Text>
   }
   return <CamScan/>
 }
