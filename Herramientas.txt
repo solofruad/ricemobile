@@ -60,3 +60,31 @@ Speech.getAvailableVoices()
 https://developer.android.com/reference/android/speech/tts/TextToSpeech.Engine#KEY_FEATURE_NOT_INSTALLED
 
 !voice.features.contains( TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED )
+
+
+
+
+#********Reinstalar node_modules
+rm -rf node_modules
+npm ci
+
+
+
+#**********Sortear errores de rutas largas en windows
+This is the classic Windows MAX_PATH (260 character) limitation hitting your build. Here are the real solutions:
+Fix 1: Enable Long Paths in Windows (Best Solution)
+Run this in PowerShell as Administrator:
+
+New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+
+Then also enable it in Git (if you use Git):
+
+git config --global core.longpaths true
+
+Reboot after applying.
+
+
+#*******El apk pesa mucho?
+./android/gradle.properties
+#Agrega esta linea para usar el empaquetado legacy, lo que hace que las librerias nativas se empaqueten de forma comprimida, lo que reduce el tamaño del apk, pero hace que el tiempo de instalación sea un poco más largo.
+expo.useLegacyPackaging=true
