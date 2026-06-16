@@ -1,4 +1,4 @@
-import { DetectionRecord } from "@/database/db";
+import { DetectionRecord } from "@/database/Database";
 import SpeechText from "@/src/SpeechText";
 import { TtsVoices } from "@/src/TtsVoices";
 import { useHeaderHeight } from "@react-navigation/elements";

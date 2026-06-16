@@ -4,8 +4,9 @@ import { Button, View, Text } from "react-native"
 import { Paths, Directory, File } from 'expo-file-system';
 import SaveModal from "./SaveModal";
 import { ObjectDetectionResult } from "@/types/types";
-import Database from "@/database/db";
+import Database from "@/database/Database";
 import ScanCanvas from "./ScanCanvas";
+import DetectionsTable from "@/database/DetectionsTable";
 
 type ScanCanvasProps = {
   detection: ObjectDetectionResult[],
@@ -42,7 +43,7 @@ const ScanControledCanvas = (props: ScanCanvasProps)=>{
     const photoFile = new File(props.photoUri);
     photoFile.move(new Directory(getPhotosDirUri()))
 
-    Database.getInstance().insertDetection(photoFile.uri,props.detection).then(()=>{
+    DetectionsTable.insert([photoFile.uri, props.detection]).then(()=>{
       setIsSaving(false);
       setIsSaved(true);
       setIsModalVisible(true);

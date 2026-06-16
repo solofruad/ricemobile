@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import ChatBotModule from "../chatbot/ChatBotModule";
 import { useLocalSearchParams } from 'expo-router';
-import { DetectionRecord } from "@/database/db";
+import { DetectionRecord } from "@/database/Database";
 
 export default function Chatbot(){
   const params = useLocalSearchParams();

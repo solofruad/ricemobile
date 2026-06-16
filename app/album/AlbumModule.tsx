@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { FlatList, Image, TouchableOpacity, View } from 'react-native';
-import { Button, MD3DarkTheme } from "react-native-paper";
+import { Button, IconButton, MD3DarkTheme } from "react-native-paper";
 
 import PagerView from 'react-native-pager-view';
 
 import {File} from 'expo-file-system';
 import { useIsFocused } from "@react-navigation/native";
-import Database, { DetectionRecord } from "@/database/db";
+import { DetectionRecord } from "@/database/DetectionsTable";
 import ScanCanvas from "../cameraScan/ScanCanvas";
 import { router } from 'expo-router';
+import DetectionsTable from "@/database/DetectionsTable";
 
 function PhotoSliderViewer(items:Array<DetectionRecord>, selectedIndex:number, setViewing:(index:number)=>void){
   return <PagerView style={{width:"100%", height:"100%"}} initialPage={selectedIndex} onPageSelected={(e)=>setViewing(e.nativeEvent.position)}>
@@ -35,7 +36,7 @@ export default function AlbumModule(){
   },[isFocused]);
 
   const checkDatabase = ()=>{
-    Database.getInstance().getAllDetections()
+    DetectionsTable.getAll()
       .then( dbInfo =>{
         setDatabaseData(dbInfo);
         setImages( dbInfo.map(e=> new File(e.photo_dir)) );
@@ -46,7 +47,7 @@ export default function AlbumModule(){
   const deleteImage = ()=>{
     try{
       const detectionId = databaseData[viewing].id;
-      Database.getInstance().deleteDetection(detectionId).then(_=>{
+      DetectionsTable.delete(detectionId).then(_=>{
         const file = new File(databaseData[viewing].photo_dir);
         file.delete();
       });
@@ -74,6 +75,13 @@ export default function AlbumModule(){
         </TouchableOpacity>
       )}
     />
+
+    <IconButton icon="delete" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
+      DetectionsTable.clearAll().then(_=>{
+        setDatabaseData([]);
+        setImages([]);
+      });
+    }} style={{position:"absolute", bottom:10, right:10}} />
 
     {selectedImage !== null && <View style={{position:"absolute", bottom:0, left:0, width:"100%", height:"100%", backgroundColor:"rgba(0,0,0,0.8)", display:"flex", justifyContent:"center", alignItems:"center"}}>
       {PhotoSliderViewer(databaseData, selectedImage, setViewing)}
