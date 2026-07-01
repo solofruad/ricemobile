@@ -4,7 +4,6 @@ import { Button, View, Text } from "react-native"
 import { Paths, Directory, File } from 'expo-file-system';
 import SaveModal from "./SaveModal";
 import { ObjectDetectionResult } from "@/types/types";
-import Database from "@/database/Database";
 import ScanCanvas from "./ScanCanvas";
 import DetectionsTable from "@/database/DetectionsTable";
 
@@ -14,25 +13,32 @@ type ScanCanvasProps = {
   deleteData: ()=>void
 }
 
+export const getPhotosDirUri = ()=>{
+  const appDataDir = Paths.document.uri;
+  const photoScansDir = `${appDataDir}photoScans/`;
+  return photoScansDir;
+}
+export const checkIfPhotosDirExists = ()=>{
+  const dirInfo = new Directory(getPhotosDirUri());
+  if(!dirInfo.exists){
+    if(!dirInfo.createDirectory("photoScans").exists){
+      throw new Error("El directorio 'photoScans' no logró ser creado");
+    }
+  }
+}
+export const deletePhotoScansDir = ()=>{
+  const dirInfo = new Directory(getPhotosDirUri());
+  if(dirInfo.exists){
+    dirInfo.delete();
+  }
+}
+
 const ScanControledCanvas = (props: ScanCanvasProps)=>{
   const [saving,setIsSaving] = useState(false);
   const [saved,setIsSaved] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   //*ScanCanvasControlsFunction
-  const getPhotosDirUri = ()=>{
-    const appDataDir = Paths.document.uri;
-    const photoScansDir = `${appDataDir}photoScans/`;
-    return photoScansDir;
-  }
-  const checkIfPhotosDirExists = ()=>{
-    const dirInfo = new Directory(getPhotosDirUri());
-    if(!dirInfo.exists){
-      if(!dirInfo.createDirectory("photoScans").exists){
-        throw new Error("El directorio 'photoScans' no logró ser creado");
-      }
-    }
-  }
   const save = ()=>{
     setIsSaving(true);
     //* No almacenar el canvas final. En su lugar almacenar la foto original (que ya está guardada)
