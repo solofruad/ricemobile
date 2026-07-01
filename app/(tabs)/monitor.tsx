@@ -1,7 +1,5 @@
-import MonEdit from "../monitoring/MonEdit";
-import Sampling from "../monitoring/Sampling";
+import MonitorModule from "../monitoring/MonitorModule";
 
 export default function Monitor(){
-  return <MonEdit />
-  // return <Sampling />
+  return <MonitorModule />
 }

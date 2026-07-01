@@ -1,23 +1,23 @@
 import React, { useEffect, useState } from "react";
 import { View, StyleSheet, Dimensions } from "react-native";
 import { Canvas, useImage, ImageShader, Path as SkPath, Skia, useClock } from "@shopify/react-native-skia";
-import { SharedValue, useDerivedValue, useSharedValue } from "react-native-reanimated";
+import { SharedValue, useDerivedValue } from "react-native-reanimated";
 import GestureHandler from "./drawingUtilities/GestureHandler";
 import { Point } from "@/types/types";
 import { PolygonSharedValue } from "./MonEdit";
 
-const MARKER_SIZE = 10;
+const MARKER_SIZE = 18;
 
 interface MonCanvasProps {
   polygonSharedData: SharedValue<PolygonSharedValue>;
   wPathSharedData: SharedValue<PolygonSharedValue>;
   showWVertexInfluence: SharedValue<boolean>;
-  onPanStart: (point: Point) => void ;
-  onPan: (point: Point) => void;
-  onPanEnd: (point: Point) => void;
+  onPanStart?: (point: Point) => void ;
+  onPan?: (point: Point) => void;
+  onPanEnd?: (point: Point) => void;
   onTap: (point: Point) => void;
 
-  markerPos?: Point
+  markerPos?: SharedValue<Point | null>
 }
 
 // WORKLETS
@@ -60,12 +60,13 @@ const generateHandlers = (pointsList: PolygonSharedValue, useDistance: boolean =
   return skPath;
 };
 
-const generateMarker = (time:number, point?: Point) => {
+const generateMarker = (time:number, point: Point|null) => {
   "worklet";
+  // console.log(point)
   const skPath = Skia.Path.Make();
   if (!point) return skPath;
   const x = point.x;
-  const y = point.y- Math.sin(((time%1000)/1000)*Math.PI*2)*10;
+  const y = point.y - Math.sin(((time%1000)/1000)*Math.PI*2)*10 -30;
 
   skPath.moveTo(x-MARKER_SIZE, y-MARKER_SIZE);
   skPath.lineTo(x+MARKER_SIZE, y-MARKER_SIZE);
@@ -75,17 +76,7 @@ const generateMarker = (time:number, point?: Point) => {
   return skPath;
 };
 
-export default function MonCanvas({
-  polygonSharedData,
-  wPathSharedData,
-  showWVertexInfluence,
-  onPanStart,
-  onPan,
-  onPanEnd,
-  onTap,
-
-  markerPos
-}: MonCanvasProps) {
+export default function MonCanvas(props: MonCanvasProps) {
   const [dims, setDims] = useState<{ x: number; y: number } | null>(null);
   let raf:SharedValue<number> = useClock();
 
@@ -95,11 +86,11 @@ export default function MonCanvas({
   }, []);
 
   // Trazados dinámicos mediante Derived values heredados en el Hilo de la UI
-  const gPath = useDerivedValue(() => generatePath(polygonSharedData.value, true));
-  const gPathW = useDerivedValue(() => generatePath(wPathSharedData.value, false));
-  const gVertexes = useDerivedValue(() => generateHandlers(polygonSharedData.value));
-  const gVertexesW = useDerivedValue(() => generateHandlers(wPathSharedData.value, showWVertexInfluence.value));
-  const gMarker = useDerivedValue(()=> generateMarker(raf.value, markerPos))
+  const gPath = useDerivedValue(() => generatePath(props.polygonSharedData.value, true));
+  const gPathW = useDerivedValue(() => generatePath(props.wPathSharedData.value, false));
+  const gVertexes = useDerivedValue(() => generateHandlers(props.polygonSharedData.value));
+  const gVertexesW = useDerivedValue(() => generateHandlers(props.wPathSharedData.value, props.showWVertexInfluence.value));
+  const gMarker = useDerivedValue(()=> generateMarker(raf.value, (props.markerPos === undefined ? null : props.markerPos!.value)))
 
   const image = useImage(require("../../assets/textures/field.jpg"));
 
@@ -110,10 +101,10 @@ export default function MonCanvas({
 
   return (
     <GestureHandler
-      panStart={onPanStart}
-      pan={onPan}
-      panEnd={onPanEnd}
-      tap={onTap}
+      panStart={props.onPanStart}
+      pan={props.onPan}
+      panEnd={props.onPanEnd}
+      tap={props.onTap}
     >
       <Canvas
         style={{
@@ -143,7 +134,7 @@ export default function MonCanvas({
         <SkPath path={gPathW} color="#28d102" style="stroke" strokeWidth={5} />
         <SkPath path={gVertexesW} color="#8aea15" style="stroke" strokeWidth={4} />
         
-        <SkPath path={gMarker} color="#d1bc02" style="stroke" strokeWidth={5} />
+        <SkPath path={gMarker} color="#1efce9" style="fill" strokeWidth={5} />
       </Canvas>
     </GestureHandler>
   );

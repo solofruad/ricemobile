@@ -50,7 +50,13 @@ export enum EDIT_PATH {
 export type VertexSharedValue = { x: number; y: number; id: string };
 export type PolygonSharedValue = Array<VertexSharedValue>;
 
-export default function MonEdit() {
+type MonEditProps = {
+  tryGoToSamplingMode: ()=>void;
+  polygonPoints: Array<{ x: number; y: number }> | null;
+  wPathPoints: Array<{ x: number; y: number }> | null;
+}
+
+export default function MonEdit(props: MonEditProps) {
   const [showEditEndModal, setShowEditEndModal] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
@@ -63,8 +69,8 @@ export default function MonEdit() {
   const vertexToEditId = useSharedValue<string | null>(null);
   const pathToEdit = useSharedValue<EDIT_PATH>(EDIT_PATH.NONE);
   
-  const polygon = useRef(new Path(polygonBasePoints));
-  const wPath = useRef(new Path(wPathBasePoints));
+  const polygon = useRef(new Path(props.polygonPoints || polygonBasePoints));
+  const wPath = useRef(new Path(props.wPathPoints || wPathBasePoints));
   const history = useRef(new History());
 
   const polygonSharedData = useSharedValue<PolygonSharedValue>([]);
@@ -243,8 +249,7 @@ export default function MonEdit() {
   }
 
   return (
-    <SafeAreaProvider>
-    <SafeAreaView style={{ flex: 1, display: "flex", flexDirection: "row", position: "relative" }}>
+    <>
       {/* #0386CB */}
       <View style={{ position: "absolute", width: "100%", height: "100%", bottom:0, backgroundColor:"#fffbf0" }} />
 
@@ -335,21 +340,17 @@ export default function MonEdit() {
               onPress={() => {
                 // Aquí iría la lógica para iniciar el monitoreo con el trazado actual
                 setShowEditEndModal(false);
-                console.log(polygon.current.generateLinkedList());
-                console.log(wPath.current.generateLinkedList());
-                return;
-                // MonitorDrawingsTable.insert({
-                //   polygon: polygon.current.generateLinkedList(),
-                //   wPath: wPath.current.generateLinkedList(),
-                //   })
+                MonitorDrawingsTable.insert({
+                  polygon: polygon.current.generateLinkedList(),
+                  wPath: wPath.current.generateLinkedList(),
+                  })
+                  .then(_=>{props.tryGoToSamplingMode()});
               }}
             />
             <Button title="No, seguir editando" onPress={() => setShowEditEndModal(false)} />
           </View>
         </View>
       </Modal>
-
-    </SafeAreaView>
-    </SafeAreaProvider>
+    </>
   );
 }
