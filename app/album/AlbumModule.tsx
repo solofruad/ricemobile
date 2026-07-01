@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FlatList, Image, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, TouchableOpacity, View, Text } from 'react-native';
 import { Button, IconButton, MD3DarkTheme } from "react-native-paper";
 
 import PagerView from 'react-native-pager-view';
@@ -60,6 +60,40 @@ export default function AlbumModule(){
     }
   }
 
+  const GalleryView = ()=>{ 
+    if(selectedImage !== null){
+      return <View style={{position:"absolute", bottom:0, left:0, width:"100%", height:"100%", backgroundColor:"rgba(0,0,0,0.8)", display:"flex", justifyContent:"center", alignItems:"center"}}>
+              {PhotoSliderViewer(databaseData, selectedImage as number, setViewing)}
+              <Button style={{position:"absolute", bottom:10, left:10}} icon="delete" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
+                deleteImage();
+              }}>
+                Borrar
+              </Button>
+              
+              <Button style={{position:"absolute", bottom:10,left:"50%", transform:[{translateX:"-50%"}]}} icon="layers" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
+                router.push({
+                  pathname: '/(tabs)/chatbot',
+                  params: {detection: JSON.stringify(databaseData[viewing])}
+                });
+
+                }}>
+                Chatbot
+              </Button>
+
+              <Button style={{position:"absolute", bottom:10, right:10}} icon="close" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{setSelectedImage(null)}}>
+                Cerrar
+              </Button>
+            </View>
+    }
+    if(images.length === 0){
+      return <View style={{position:"absolute", bottom:0, left:0, width:"100%", height:"100%", display:"flex", justifyContent:"center", alignItems:"center"}}>
+          <IconButton icon="image" size={64} />
+          <Text style={{color:"white", fontSize:18}}>No se han encontrado imágenes</Text>
+        </View>
+    }
+
+
+  }
   return <View style={{width:"100%", height:"100%",backgroundColor:"#121222ff", paddingTop:30, position:"relative"}}>
     <FlatList 
       data={images}
@@ -76,34 +110,6 @@ export default function AlbumModule(){
       )}
     />
 
-    <IconButton icon="delete" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
-      DetectionsTable.clearAll().then(_=>{
-        setDatabaseData([]);
-        setImages([]);
-      });
-    }} style={{position:"absolute", bottom:10, right:10}} />
-
-    {selectedImage !== null && <View style={{position:"absolute", bottom:0, left:0, width:"100%", height:"100%", backgroundColor:"rgba(0,0,0,0.8)", display:"flex", justifyContent:"center", alignItems:"center"}}>
-      {PhotoSliderViewer(databaseData, selectedImage, setViewing)}
-      <Button style={{position:"absolute", bottom:10, left:10}} icon="delete" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
-        deleteImage();
-      }}>
-        Borrar
-      </Button>
-      
-      <Button style={{position:"absolute", bottom:10,left:"50%", transform:[{translateX:"-50%"}]}} icon="layers" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
-        router.push({
-          pathname: '/(tabs)/chatbot',
-          params: {detection: JSON.stringify(databaseData[viewing])}
-        });
-
-        }}>
-        Chatbot
-      </Button>
-
-      <Button style={{position:"absolute", bottom:10, right:10}} icon="close" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{setSelectedImage(null)}}>
-        Cerrar
-      </Button>
-    </View>}
+    { GalleryView() }
   </View>
 }
