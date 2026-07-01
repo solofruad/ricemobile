@@ -1,12 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { Directory, Paths } from 'expo-file-system';
 
-export type MonitorDrawingRecord = {
-  id: number;
-  drawing_json: any; // El dibujo del monitor, almacenado como JSON
-  created_at: string; // Fecha de creación del registro
-};
-
 export function isObject(value:any) {
   return typeof value === 'object' &&
          value !== null &&
@@ -31,6 +25,13 @@ export default class Database {
     const sqliteDir = new Directory(Paths.document.uri + "SQLite");
     if (!sqliteDir.exists) {
       sqliteDir.create();
+    }
+  }
+
+  static deleteDatabaseDir(){
+    const sqliteDir = new Directory(Paths.document.uri + "SQLite");
+    if (sqliteDir.exists) {
+      sqliteDir.delete();
     }
   }
 

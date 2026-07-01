@@ -8,13 +8,6 @@ export type DetectionRecord = {
   created_at: string; // Fecha de creación del registro
 };
 
-export type MonitorDrawingRecord = {
-  id: number;
-  drawing_json: any; // El dibujo del monitor, almacenado como JSON
-  created_at: string; // Fecha de creación del registro
-};
-
-
 export default class DetectionsTable {
   static initTable () {
     return Database.getDB().then(db => db.execAsync(`
