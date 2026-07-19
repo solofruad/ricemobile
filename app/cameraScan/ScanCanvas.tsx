@@ -1,16 +1,16 @@
-import { Canvas, Group, Image, Skia, SkImage } from "@shopify/react-native-skia"
-import { useEffect, useRef, useState } from "react"
-import { Dimensions, View } from "react-native"
+import { Canvas, Group, Image, Skia, SkImage } from "@shopify/react-native-skia";
+import { useEffect, useRef, useState } from "react";
+import { Dimensions, View } from "react-native";
+import GestureHandler from "./GestureHandler";
 import ScanLabels from "./ScanLabels";
 import ScanRects from "./ScanRects";
-import GestureHandler from "./GestureHandler";
 
 
-import { ObjectDetectionResult } from "@/types/types";
+import { ObjectDetectionResult } from '@/src/ObjectDetection';
 
 
 type ScanCanvasProps = {
-  detection: ObjectDetectionResult[],
+  detection?: ObjectDetectionResult[],
   photoUri: string
   useGestureHandler?: boolean
 }
