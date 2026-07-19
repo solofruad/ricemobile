@@ -3,14 +3,8 @@ export type Point = {
   y: number
 }
 
-
-export type ObjectDetectionResult = {
-  frame:{
-    origin:{x:number, y:number},
-    size:{x:number, y:number}
-  },
-  labels: Array<{
-    text: string,
-    confidence: number
-  }>
+export type Dictionary<T = any, K extends readonly string[] = string[]> = {
+  //K will probable be unused
+  [key in K[number]]:T
 }
+
