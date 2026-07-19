@@ -88,3 +88,9 @@ Reboot after applying.
 ./android/gradle.properties
 #Agrega esta linea para usar el empaquetado legacy, lo que hace que las librerias nativas se empaqueten de forma comprimida, lo que reduce el tamaño del apk, pero hace que el tiempo de instalación sea un poco más largo.
 expo.useLegacyPackaging=true
+
+
+
+
+#***************Correr solammente el server de metro sin rebuildear el proyecto
+npx expo start
