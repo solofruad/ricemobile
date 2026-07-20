@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Text, ToastAndroid, Vibration, View } from "react-native";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { MD2Colors, MD3Colors } from "react-native-paper";
 import { useSharedValue } from "react-native-reanimated";
 import { Modal } from "react-native-reanimated-modal";
@@ -13,11 +12,11 @@ import MonGuide from "./components/MonGuide";
 import History, { PATH_OP } from "./path/History";
 import Path, { VERTEX_OPERATION } from "./path/Path";
 import Vertex from "./path/Vertex";
-import MonitorDrawingsTable from "@/database/MonitorDrawingsTable";
+import MonitorDrawingsTable, { MonitorDrawingRecord } from "@/database/tables/MonitorDrawingsTable";
 
 export type MonitorDrawingData = {
   polygon: PolygonSharedValue;
-  wPath: PolygonSharedValue;
+  samplingPath: PolygonSharedValue;
 }
 
 const polygonBasePoints = [
@@ -27,7 +26,7 @@ const polygonBasePoints = [
   { x: 50, y: 500 },
 ];
 
-const wPathBasePoints = [
+const samplingPathBasePoints = [
   { x: 280, y: 250 },
   { x: 110, y: 290 },
   { x: 280, y: 350 },
@@ -52,8 +51,7 @@ export type PolygonSharedValue = Array<VertexSharedValue>;
 
 type MonEditProps = {
   tryGoToSamplingMode: ()=>void;
-  polygonPoints: Array<{ x: number; y: number }> | null;
-  wPathPoints: Array<{ x: number; y: number }> | null;
+  drawingData: MonitorDrawingRecord | null;
 }
 
 export default function MonEdit(props: MonEditProps) {
@@ -69,16 +67,16 @@ export default function MonEdit(props: MonEditProps) {
   const vertexToEditId = useSharedValue<string | null>(null);
   const pathToEdit = useSharedValue<EDIT_PATH>(EDIT_PATH.NONE);
   
-  const polygon = useRef(new Path(props.polygonPoints || polygonBasePoints));
-  const wPath = useRef(new Path(props.wPathPoints || wPathBasePoints));
+  const polygon = useRef(new Path(props.drawingData?.polygon || polygonBasePoints));
+  const samplingPath = useRef(new Path(props.drawingData?.samplingPath || samplingPathBasePoints));
   const history = useRef(new History());
 
   const polygonSharedData = useSharedValue<PolygonSharedValue>([]);
-  const wPathSharedData = useSharedValue<PolygonSharedValue>([]);
+  const samplingPathSharedData = useSharedValue<PolygonSharedValue>([]);
 
   const generateSharedValue = () => {
     polygonSharedData.set(polygon.current.generateLinkedList());
-    wPathSharedData.set(wPath.current.generateLinkedList());
+    samplingPathSharedData.set(samplingPath.current.generateLinkedList());
   };
 
   useEffect(() => {
@@ -91,7 +89,7 @@ export default function MonEdit(props: MonEditProps) {
     let vertex;
     if ((vertex = polygon.current.getNearestVertexToGivenPoint(point))) {
       pathToEdit.value = EDIT_PATH.POLYGON;
-    } else if ((vertex = wPath.current.getNearestVertexToGivenPoint(point))) {
+    } else if ((vertex = samplingPath.current.getNearestVertexToGivenPoint(point))) {
       pathToEdit.value = EDIT_PATH.W_PATH;
     } else {
       pathToEdit.value = EDIT_PATH.NONE;
@@ -101,7 +99,7 @@ export default function MonEdit(props: MonEditProps) {
 
   const handlePan = useCallback((point: Point) => {
     "worklet";
-    const sharedData = pathToEdit.value === EDIT_PATH.POLYGON ? polygonSharedData : wPathSharedData;
+    const sharedData = pathToEdit.value === EDIT_PATH.POLYGON ? polygonSharedData : samplingPathSharedData;
     if (vertexToEditId.value) {
       const currentData = [...sharedData.value];
       const index = currentData.findIndex((v) => v.id === vertexToEditId.value);
@@ -115,11 +113,11 @@ export default function MonEdit(props: MonEditProps) {
   const handlePanEnd = useCallback((point: Point) => {
     if (vertexToEditId.value && pathToEdit.value !== EDIT_PATH.NONE) {
       let before: Point | undefined;
-      const sharedData = pathToEdit.value === EDIT_PATH.POLYGON ? polygonSharedData : wPathSharedData;
-      const dataJS = pathToEdit.value === EDIT_PATH.POLYGON ? polygon : wPath;
+      const sharedData = pathToEdit.value === EDIT_PATH.POLYGON ? polygonSharedData : samplingPathSharedData;
+      const dataJS = pathToEdit.value === EDIT_PATH.POLYGON ? polygon : samplingPath;
 
       if (
-        (pathToEdit.value === EDIT_PATH.POLYGON && Path.isOnePathInsideAnother(polygonSharedData.value, wPathSharedData.value)) ||
+        (pathToEdit.value === EDIT_PATH.POLYGON && Path.isOnePathInsideAnother(polygonSharedData.value, samplingPathSharedData.value)) ||
         (pathToEdit.value === EDIT_PATH.W_PATH && Path.isPointInsidePolygon(polygonSharedData.value, point))
       ) {
         before = dataJS.current.vertices.get(vertexToEditId.value)?.getAsPoint() as Point;
@@ -152,11 +150,11 @@ export default function MonEdit(props: MonEditProps) {
       let vertex: Vertex | null;
       if ((vertex = polygon.current.getNearestVertexToGivenPoint(point))) {
         pathToChange = EDIT_PATH.POLYGON;
-      } else if ((vertex = wPath.current.getNearestVertexToGivenPoint(point))) {
+      } else if ((vertex = samplingPath.current.getNearestVertexToGivenPoint(point))) {
         pathToChange = EDIT_PATH.W_PATH;
       }
       if (vertex) {
-        const sharedData = pathToChange === EDIT_PATH.POLYGON ? polygonSharedData : wPathSharedData;
+        const sharedData = pathToChange === EDIT_PATH.POLYGON ? polygonSharedData : samplingPathSharedData;
         const currentData = [...sharedData.value];
         const index = currentData.findIndex((v) => v.id === vertex?.id);
 
@@ -166,12 +164,12 @@ export default function MonEdit(props: MonEditProps) {
         }
 
         let pathIsContained = true;
-        const dataJS = pathToChange === EDIT_PATH.POLYGON ? polygon : wPath;
+        const dataJS = pathToChange === EDIT_PATH.POLYGON ? polygon : samplingPath;
 
-        if (pathToChange === EDIT_PATH.POLYGON && (pathIsContained = Path.isOnePathInsideAnother(currentData, wPathSharedData.value))) {
+        if (pathToChange === EDIT_PATH.POLYGON && (pathIsContained = Path.isOnePathInsideAnother(currentData, samplingPathSharedData.value))) {
           result = polygon.current.deleteVertex(vertex);
         } else if (pathToChange === EDIT_PATH.W_PATH) {
-          result = wPath.current.deleteVertex(vertex);
+          result = samplingPath.current.deleteVertex(vertex);
         }
         
         //@ts-ignore
@@ -195,7 +193,7 @@ export default function MonEdit(props: MonEditProps) {
 
     vertexToEditId.value = null;
     if ((result = polygon.current.addVertexInPoint(point)) === VERTEX_OPERATION.POINT_TOO_FAR_OF_PATH) {
-      if (Path.isPointInsidePolygon(polygonSharedData.value, point) && (result = wPath.current.addVertexInPoint(point)) === VERTEX_OPERATION.VERTEX_ADDED) {
+      if (Path.isPointInsidePolygon(polygonSharedData.value, point) && (result = samplingPath.current.addVertexInPoint(point)) === VERTEX_OPERATION.VERTEX_ADDED) {
         pathToChange = EDIT_PATH.W_PATH;
       }
     } else if (result === VERTEX_OPERATION.VERTEX_ADDED) {
@@ -203,7 +201,7 @@ export default function MonEdit(props: MonEditProps) {
     }
 
     if (result === VERTEX_OPERATION.VERTEX_ADDED) {
-      const dataJS = pathToChange === EDIT_PATH.POLYGON ? polygon : wPath;
+      const dataJS = pathToChange === EDIT_PATH.POLYGON ? polygon : samplingPath;
       history.current.addElement({
         path: pathToChange,
         operation: PATH_OP.INSERT,
@@ -237,13 +235,13 @@ export default function MonEdit(props: MonEditProps) {
     const res = history.current.undo(
       new Map([
         [EDIT_PATH.POLYGON, polygon.current],
-        [EDIT_PATH.W_PATH, wPath.current],
+        [EDIT_PATH.W_PATH, samplingPath.current],
       ])
     );
 
     if (res) {
       const [pathEdited, path] = res;
-      pathEdited === EDIT_PATH.POLYGON ? (polygon.current = path) : (wPath.current = path);
+      pathEdited === EDIT_PATH.POLYGON ? (polygon.current = path) : (samplingPath.current = path);
       generateSharedValue();
     }
   }
@@ -256,7 +254,7 @@ export default function MonEdit(props: MonEditProps) {
       {/* RENDERIZADO DEL CANVAS SEPARADO */}
       <MonCanvas
         polygonSharedData={polygonSharedData}
-        wPathSharedData={wPathSharedData}
+        samplingPathSharedData={samplingPathSharedData}
         showWVertexInfluence={showWVertexInfluence}
         onPanStart={handlePanStart}
         onPan={handlePan}
@@ -314,7 +312,7 @@ export default function MonEdit(props: MonEditProps) {
               onPress={() => {
                 history.current = new History();
                 polygon.current = new Path(polygonBasePoints);
-                wPath.current = new Path(wPathBasePoints);
+                samplingPath.current = new Path(samplingPathBasePoints);
                 generateSharedValue();
                 setShowResetModal(false);
               }}
@@ -342,7 +340,7 @@ export default function MonEdit(props: MonEditProps) {
                 setShowEditEndModal(false);
                 MonitorDrawingsTable.insert({
                   polygon: polygon.current.generateLinkedList(),
-                  wPath: wPath.current.generateLinkedList(),
+                  samplingPath: samplingPath.current.generateLinkedList(),
                   })
                   .then(_=>{props.tryGoToSamplingMode()});
               }}

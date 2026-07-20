@@ -1,16 +1,16 @@
+import { Point } from "@/types/types";
+import { Canvas, ImageShader, Path as SkPath, Skia, useClock, useImage } from "@shopify/react-native-skia";
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, Dimensions } from "react-native";
-import { Canvas, useImage, ImageShader, Path as SkPath, Skia, useClock } from "@shopify/react-native-skia";
+import { Dimensions, StyleSheet, View } from "react-native";
 import { SharedValue, useDerivedValue } from "react-native-reanimated";
 import GestureHandler from "./drawingUtilities/GestureHandler";
-import { Point } from "@/types/types";
 import { PolygonSharedValue } from "./MonEdit";
 
 const MARKER_SIZE = 18;
 
 interface MonCanvasProps {
   polygonSharedData: SharedValue<PolygonSharedValue>;
-  wPathSharedData: SharedValue<PolygonSharedValue>;
+  samplingPathSharedData: SharedValue<PolygonSharedValue>;
   showWVertexInfluence: SharedValue<boolean>;
   onPanStart?: (point: Point) => void ;
   onPan?: (point: Point) => void;
@@ -18,6 +18,7 @@ interface MonCanvasProps {
   onTap: (point: Point) => void;
 
   markerPos?: SharedValue<Point | null>
+  hidePolygonVertexHandlers?: boolean
 }
 
 // WORKLETS
@@ -35,13 +36,13 @@ const generatePath = (pointsList: PolygonSharedValue, isClosedPath: boolean) => 
   return skPath;
 };
 
-const generateHandlers = (pointsList: PolygonSharedValue, useDistance: boolean = false) => {
+const generateHandlers = (pointsList: PolygonSharedValue, useExtraDistance: boolean = false) => {
   "worklet";
   const skPath = Skia.Path.Make();
   if (pointsList.length === 0) return skPath;
 
   let medianDistanceBetweenPts = 8;
-  if (useDistance) {
+  if (useExtraDistance) {
     for (let i = 0; i < pointsList.length - 1; i++) {
       const nextIndex = (i + 1) % pointsList.length;
       const distance = Math.sqrt(
@@ -87,9 +88,9 @@ export default function MonCanvas(props: MonCanvasProps) {
 
   // Trazados dinámicos mediante Derived values heredados en el Hilo de la UI
   const gPath = useDerivedValue(() => generatePath(props.polygonSharedData.value, true));
-  const gPathW = useDerivedValue(() => generatePath(props.wPathSharedData.value, false));
+  const gPathW = useDerivedValue(() => generatePath(props.samplingPathSharedData.value, false));
   const gVertexes = useDerivedValue(() => generateHandlers(props.polygonSharedData.value));
-  const gVertexesW = useDerivedValue(() => generateHandlers(props.wPathSharedData.value, props.showWVertexInfluence.value));
+  const gVertexesW = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence.value));
   const gMarker = useDerivedValue(()=> generateMarker(raf.value, (props.markerPos === undefined ? null : props.markerPos!.value)))
 
   const image = useImage(require("../../assets/textures/field.jpg"));
@@ -128,7 +129,7 @@ export default function MonCanvas(props: MonCanvasProps) {
         
         {/* Bordes y Vértices del Terreno */}
         <SkPath path={gPath} color="brown" style="stroke" strokeWidth={4} />
-        <SkPath path={gVertexes} color="orange" style="stroke" strokeWidth={3} />
+        {!props.hidePolygonVertexHandlers && <SkPath path={gVertexes} color="orange" style="stroke" strokeWidth={3} />}
         
         {/* Ruta de Muestras (W-Path) y sus Vértices */}
         <SkPath path={gPathW} color="#28d102" style="stroke" strokeWidth={5} />
