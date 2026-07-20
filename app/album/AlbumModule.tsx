@@ -1,21 +1,20 @@
 import { useEffect, useState } from "react";
-import { FlatList, Image, TouchableOpacity, View, Text } from 'react-native';
+import { FlatList, Image, Text, TouchableOpacity, View } from 'react-native';
 import { Button, IconButton, MD3DarkTheme } from "react-native-paper";
 
 import PagerView from 'react-native-pager-view';
 
-import {File} from 'expo-file-system';
+import DetectionsTable, { DetectionRecord } from "@/database/tables/DetectionsTable";
 import { useIsFocused } from "@react-navigation/native";
-import { DetectionRecord } from "@/database/DetectionsTable";
-import ScanCanvas from "../cameraScan/ScanCanvas";
+import { File } from 'expo-file-system';
 import { router } from 'expo-router';
-import DetectionsTable from "@/database/DetectionsTable";
+import ScanCanvas from "../cameraScan/ScanCanvas";
 
 function PhotoSliderViewer(items:Array<DetectionRecord>, selectedIndex:number, setViewing:(index:number)=>void){
   return <PagerView style={{width:"100%", height:"100%"}} initialPage={selectedIndex} onPageSelected={(e)=>setViewing(e.nativeEvent.position)}>
     {items.map((data, index)=>(
       <View key={index} style={{width:"100%", height:"100%"}}>
-        <ScanCanvas detection={data.result_json} photoUri={data.photo_dir}/>
+        <ScanCanvas detection={data.detection} photoUri={data.photo_dir}/>
       </View>
     ))}
   </PagerView>
@@ -88,7 +87,7 @@ export default function AlbumModule(){
     if(images.length === 0){
       return <View style={{position:"absolute", bottom:0, left:0, width:"100%", height:"100%", display:"flex", justifyContent:"center", alignItems:"center"}}>
           <IconButton icon="image" size={64} />
-          <Text style={{color:"white", fontSize:18}}>No se han encontrado imágenes</Text>
+          <Text style={{color:"white", fontSize:18}}>No se han encontrado imágenes guardadas</Text>
         </View>
     }
 
