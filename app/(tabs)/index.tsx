@@ -1,12 +1,12 @@
+import Database from '@/database/Database';
+import DetectionsTable from '@/database/tables/DetectionsTable';
+import MonitorDrawingsTable from '@/database/tables/MonitorDrawingsTable';
+import { TtsVoices } from '@/src/TtsVoices';
 import { useEffect, useState } from 'react';
 import { Text } from 'react-native';
+import * as vosk from 'react-native-vosk';
 import { ObjectDetection } from '../../src/ObjectDetection';
 import CamScan from '../cameraScan/camscan';
-import Database from '@/database/Database';
-import * as vosk from 'react-native-vosk';
-import { TtsVoices } from '@/src/TtsVoices';
-import DetectionsTable from '@/database/DetectionsTable';
-import MonitorDrawingsTable from '@/database/MonitorDrawingsTable';
 
 const TTS_LANGUAGE = "es";
 const OBJECT_DETECTOR_MAX_RESULTS = 7;
@@ -63,7 +63,7 @@ export default function HomeScreen() {
   
   }, []);
   if(!initialized){
-    return <Text style={{color:"white", position:"absolute", top:"50%", width:"100%", textAlign:"center", fontSize:28}}>Cargando... {loadPhase}</Text>
+    return <Text style={{color:"white", position:"absolute", top:"50%", width:"100%", textAlign:"center", fontSize:26}}>Cargando... {loadPhase}</Text>
   }
   return <CamScan/>
 }
