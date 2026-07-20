@@ -4,16 +4,20 @@ import { Camera, CameraController, useCameraDevice, useCameraPermission, usePhot
 
 import { writeAsync } from '@lodev09/react-native-exify';
 
-import { IconButton, MD3Colors} from "react-native-paper";
+import { ObjectDetection, ObjectDetectionResult } from '@/src/ObjectDetection';
+import { IconButton, MD3Colors } from "react-native-paper";
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import CameraPermisionUI from './CameraPermisionUI';
 import ScanControledCanvas from './ScanControledCanvas';
 import TopToolbar from './TopToolbar';
-import CameraPermisionUI from './CameraPermisionUI';
-import { ObjectDetectionResult } from '@/types/types';
-import { ObjectDetection } from '@/src/ObjectDetection';
 
 type CameraSafeAreaProps = {
   children: any
+}
+
+type CamScanProps = {
+  onResult?: (result: { photo_dir: string; detection: ObjectDetectionResult[] }) => void;
+  onClose?: () => void;
 }
 
 function CameraSafeArea({children}: CameraSafeAreaProps) {
@@ -26,7 +30,7 @@ function CameraSafeArea({children}: CameraSafeAreaProps) {
   );
 }
 
-export default function CamScan() {
+export default function CamScan({ onResult, onClose }: CamScanProps) {
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [timesPermissionRejected, setTimesPermissionRejected] = useState(0);
   const [detection, setDetection] = useState<ObjectDetectionResult[] | null>(null);
@@ -68,32 +72,38 @@ export default function CamScan() {
   }
 
   const takePicture = async () => {
-    if (camera) {
-      try {
-        setIsTakingPhoto(true);
-        photoOutput.capturePhotoToFile({
-          enableShutterSound: false,
-          enableRedEyeReduction: false,
-        },{
-          onDidCapturePhoto:()=>{
-
-          }
-        }).then((photo) => {
-          const uri = `file://${photo.filePath}`;
-          setIsTakingPhoto(false);
-          setIsDetecting(true);
-          writeAsync(uri, { Orientation: 1 })
-            .then(() => {
-              detectAndSetPhotoRoute(uri);
-            });
-        })
-      } catch (e) {
-        console.error("Error al capturar:", e);
-        setIsTakingPhoto(false);
-      }
+    if (!camera.current) return;
+    try {
+      setIsTakingPhoto(true);
+      const photo = await photoOutput.capturePhotoToFile({
+        enableShutterSound: false,
+        enableRedEyeReduction: false,
+      }, {
+        onDidCapturePhoto: () => {}
+      });
+      const uri = `file://${photo.filePath}`;
+      setIsTakingPhoto(false);
+      setIsDetecting(true);
+      await writeAsync(uri, { Orientation: 1 });
+      detectAndSetPhotoRoute(uri);
+    } catch (e) {
+      console.error("Error al capturar:", e);
+      setIsTakingPhoto(false);
     }
   };
 
+  const handleResult = (result: { photo_dir: string; detection: ObjectDetectionResult[] }) => {
+    setDetection(null);
+    setPhotoUri('');
+    onResult?.(result);
+    onClose?.();
+  };
+
+  const handleCancel = () => {
+    setDetection(null);
+    setPhotoUri('');
+    onClose?.();
+  };
 
   if (!hasPermission && timesPermissionRejected >= 1) {
     return <CameraPermisionUI 
@@ -144,15 +154,14 @@ export default function CamScan() {
 
             <TopToolbar 
               onShow={() => { 
-                (camera.current.controller as CameraController).setZoom(2); 
+                (camera.current?.controller as CameraController).setZoom(2); 
               }}
               onHide={() => { 
-                (camera.current.controller as CameraController).setZoom(1); 
+                (camera.current?.controller as CameraController).setZoom(1); 
               }}
               minFocusDistance={minFocusDistance} 
               setFocusDepth={(n) => {
-                (camera.current.controller as CameraController).setFocusLocked?.(n).catch((e:any) => console.log("Focus lock error:", e));
-                console.log("Ajustando distancia focal a:", n);
+                (camera.current?.controller as CameraController).setFocusLocked?.(n).catch((e:any) => console.log("Focus lock error:", e));
               }}
             />
           </>
@@ -170,7 +179,9 @@ export default function CamScan() {
           <ScanControledCanvas 
             detection={detection} 
             photoUri={photoUri} 
-            deleteData={() => { setDetection(null); setPhotoUri(''); }}/> 
+            deleteData={() => { setDetection(null); setPhotoUri(''); }}
+            onSaveResult={onResult ? handleResult : undefined}
+            onCancel={handleCancel}/> 
         )}
       </CameraSafeArea>
   );

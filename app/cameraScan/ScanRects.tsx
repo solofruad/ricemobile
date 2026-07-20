@@ -1,15 +1,16 @@
-import { ObjectDetectionResult } from "@/types/types";
-import { Line, vec, Group } from "@shopify/react-native-skia";
+import { ObjectDetectionResult } from '@/src/ObjectDetection';
+import { Group, Line, vec } from "@shopify/react-native-skia";
 
 const INCLUIR_RECONOCIMIENTOS_SIN_LABELS = false;
 
 type ScanRectsProps = {
-  rects: ObjectDetectionResult[],
+  rects?: ObjectDetectionResult[],
   scale: number
 }
 
 export default function ScanRects (props: ScanRectsProps){
-  return props.rects.map((obj,id)=>{
+  const rects = props.rects ?? [];
+  return rects.map((obj,id)=>{
     if(!INCLUIR_RECONOCIMIENTOS_SIN_LABELS && obj.labels.length == 0){
       return null;
     }

@@ -1,4 +1,4 @@
-import { ObjectDetectionResult } from "@/types/types";
+import { ObjectDetectionResult } from '@/src/ObjectDetection';
 import { Group, matchFont, Rect, Text } from "@shopify/react-native-skia";
 
 function rotatePointAroundPlaneCenter(
@@ -31,19 +31,20 @@ function rotatePointAroundPlaneCenter(
 }
 
 type ScanLabelsProps = {
-  rects: ObjectDetectionResult[],
+  rects?: ObjectDetectionResult[],
   scale: number
   imageDims: {width:number, height:number}
 }
 
 export default function ScanLabels (props: ScanLabelsProps){
+  const rects = props.rects ?? [];
   const fontStyle = {
     fontFamily: "arial",
     fontWeight: "bold",
     fontSize: 14
   } as const;
   const font = matchFont(fontStyle);
-  const data = props.rects.map((obj)=>{
+  const data = rects.map((obj)=>{
     const x = obj.frame.origin.x * props.scale;
     const y = obj.frame.origin.y * props.scale ;
     return {
