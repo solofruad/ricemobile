@@ -8,7 +8,7 @@ import { MonitorDrawingRecord } from "@/database/tables/MonitorDrawingsTable";
 import { ObjectDetectionResult } from "@/src/ObjectDetection";
 import { Point } from "@/types/types";
 import CamScan from "../cameraScan/camscan";
-import MonCanvas from "./MonCanvas"; // Importamos el componente visual
+import MonCanvas from "./MonCanvas";
 import EditorActionButton from "./components/EditorActionButton";
 import EditorPanel from "./components/EditorPanel";
 import MonGuide from "./components/MonGuide";
@@ -17,11 +17,13 @@ import Vertex from "./path/Vertex";
 
 const MAX_SAMPLES_PER_POINT = 5;
 
+const PANEL_SPRING = { damping: 18, stiffness: 180, mass: 0.6 };
+
 export type SamplingData = {
   id_monitoring: number;
   index_sampling_point: number;
   index_photo_in_sampling_point: number;
-  photo_dir: string; // Directorio de la foto
+  photo_dir: string;
   detection: Array<ObjectDetectionResult>;
 };
 
@@ -33,6 +35,21 @@ type SamplingProps = {
   drawingData: MonitorDrawingRecord | null;
 };
 
+const detectionsListing = (tableInfo: SamplingData[][]) => { //TODO: IMPLEMENTAR
+  return tableInfo
+  .flat() //Per sample
+	.map(
+		e => {
+			return e.detection.map( //per detection in each sample
+				h => ({
+					detection:h.labels[0], 
+					index_sampling_point:e.index_sampling_point, 
+					index_photo_in_sampling_point: e.index_photo_in_sampling_point
+				})
+			)
+	})
+	.flat()
+}
 
 export default function Sampling(props: SamplingProps) {
   const [showGuide, setShowGuide] = useState(false);
@@ -40,9 +57,10 @@ export default function Sampling(props: SamplingProps) {
   const [showCamera, setShowCamera] = useState(false);
   const [capturedSamples, setCapturedSamples] = useState<SamplingData[][]>([]);
   const [vertexIndex, setVertexIndex] = useState<number>(-1);
+
+  const [totalSamplingPoints, setTotalSamplingPoints] = useState(0);
   const vertexIndexRef = useRef(-1);
 
-  const showWVertexInfluence = useSharedValue(false);
   const vertexToEdit = useSharedValue<Point | null>(null);
   const animSamplesBottom = useSharedValue(-160);
   const animHelpTextOpacity = useSharedValue(1);
@@ -51,30 +69,36 @@ export default function Sampling(props: SamplingProps) {
   const polygon = useRef(new Path(props.drawingData?.polygon || []));
   const samplingPath = useRef(new Path(props.drawingData?.samplingPath || []));
 
+  const completenessPerSamplingPoint = useSharedValue<Array<number>>([]);
+
   const polygonSharedData = useSharedValue<PolygonSharedValue>([]);
   const samplingPathSharedData = useSharedValue<PolygonSharedValue>([]);
 
-  const generateSharedValue = () => {
-    polygonSharedData.set(polygon.current.generateLinkedList());
-    samplingPathSharedData.set(samplingPath.current.generateLinkedList());
-  };
-
   useEffect(() => {
-    generateSharedValue();
+    const polygonList = polygon.current.generateLinkedList();
+    const samplingList = samplingPath.current.generateLinkedList();
+    polygonSharedData.set(polygonList);
+    samplingPathSharedData.set(samplingList);
+    setTotalSamplingPoints(samplingList.length);
   }, []);
 
   useEffect(() => {
     vertexIndexRef.current = vertexIndex;
   }, [vertexIndex]);
 
-  // MANEJADORES DE GESTOS (Pasados a MonCanvas)
+  const handlePress = useCallback((open: boolean) => {
+    animSamplesBottom.value = withSpring(open ? 0 : -160, PANEL_SPRING);
+    animHelpTextOpacity.value = withSpring(open ? 0 : 1, PANEL_SPRING);
+    animPolygonDisplace.value = withSpring(open ? 70 : 0, PANEL_SPRING);
+  }, []);
+
   const handleTap = useCallback((point: Point) => {
     let vertex: Vertex | null;
     if ((vertex = samplingPath.current.getNearestVertexToGivenPoint(point))) {
-      let actualVertexIndex = samplingPathSharedData.value.findIndex((v) => v.id === vertex!.id);
+      const actualVertexIndex = samplingPathSharedData.value.findIndex((v) => v.id === vertex!.id);
       setVertexIndex(actualVertexIndex);
       vertexIndexRef.current = actualVertexIndex;
-      
+
       vertexToEdit.set(vertex.getAsPoint());
       handlePress(true);
       Vibration.vibrate(50);
@@ -84,13 +108,7 @@ export default function Sampling(props: SamplingProps) {
       vertexToEdit.set(null);
       handlePress(false);
     }
-  }, []);
-
-  const handlePress = (open: boolean) => {
-    animSamplesBottom.value = withSpring(open ? 0 : -160);
-    animHelpTextOpacity.value = withSpring(open ? 0 : 1);
-    animPolygonDisplace.value = withSpring(!open ? 0 : 70);
-  };
+  }, [handlePress]);
 
   const openTakePhoto = useCallback(() => {
     setShowCamera(true);
@@ -105,26 +123,37 @@ export default function Sampling(props: SamplingProps) {
     }
 
     setCapturedSamples((prev) => {
-      let newR = [...prev];
+      const newR = [...prev];
 
       if (newR[activeVertexIndex] === undefined) {
         newR[activeVertexIndex] = [];
       }
 
-      newR[activeVertexIndex].push({
-        id_monitoring: props.drawingData?.id || 0,
-        index_sampling_point: activeVertexIndex,
-        index_photo_in_sampling_point: newR[activeVertexIndex].length,
-        photo_dir: result.photo_dir,
-        detection: result.detection,
-      });
+      newR[activeVertexIndex] = [
+        ...newR[activeVertexIndex],
+        {
+          id_monitoring: props.drawingData?.id || 0,
+          index_sampling_point: activeVertexIndex,
+          index_photo_in_sampling_point: newR[activeVertexIndex].length,
+          photo_dir: result.photo_dir,
+          detection: result.detection,
+        },
+      ];
 
-      console.log("Samples captured:", newR);
+      completenessPerSamplingPoint.set(newR.map((samples) => (samples?.length || 0) / MAX_SAMPLES_PER_POINT));
+
+      console.log(newR);
 
       return newR;
     });
+
     setShowCamera(false);
   }, [props.drawingData?.id]);
+
+  const allPointsComplete =
+    totalSamplingPoints > 0 &&
+    capturedSamples.length >= totalSamplingPoints &&
+    capturedSamples.every((samples) => (samples?.length || 0) >= MAX_SAMPLES_PER_POINT);
 
   return (
     <>
@@ -135,28 +164,43 @@ export default function Sampling(props: SamplingProps) {
           <MonCanvas
             polygonSharedData={polygonSharedData}
             samplingPathSharedData={samplingPathSharedData}
-            showWVertexInfluence={showWVertexInfluence}
-            onTap={handleTap}
             markerPos={vertexToEdit}
+            completenessPerSamplingPoint={completenessPerSamplingPoint}
+            onTap={handleTap}
             hidePolygonVertexHandlers={true}
           />
         </View>
       </Animated.View>
 
-      <Animated.Text
-        style={{
-          position: "absolute",
-          width: "100%",
-          textAlign: "center",
-          bottom: 16,
-          color: MD3Colors.neutral30,
-          fontSize: 16,
-          fontStyle: "italic",
-          opacity: animHelpTextOpacity,
-        }}
-      >
-        SELECCIONE UN PUNTO DEL TRAZADO PARA TOMAR MUESTRAS
-      </Animated.Text>
+      {allPointsComplete ? (
+        <Animated.Text
+          style={{
+            position: "absolute",
+            width: "100%",
+            textAlign: "center",
+            bottom: 16,
+            color: MD3Colors.neutral30,
+            fontSize: 16,
+            fontStyle: "italic",
+            opacity: animHelpTextOpacity,
+          }}
+        >
+          "SELECCIONE UN PUNTO DEL TRAZADO PARA TOMAR MUESTRAS"
+        </Animated.Text>
+      ) : (
+        <Animated.View
+          style={{
+            position: "absolute",
+            width: "100%",
+            bottom: 16,
+            opacity: animHelpTextOpacity,
+          }}
+        >
+          <View style={{width:"auto",marginHorizontal:"auto"}}>
+            <Button title="PROCESAR MUESTRAS TOMADAS" />
+          </View>
+        </Animated.View>
+      )}
 
       <View style={{ position: "absolute", left: 4, top: 38 }}>
         <EditorPanel>
@@ -175,14 +219,16 @@ export default function Sampling(props: SamplingProps) {
           position: "absolute",
           bottom: animSamplesBottom,
           width: "100%",
-          boxShadow: [{
-            offsetX: 10,
-            offsetY: 10,
-            blurRadius: 5,
-            spreadDistance: 8,
-            color: "rgba(0,0,0,1)",
-            inset: false,
-          }],
+          boxShadow: [
+            {
+              offsetX: 10,
+              offsetY: 10,
+              blurRadius: 5,
+              spreadDistance: 8,
+              color: "rgba(0,0,0,1)",
+              inset: false,
+            },
+          ],
           paddingVertical: 10,
           paddingHorizontal: 10,
           backgroundColor: "#fffbf0",
@@ -198,31 +244,29 @@ export default function Sampling(props: SamplingProps) {
           horizontal
           showsHorizontalScrollIndicator={false}
         >
-          {
-            capturedSamples[vertexIndex]?.map((sample, index) => (
-              <View
-                key={`${sample.photo_dir}-${index}`}
-                style={{
-                  borderColor: "rgb(189, 109, 23)",
-                  borderWidth: 4,
-                  borderRadius: 10,
-                  width: 80,
-                  height: 80,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: 4,
-                }}
-              >
-                <Text style={{ color: MD3Colors.neutral30, fontSize: 20, fontWeight: "bold" }}>
-                  {sample.detection.length}
-                </Text>
-                <Text style={{ color: MD3Colors.neutral30, fontSize: 12, textAlign: "center" }}>
-                  detección{sample.detection.length === 1 ? "" : "es"}
-                </Text>
-              </View>
-            ))
-            }
-            {(capturedSamples[vertexIndex]?.length < MAX_SAMPLES_PER_POINT || !capturedSamples[vertexIndex]) && (
+          {capturedSamples[vertexIndex]?.map((sample, index) => (
+            <View
+              key={`${sample.photo_dir}-${index}`}
+              style={{
+                borderColor: "rgb(189, 109, 23)",
+                borderWidth: 4,
+                borderRadius: 10,
+                width: 80,
+                height: 80,
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 4,
+              }}
+            >
+              <Text style={{ color: MD3Colors.neutral30, fontSize: 20, fontWeight: "bold" }}>
+                {sample.detection.length}
+              </Text>
+              <Text style={{ color: MD3Colors.neutral30, fontSize: 12, textAlign: "center" }}>
+                detección{sample.detection.length === 1 ? "" : "es"}
+              </Text>
+            </View>
+          ))}
+          {(capturedSamples[vertexIndex]?.length < MAX_SAMPLES_PER_POINT || !capturedSamples[vertexIndex]) && (
             <TouchableOpacity
               style={{
                 borderColor: "rgb(189, 109, 23)",
@@ -235,9 +279,9 @@ export default function Sampling(props: SamplingProps) {
               }}
               onPress={openTakePhoto}
             >
-                <Icon source="leaf" size={45} color="rgb(26, 189, 23)"/>
-            </TouchableOpacity>)
-          }
+              <Icon source="leaf" size={45} color="rgb(26, 189, 23)" />
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </Animated.View>
 
