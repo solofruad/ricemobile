@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Text, ToastAndroid, Vibration, View } from "react-native";
+import { Button, Dimensions, LayoutChangeEvent, Text, ToastAndroid, Vibration, View } from "react-native";
 import { MD2Colors, MD3Colors } from "react-native-paper";
 import { useSharedValue } from "react-native-reanimated";
 import { Modal } from "react-native-reanimated-modal";
@@ -17,6 +17,13 @@ import MonitorDrawingsTable, { MonitorDrawingRecord } from "@/database/tables/Mo
 export type MonitorDrawingData = {
   polygon: PolygonSharedValue;
   samplingPath: PolygonSharedValue;
+}
+
+const BOUNDS = {
+  top:50,
+  bottom:86,
+  left:15,
+  right:15
 }
 
 const polygonBasePoints = [
@@ -55,6 +62,7 @@ type MonEditProps = {
 }
 
 export default function MonEdit(props: MonEditProps) {
+  const dims = useRef<{ x: number; y: number }>({x:0,y:0});
   const [showEditEndModal, setShowEditEndModal] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
@@ -82,6 +90,18 @@ export default function MonEdit(props: MonEditProps) {
   useEffect(() => {
     generateSharedValue();
   }, []);
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    dims.current = { x:width, y:height };
+  };
+
+  const isPointInsideBounds = (point: Point)=>{
+    return  point.x > BOUNDS.left && 
+            point.x < dims.current.x -BOUNDS.right &&
+            point.y > BOUNDS.top &&
+            point.y < dims.current.y - BOUNDS.bottom
+  }
 
   // MANEJADORES DE GESTOS (Pasados a MonCanvas)
   const handlePanStart = useCallback((point: Point) => {
@@ -116,9 +136,10 @@ export default function MonEdit(props: MonEditProps) {
       const sharedData = pathToEdit.value === EDIT_PATH.POLYGON ? polygonSharedData : samplingPathSharedData;
       const dataJS = pathToEdit.value === EDIT_PATH.POLYGON ? polygon : samplingPath;
 
-      if (
-        (pathToEdit.value === EDIT_PATH.POLYGON && Path.isOnePathInsideAnother(polygonSharedData.value, samplingPathSharedData.value)) ||
-        (pathToEdit.value === EDIT_PATH.W_PATH && Path.isPointInsidePolygon(polygonSharedData.value, point))
+      if ((
+          (pathToEdit.value === EDIT_PATH.POLYGON && Path.isOnePathInsideAnother(polygonSharedData.value, samplingPathSharedData.value)) ||
+          (pathToEdit.value === EDIT_PATH.W_PATH && Path.isPointInsidePolygon(polygonSharedData.value, point))
+        ) && isPointInsideBounds(point)
       ) {
         before = dataJS.current.vertices.get(vertexToEditId.value)?.getAsPoint() as Point;
         dataJS.current = new Path(sharedData.value.map((v) => ({ x: v.x, y: v.y, id: v.id })));
@@ -248,8 +269,7 @@ export default function MonEdit(props: MonEditProps) {
 
   return (
     <>
-      {/* #0386CB */}
-      <View style={{ position: "absolute", width: "100%", height: "100%", bottom:0, backgroundColor:"#fffbf0" }} />
+      <View onLayout={handleLayout} style={{ position: "absolute", width: "100%", height: "100%", bottom:0, backgroundColor:"#fffbf0" }}/>
 
       {/* RENDERIZADO DEL CANVAS SEPARADO */}
       <MonCanvas
@@ -262,7 +282,7 @@ export default function MonEdit(props: MonEditProps) {
         onTap={handleTap}
       />
 
-      <Text style={{ position:"absolute", width:"100%", textAlign:"center", bottom:8,  color: MD3Colors.neutral30, fontSize: 16, fontStyle: "italic" }}>
+      <Text style={{ position:"absolute", width:"100%", textAlign:"right", bottom:60, right:4,  color: MD3Colors.neutral30, fontSize: 16, fontStyle: "italic" }}>
         {MONITOR_MODE.EDIT === modeJS ? "MOVER o AGREGAR PUNTO" : ""}
         {MONITOR_MODE.DELETE === modeJS ? "ELIMINAR PUNTO" : ""}
         {MONITOR_MODE.LOCK === modeJS ? "EDICIÓN BLOQUEADA" : ""}
@@ -276,7 +296,7 @@ export default function MonEdit(props: MonEditProps) {
       </View>
 
       {/* BOTÓN DESHACER (UNDO) */}
-      <View style={{ position: "absolute", left: 4, bottom: 10 }}>
+      <View style={{ position: "absolute", left: 4, bottom: 6 }}>
         <EditorPanel>
           <EditorActionButton icon="restart" action={() => setShowResetModal(true)} />
           <EditorActionButton icon="undo" action={undoAction} />
@@ -284,8 +304,8 @@ export default function MonEdit(props: MonEditProps) {
       </View>
 
       {/* PANEL DE ACCIONES Y MODOS */}
-      <View style={{ position: "absolute", right: 4, bottom: 10 }}>
-        <EditorPanel>
+      <View style={{ position: "absolute", right: 4, bottom: 6 }}>
+        <EditorPanel flexDirection="row">
           <EditorActionButton iconColor={colorBasedInMonitorMode(MONITOR_MODE.EDIT)} icon="pencil" action={() => changeMode(MONITOR_MODE.EDIT)} />
           <EditorActionButton iconColor={showWVertexInfluenceJS ? MD2Colors.green600 : MD3Colors.neutral40} icon="texture-box" action={toggleWVertexInfluence} />
           <EditorActionButton iconColor={colorBasedInMonitorMode(MONITOR_MODE.DELETE)} icon="trash-can-outline" action={() => changeMode(MONITOR_MODE.DELETE)} />
