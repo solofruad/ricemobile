@@ -19,7 +19,7 @@ export default function TopToolbar(props: TopToolbarProps){
     setShowing(true);
     Animated.timing(fadeAnim, {
       toValue: -60,
-      duration: 300,
+      duration: 200,
       useNativeDriver: true,
     }).start();
   }
@@ -41,14 +41,20 @@ export default function TopToolbar(props: TopToolbarProps){
           height={270} 
           minFocusDistance={props.minFocusDistance}/>
       </Animated.View>
-    <View style={{position:"absolute",right:16,bottom:26}}>
+    <View style={{position:"absolute",right:16,bottom:30}}>
       <Button 
-        icon={()=><Icon source="ruler" size={28} color="white"/>}
+        icon={()=><Icon source="ruler" size={28} color={showing ? "rgb(240, 240, 240)" : "rgb(87, 87, 87)"}/>}
         mode="contained"
         labelStyle={{fontSize:16}}
-        textColor="rgb(230, 230, 230)"
-        buttonColor={MD3Colors.neutral40}
-        onPress={showing ? fadeOutFn : fadeInFn}>
+        textColor={showing ? "rgb(240, 240, 240)" : "rgb(87, 87, 87)"}
+        buttonColor={!showing ? "rgb(240, 240, 240)" : "rgb(87, 87, 87)"}
+        onPress={showing ? fadeOutFn : fadeInFn}
+        style={{ 
+                        borderRadius: 45,
+                        alignItems: 'center',
+                        borderWidth: 3, // Border thickness
+                        borderColor: '#6a6a6a90', // Border color
+                 }}>
         Enfocar
       </Button>
     </View>

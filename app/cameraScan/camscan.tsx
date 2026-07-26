@@ -131,7 +131,7 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
                     left: 0, 
                     right: 0, 
                     top: 0,
-                    backgroundColor: "#091520",
+                    backgroundColor: "#fffeef",
                     position: "absolute" }}
                   device={device}
                   isActive={true}
@@ -146,10 +146,17 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
                 icon="camera" 
                 onPress={takePicture} 
                 mode='contained' 
-                iconColor="rgb(230, 230, 230)"
-                containerColor={MD3Colors.neutral40}
-                size={50} 
-                style={{ marginHorizontal: "auto" }}/>
+                iconColor="rgb(87, 87, 87)"
+                containerColor="rgb(255, 255, 255)"
+                size={35} 
+                style={{ marginHorizontal: "auto", 
+                        width: 75, // Custom outer button width
+                        height: 75, // Custom outer button height
+                        borderRadius: 45,
+                        alignItems: 'center',
+                        borderWidth: 3, // Border thickness
+                        borderColor: '#6a6a6a90', // Border color
+                 }}/>
             </View>
 
             <TopToolbar 
@@ -170,7 +177,7 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
         {(isDetecting || isTakingPhoto) && (
           <View style={[styles.overlay, { backgroundColor: isTakingPhoto ? "rgba(0,0,0,0.5)" : "#363636" }]}>
             <Text style={styles.overlayText}>
-              {isTakingPhoto ? "Tomando Foto" : "Analizando Fotografía"}
+              {isTakingPhoto ? "Tomando Fotografía..." : "Analizando Fotografía..."}
             </Text>
           </View>
         )}
