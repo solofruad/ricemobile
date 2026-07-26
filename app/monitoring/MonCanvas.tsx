@@ -11,12 +11,13 @@ const MARKER_SIZE = 18;
 interface MonCanvasProps {
   polygonSharedData: SharedValue<PolygonSharedValue>;
   samplingPathSharedData: SharedValue<PolygonSharedValue>;
-  showWVertexInfluence: SharedValue<boolean>;
+  showWVertexInfluence?: SharedValue<boolean>;
   onPanStart?: (point: Point) => void ;
   onPan?: (point: Point) => void;
   onPanEnd?: (point: Point) => void;
   onTap: (point: Point) => void;
 
+  completenessPerSamplingPoint?: SharedValue<Array<number>>;
   markerPos?: SharedValue<Point | null>
   hidePolygonVertexHandlers?: boolean
 }
@@ -36,12 +37,12 @@ const generatePath = (pointsList: PolygonSharedValue, isClosedPath: boolean) => 
   return skPath;
 };
 
-const generateHandlers = (pointsList: PolygonSharedValue, useExtraDistance: boolean = false) => {
+const generateHandlers = (pointsList: PolygonSharedValue, useExtraDistance: boolean = false, completenessPerPoint?: Array<number>) => {
   "worklet";
   const skPath = Skia.Path.Make();
   if (pointsList.length === 0) return skPath;
 
-  let medianDistanceBetweenPts = 8;
+  let medianDistanceBetweenPts = 8.5;
   if (useExtraDistance) {
     for (let i = 0; i < pointsList.length - 1; i++) {
       const nextIndex = (i + 1) % pointsList.length;
@@ -55,9 +56,16 @@ const generateHandlers = (pointsList: PolygonSharedValue, useExtraDistance: bool
     medianDistanceBetweenPts /= 2;
   }
 
-  pointsList.forEach((v) => {
-    skPath.addCircle(v.x, v.y, medianDistanceBetweenPts);
-  });
+
+  if(completenessPerPoint ){
+    pointsList.forEach((v,i) => {
+      skPath.addCircle(v.x, v.y, completenessPerPoint[i] * (medianDistanceBetweenPts+0.7-(completenessPerPoint[i]*1)));
+    });
+  }else{
+    pointsList.forEach((v) => {
+      skPath.addCircle(v.x, v.y, medianDistanceBetweenPts+1);
+    });
+  }
   return skPath;
 };
 
@@ -90,7 +98,8 @@ export default function MonCanvas(props: MonCanvasProps) {
   const gPath = useDerivedValue(() => generatePath(props.polygonSharedData.value, true));
   const gPathW = useDerivedValue(() => generatePath(props.samplingPathSharedData.value, false));
   const gVertexes = useDerivedValue(() => generateHandlers(props.polygonSharedData.value));
-  const gVertexesW = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence.value));
+  const gVertexesW = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence?.value || false));
+  const gVertexesWCompleteness = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence?.value || false, props.completenessPerSamplingPoint?.value));
   const gMarker = useDerivedValue(()=> generateMarker(raf.value, (props.markerPos === undefined ? null : props.markerPos!.value)))
 
   const image = useImage(require("../../assets/textures/field.jpg"));
@@ -117,12 +126,12 @@ export default function MonCanvas(props: MonCanvasProps) {
         }}
       >
         {/* Polígono Base con Textura */}
-        <SkPath path={gPath} color={"white"} style="fill">
+        <SkPath path={gPath} style="fill">
           <ImageShader
             image={image}
             tx="repeat"
             ty="repeat"
-            rect={{ x: 0, y: 0, width: 250, height: 250 }}
+            rect={{ x: 0, y: 0, width: 450, height: 1900 }}
             fit={"scaleDown"}
           />
         </SkPath>
@@ -132,10 +141,13 @@ export default function MonCanvas(props: MonCanvasProps) {
         {!props.hidePolygonVertexHandlers && <SkPath path={gVertexes} color="orange" style="stroke" strokeWidth={3} />}
         
         {/* Ruta de Muestras (W-Path) y sus Vértices */}
-        <SkPath path={gPathW} color="#28d102" style="stroke" strokeWidth={5} />
-        <SkPath path={gVertexesW} color="#8aea15" style="stroke" strokeWidth={4} />
+        <SkPath path={gPathW} color="#2cac0f" style="stroke" strokeWidth={5} />
+        <SkPath path={gVertexesW} color="#a7ff3b" style="stroke" strokeWidth={3} />
+        {
+          props.completenessPerSamplingPoint && <SkPath path={gVertexesWCompleteness} color="#3cff00" style="fill"/>
+        }
         
-        <SkPath path={gMarker} color="#1efce9" style="fill" strokeWidth={5} />
+        <SkPath path={gMarker} color="#1dbfe0" style="fill" strokeWidth={5} />
       </Canvas>
     </GestureHandler>
   );
