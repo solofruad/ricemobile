@@ -14,6 +14,7 @@ import EditorPanel from "./components/EditorPanel";
 import MonGuide from "./components/MonGuide";
 import Path from "./path/Path";
 import Vertex from "./path/Vertex";
+import SamplingsTable from "@/database/tables/SamplingsTable";
 
 const MAX_SAMPLES_PER_POINT = 5;
 
@@ -40,6 +41,7 @@ const detectionsListing = (tableInfo: SamplingData[][]) => { //TODO: IMPLEMENTAR
   .flat() //Per sample
 	.map(
 		e => {
+      //TODO: hacer unico por si en una misma muestra se detecta mas de una vez la misma enfermedad
 			return e.detection.map( //per detection in each sample
 				h => ({
 					detection:h.labels[0], 
@@ -57,6 +59,7 @@ export default function Sampling(props: SamplingProps) {
   const [showCamera, setShowCamera] = useState(false);
   const [capturedSamples, setCapturedSamples] = useState<SamplingData[][]>([]);
   const [vertexIndex, setVertexIndex] = useState<number>(-1);
+  const [sampleIndex, setSampleIndex] = useState<number>(-1);
 
   const [totalSamplingPoints, setTotalSamplingPoints] = useState(0);
   const vertexIndexRef = useRef(-1);
@@ -139,6 +142,8 @@ export default function Sampling(props: SamplingProps) {
           detection: result.detection,
         },
       ];
+
+      //SamplingsTable.insert( newR[activeVertexIndex].at(-1)! );
 
       completenessPerSamplingPoint.set(newR.map((samples) => (samples?.length || 0) / MAX_SAMPLES_PER_POINT));
 
@@ -277,7 +282,10 @@ export default function Sampling(props: SamplingProps) {
                 alignItems: "center",
                 justifyContent: "center",
               }}
-              onPress={openTakePhoto}
+              onPress={()=>{
+                openTakePhoto()
+                setSampleIndex(capturedSamples[vertexIndex]?.length)
+              }}
             >
               <Icon source="leaf" size={45} color="rgb(26, 189, 23)" />
             </TouchableOpacity>
