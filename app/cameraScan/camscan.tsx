@@ -6,7 +6,7 @@ import { writeAsync } from '@lodev09/react-native-exify';
 
 import { ObjectDetection, ObjectDetectionResult } from '@/src/ObjectDetection';
 import { IconButton, MD3Colors } from "react-native-paper";
-import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import CameraPermisionUI from './CameraPermisionUI';
 import ScanControledCanvas from './ScanControledCanvas';
 import TopToolbar from './TopToolbar';
@@ -121,9 +121,8 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
   );
 
   return (
-    <CameraSafeArea>
-        {/* {!(detection && photoUri && hide) && ( */}
-
+    <SafeAreaProvider>
+      <View style={{ flex: 1, position: "relative", backgroundColor: "#091520" }}>
           <View style={[styles.stageLayer, { }]}>
                 <Camera
                   ref={camera}
@@ -170,7 +169,7 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
         {(isDetecting || isTakingPhoto) && (
           <View style={[styles.stageLayer, {
             top: insets.top,
-            backgroundColor: isTakingPhoto ? "rgba(0,0,0,0.5)" : "#363636"
+            backgroundColor: isTakingPhoto ? "rgba(255, 255, 255, 0.5)" : "#fffeef"
           }]}>
             <Text style={styles.overlayText}>
               {isTakingPhoto ? "Tomando Fotografía..." : "Analizando Fotografía..."}
@@ -179,7 +178,7 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
         )}
 
         {detection && photoUri && (
-          <View style={[styles.stageLayer, { top: insets.top, backgroundColor:  "#252525" }]}>
+          <View style={[styles.stageLayer, { top: insets.top,backgroundColor: "#fffeef" }]}>
             <ScanControledCanvas 
               detection={detection} 
               photoUri={photoUri} 
@@ -189,14 +188,15 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
           </View>
         )}
 
-      </CameraSafeArea>
+      </View>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'black' },
   stageLayer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
-  camera: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#fffeef" },
+  camera: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   buttonContainer: { position: "absolute", bottom: 10, width: "100%", flexDirection: "row" },
-  overlayText: { color: "white", fontSize: 24, fontWeight: 'bold' }
+  overlayText: { color: MD3Colors.neutral30, fontSize: 24, fontWeight: 'bold' }
 });

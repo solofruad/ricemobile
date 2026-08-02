@@ -6,6 +6,7 @@ import { ObjectDetectionResult } from "@/src/ObjectDetection";
 import { Directory, File, Paths } from "expo-file-system";
 import SaveModal from "./SaveModal";
 import ScanCanvas from "./ScanCanvas";
+import { MD3Colors } from "react-native-paper";
 
 type ScanCanvasProps = {
   detection: ObjectDetectionResult[];
@@ -75,7 +76,18 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
 
   return (
     <View style={{ flex: 1, display: "flex", gap:15 }}>
-      <Text style={{ color: "white", marginHorizontal: "auto", fontSize: 24, marginTop:15,zIndex:10, backgroundColor:  "#252525", paddingVertical:5, paddingHorizontal:8, borderRadius:5 }}>Resultados de Reconocimiento</Text>
+      <Text style={{ 
+        color: MD3Colors.neutral30, 
+        marginHorizontal: "auto", 
+        fontSize: 24, 
+        marginTop:15,
+        zIndex:10, 
+        backgroundColor: "#fdfbe1", 
+        paddingVertical:5, 
+        paddingHorizontal:8, 
+        borderRadius:5 }}>
+          Resultados de Reconocimiento
+        </Text>
       <View style={{ flex: 2, display: "flex", alignItems: "center" }}>
         <ScanCanvas detection={props.detection} photoUri={props.photoUri} useGestureHandler={true} />
       </View>
