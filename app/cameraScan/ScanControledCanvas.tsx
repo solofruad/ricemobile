@@ -74,13 +74,13 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
   };
 
   return (
-    <View style={{ width: "100%", height: "100%", bottom: 0, display: "flex", gap: 50 }}>
-      <Text style={{ color: "white", marginHorizontal: "auto", fontSize: 24 }}>Resultados de Reconocimiento</Text>
+    <View style={{ flex: 1, display: "flex", gap: 50 }}>
+      <Text style={{ color: "white", marginHorizontal: "auto", fontSize: 24, marginTop:15,zIndex:10, backgroundColor:  "#252525", paddingVertical:5, paddingHorizontal:8, borderRadius:5 }}>Resultados de Reconocimiento</Text>
       <View style={{ flex: 2, display: "flex", alignItems: "center" }}>
         <ScanCanvas detection={props.detection} photoUri={props.photoUri} useGestureHandler={true} />
       </View>
 
-      <View style={{ display: "flex", flexDirection: "row", gap: 15, marginHorizontal: "auto", marginBottom: 10 }}>
+      <View style={{ display: "flex", flexDirection: "row", gap: 15, marginHorizontal: "auto", marginBottom: 15 }}>
         <Button title="Finalizar" onPress={close} />
         <Button
           disabled={saved || saving}

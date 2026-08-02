@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Button, StyleSheet, Text, View } from 'react-native';
 import { Camera, CameraController, useCameraDevice, useCameraPermission, usePhotoOutput } from 'react-native-vision-camera';
 
 import { writeAsync } from '@lodev09/react-native-exify';
 
 import { ObjectDetection, ObjectDetectionResult } from '@/src/ObjectDetection';
 import { IconButton, MD3Colors } from "react-native-paper";
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import CameraPermisionUI from './CameraPermisionUI';
 import ScanControledCanvas from './ScanControledCanvas';
 import TopToolbar from './TopToolbar';
@@ -22,15 +22,16 @@ type CamScanProps = {
 
 function CameraSafeArea({children}: CameraSafeAreaProps) {
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, gap: 8, position: "relative", backgroundColor: "#091520"}}>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <View style={{ flex: 1, position: "relative", backgroundColor: "#091520" }}>
         {children}
-      </SafeAreaView>
+      </View>
     </SafeAreaProvider>
   );
 }
 
 export default function CamScan({ onResult, onClose }: CamScanProps) {
+  const insets = useSafeAreaInsets();
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [timesPermissionRejected, setTimesPermissionRejected] = useState(0);
   const [detection, setDetection] = useState<ObjectDetectionResult[] | null>(null);
@@ -121,25 +122,18 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
 
   return (
     <CameraSafeArea>
-        {!(detection && photoUri) ? (
-          <>
-            <View style={{ flex: 1}}>
+        {/* {!(detection && photoUri && hide) && ( */}
+
+          <View style={[styles.stageLayer, { }]}>
                 <Camera
                   ref={camera}
-                  style={{ 
-                    bottom: 0, 
-                    left: 0, 
-                    right: 0, 
-                    top: 0,
-                    backgroundColor: "#fffeef",
-                    position: "absolute" }}
+                  style={styles.camera}
                   device={device}
-                  isActive={true}
+                  isActive={!(detection && photoUri)}
                   resizeMode='contain'
                   outputs={[photoOutput]}
                   orientationSource='interface'
                 />
-            </View>
 
             <View style={styles.buttonContainer}>
               <IconButton 
@@ -171,11 +165,13 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
                 (camera.current?.controller as CameraController).setFocusLocked?.(n).catch((e:any) => console.log("Focus lock error:", e));
               }}
             />
-          </>
-        ) : null}
+          </View>
 
         {(isDetecting || isTakingPhoto) && (
-          <View style={[styles.overlay, { backgroundColor: isTakingPhoto ? "rgba(0,0,0,0.5)" : "#363636" }]}>
+          <View style={[styles.stageLayer, {
+            top: insets.top,
+            backgroundColor: isTakingPhoto ? "rgba(0,0,0,0.5)" : "#363636"
+          }]}>
             <Text style={styles.overlayText}>
               {isTakingPhoto ? "Tomando Fotografía..." : "Analizando Fotografía..."}
             </Text>
@@ -183,20 +179,24 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
         )}
 
         {detection && photoUri && (
-          <ScanControledCanvas 
-            detection={detection} 
-            photoUri={photoUri} 
-            deleteData={() => { setDetection(null); setPhotoUri(''); }}
-            onSaveResult={onResult ? handleResult : undefined}
-            onCancel={handleCancel}/> 
+          <View style={[styles.stageLayer, { top: insets.top, backgroundColor:  "#252525" }]}>
+            <ScanControledCanvas 
+              detection={detection} 
+              photoUri={photoUri} 
+              deleteData={() => { setDetection(null); setPhotoUri(''); }}
+              onSaveResult={onResult ? handleResult : undefined}
+              onCancel={handleCancel}/> 
+          </View>
         )}
+
       </CameraSafeArea>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'black' },
+  stageLayer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  camera: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "#fffeef" },
   buttonContainer: { position: "absolute", bottom: 10, width: "100%", flexDirection: "row" },
-  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   overlayText: { color: "white", fontSize: 24, fontWeight: 'bold' }
 });

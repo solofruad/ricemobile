@@ -1,11 +1,11 @@
-import { DetectionRecord } from "@/database/Database";
+import {DetectionRecord} from "@/database/tables/DetectionsTable"
 import SpeechText from "@/src/SpeechText";
 import { TtsVoices } from "@/src/TtsVoices";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TextInput, View } from "react-native";
-import { GiftedChat, IMessage, Message, MessageText, Send } from "react-native-gifted-chat";
+import { GiftedChat, IMessage,  MessageText, Send } from "react-native-gifted-chat";
 import { IconButton, MD3Colors } from "react-native-paper";
 import Bot from "./Bot";
 

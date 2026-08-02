@@ -47,7 +47,7 @@ export default function TopToolbar(props: TopToolbarProps){
         mode="contained"
         labelStyle={{fontSize:16}}
         textColor={showing ? "rgb(240, 240, 240)" : "rgb(87, 87, 87)"}
-        buttonColor={!showing ? "rgb(240, 240, 240)" : "rgb(87, 87, 87)"}
+        buttonColor={!showing ? "rgb(255, 255, 255)" : "rgb(87, 87, 87)"}
         onPress={showing ? fadeOutFn : fadeInFn}
         style={{ 
                         borderRadius: 45,
@@ -58,5 +58,5 @@ export default function TopToolbar(props: TopToolbarProps){
         Enfocar
       </Button>
     </View>
-  </>
+  </> 
 }
