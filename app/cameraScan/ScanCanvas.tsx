@@ -53,7 +53,22 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
 
   const canvasWithControls = (image && dims) ?  
     <GestureHandler size={{width:dims.x, height:dims.y,x:0,y:0}}>
-      {canvas}
+      {(matrix) => 
+        <Canvas ref={canvasRef} style={{width:dims.x, height:dims.y, backgroundColor:"black", marginTop:"auto", marginBottom:"auto", position:"relative"}}>
+          <Group matrix={matrix}>
+            <Group 
+              transform={[{rotate:(90 *Math.PI)/180}]} 
+              origin={{x:dims.x*0.5,y:dims.x*0.5}}>
+                <Image width={dims.y} height={dims.x} image={image}/>
+                <ScanRects rects={props.detection} scale={scale}/>
+            </Group>
+            <ScanLabels 
+              rects={props.detection} 
+              imageDims={{width:dims.x,height:dims.y}} 
+              scale={scale}/>
+          </Group>
+        </Canvas>
+      }
     </GestureHandler>
     : null ;
 

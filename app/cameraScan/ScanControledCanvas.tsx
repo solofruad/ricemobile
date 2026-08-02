@@ -74,7 +74,7 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
   };
 
   return (
-    <View style={{ flex: 1, display: "flex", gap: 50 }}>
+    <View style={{ flex: 1, display: "flex", gap:15 }}>
       <Text style={{ color: "white", marginHorizontal: "auto", fontSize: 24, marginTop:15,zIndex:10, backgroundColor:  "#252525", paddingVertical:5, paddingHorizontal:8, borderRadius:5 }}>Resultados de Reconocimiento</Text>
       <View style={{ flex: 2, display: "flex", alignItems: "center" }}>
         <ScanCanvas detection={props.detection} photoUri={props.photoUri} useGestureHandler={true} />
