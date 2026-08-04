@@ -9,6 +9,7 @@ type SliderProps = {
   steps:number,
   thumb:{width:number,height:number}
   onChange:(value:number)=>void
+  valueAt?:(t:number)=>number
 }
 export default function Slider(props:SliderProps){
   const [yTouchStart,setYTouchStart] = useState<number|null>(null)
@@ -27,7 +28,8 @@ export default function Slider(props:SliderProps){
   },[yTouchStart])
 
   const onChange = (newY:number)=>{
-    props.onChange(props.min + (newY/props.height)*interval);
+    const t = newY/props.height;
+    props.onChange(props.valueAt ? props.valueAt(t) : props.min + t*interval);
   }
 
   const updateY = (newY:number)=>{

@@ -46,3 +46,88 @@ index 55bfe79..3408378 100644
    }
  
    override fun lockCurrentFocus(): Promise<Unit> {
+diff --git a/node_modules/react-native-vision-camera/android/src/main/java/com/margelo/nitro/camera/hybrids/CameraFocusInfoModule.kt b/node_modules/react-native-vision-camera/android/src/main/java/com/margelo/nitro/camera/hybrids/CameraFocusInfoModule.kt
+new file mode 100644
+index 0000000..af7bb06c36e369df428fb1e8daaf9e8d51e2919c
+--- /dev/null
++++ b/node_modules/react-native-vision-camera/android/src/main/java/com/margelo/nitro/camera/hybrids/CameraFocusInfoModule.kt
+@@ -0,0 +1,40 @@
++package com.margelo.nitro.camera.hybrids
++
++import android.hardware.camera2.CameraCharacteristics
++import android.hardware.camera2.CameraManager
++import com.facebook.react.bridge.Promise
++import com.facebook.react.bridge.ReactApplicationContext
++import com.facebook.react.bridge.ReactContextBaseJavaModule
++import com.facebook.react.bridge.ReactMethod
++
++class CameraFocusInfoModule(reactContext: ReactApplicationContext) :
++  ReactContextBaseJavaModule(reactContext) {
++
++  companion object {
++    const val NAME = "CameraFocusInfoModule"
++  }
++
++  override fun getName(): String {
++    return NAME
++  }
++
++  @ReactMethod
++  fun getMinFocusDistance(promise: Promise) {
++    try {
++      val cameraManager =
++        reactApplicationContext.getSystemService(CameraManager::class.java)
++          ?: throw IllegalStateException("Camera service not available")
++      val backCameraId = cameraManager.cameraIdList.firstOrNull { cameraId ->
++        val characteristics = cameraManager.getCameraCharacteristics(cameraId)
++        characteristics.get(CameraCharacteristics.LENS_FACING) ==
++          CameraCharacteristics.LENS_FACING_BACK
++      }
++      val minFocusDistance = backCameraId
++        ?.let { cameraManager.getCameraCharacteristics(it) }
++        ?.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE)
++      promise.resolve(minFocusDistance?.toDouble())
++    } catch (e: Exception) {
++      promise.resolve(null)
++    }
++  }
++}
+diff --git a/node_modules/react-native-vision-camera/android/src/main/java/com/margelo/nitro/camera/VisionCameraPackage.kt b/node_modules/react-native-vision-camera/android/src/main/java/com/margelo/nitro/camera/VisionCameraPackage.kt
+index 072d24376df00e7923ae131a8a38b40e3c01c91f..845bef06e2e56db25612f07d9c42cc227715f297 100644
+--- a/node_modules/react-native-vision-camera/android/src/main/java/com/margelo/nitro/camera/VisionCameraPackage.kt
++++ b/node_modules/react-native-vision-camera/android/src/main/java/com/margelo/nitro/camera/VisionCameraPackage.kt
+@@ -3,7 +3,9 @@
+ import com.facebook.react.BaseReactPackage
+ import com.facebook.react.bridge.NativeModule
+ import com.facebook.react.bridge.ReactApplicationContext
++import com.facebook.react.module.model.ReactModuleInfo
+ import com.facebook.react.module.model.ReactModuleInfoProvider
+ import com.facebook.react.uimanager.ViewManager
++import com.margelo.nitro.camera.hybrids.CameraFocusInfoModule
+ import com.margelo.nitro.camera.views.HybridFrameRendererViewManager
+ import com.margelo.nitro.camera.views.HybridPreviewViewManager
+@@ -11,7 +13,22 @@
+ class VisionCameraPackage : BaseReactPackage() {
+   override fun getModule(
+     name: String,
+     reactContext: ReactApplicationContext,
+-  ): NativeModule? = null
++  ): NativeModule? = when (name) {
++    CameraFocusInfoModule.NAME -> CameraFocusInfoModule(reactContext)
++    else -> null
++  }
+ 
+-  override fun getReactModuleInfoProvider(): ReactModuleInfoProvider = ReactModuleInfoProvider { HashMap() }
++  override fun getReactModuleInfoProvider(): ReactModuleInfoProvider =
++    ReactModuleInfoProvider {
++      mapOf(
++        CameraFocusInfoModule.NAME to ReactModuleInfo(
++          CameraFocusInfoModule.NAME,
++          CameraFocusInfoModule::class.java.name,
++          false, // canOverrideExistingModule
++          false, // needsEagerInit
++          false, // isCxxModule
++          false, // isTurboModule
++        ),
++      )
++    }

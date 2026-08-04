@@ -3,6 +3,7 @@ import Slider from './Slider';
 import { Icon } from 'react-native-paper';
 
 const FOCUS_SLIDER_STEPS = 12;
+const FOCUS_CURVE_POWER = 0.5;
 
 type FocusSliderProps = {
   height:number,
@@ -37,7 +38,8 @@ const FocusSlider = (props:FocusSliderProps) => {
           max={props.minFocusDistance} 
           steps={FOCUS_SLIDER_STEPS} 
           thumb={{width:24,height:24}} 
-          onChange={(n)=>{props.setFocusDepth(n)}}/>
+          valueAt={(t) => 0.001 + (props.minFocusDistance - 0.001) * Math.pow(t, FOCUS_CURVE_POWER)}
+          onChange={(n)=>{console.log(n); props.setFocusDepth(n)}}/>
       </View>
       
       <View style={{width:width-5, height:width-5, marginHorizontal:"auto", marginBottom: 5, transform:[{rotate:"0deg"}]}}>

@@ -1,35 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Camera, CameraController, useCameraDevice, useCameraPermission, usePhotoOutput } from 'react-native-vision-camera';
 
 import { writeAsync } from '@lodev09/react-native-exify';
 
 import { ObjectDetection, ObjectDetectionResult } from '@/src/ObjectDetection';
+import { CameraFocusInfo } from '@/src/CameraFocusInfo';
 import { IconButton, MD3Colors } from "react-native-paper";
-import { SafeAreaProvider, initialWindowMetrics, useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider,  useSafeAreaInsets } from 'react-native-safe-area-context';
 import CameraPermisionUI from './CameraPermisionUI';
 import ScanControledCanvas from './ScanControledCanvas';
 import TopToolbar from './TopToolbar';
 
-const MIN_FOCUS_DISTANCE = 25;
-
-type CameraSafeAreaProps = {
-  children: any
-}
+const MIN_FOCUS_DISTANCE = 15;
 
 type CamScanProps = {
   onResult?: (result: { photo_dir: string; detection: ObjectDetectionResult[] }) => void;
   onClose?: () => void;
-}
-
-function CameraSafeArea({children}: CameraSafeAreaProps) {
-  return (
-    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-      <View style={{ flex: 1, position: "relative", backgroundColor: "#091520" }}>
-        {children}
-      </View>
-    </SafeAreaProvider>
-  );
 }
 
 export default function CamScan({ onResult, onClose }: CamScanProps) {
@@ -63,6 +50,12 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
 
   useEffect(() => {
     handleRequestPermission();
+    CameraFocusInfo.getMinFocusDistance().then((diopters: number | null) => {
+      if (typeof diopters === "number" && diopters > 0) {
+        //Por 1.3 para intentar forzar un poco más el enfoque, ya que la cámara puede estar descalibrada.
+        setMinFocusDistance(diopters*1.3); 
+      }
+    });
   }, []);
 
   const detectAndSetPhotoRoute = (uri: string) => {
