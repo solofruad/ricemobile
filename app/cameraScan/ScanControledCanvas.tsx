@@ -82,7 +82,7 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
         fontSize: 24, 
         marginTop:15,
         zIndex:10, 
-        backgroundColor: "#fdfbe1", 
+        backgroundColor: "#fffef4", 
         paddingVertical:5, 
         paddingHorizontal:8, 
         borderRadius:5 }}>
@@ -93,7 +93,7 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
       </View>
 
       <View style={{ display: "flex", flexDirection: "row", gap: 15, marginHorizontal: "auto", marginBottom: 15 }}>
-        <Button title="Finalizar" onPress={close} />
+        <Button title="Descartar" onPress={close} />
         <Button
           disabled={saved || saving}
           title={saving ? "Guardando" : saved ? "Guardado" : "Guardar"}

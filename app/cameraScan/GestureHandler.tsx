@@ -171,7 +171,7 @@ export default function GestureHandler ({ size, children }: GestureHandlerProps)
   return (
       <GestureHandlerRootView>
         <GestureDetector gesture={gesture}>
-          <View style={{ width: size.width, height: size.height }}>
+          <View style={{ width: size.width, height: size.height, margin:"auto" }}>
           {children(matrix)}
           </View>
         </GestureDetector>

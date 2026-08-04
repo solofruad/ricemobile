@@ -13,7 +13,6 @@ export default function MonitorModule(){
   },[]);
 
   const tryGoToSamplingMode = ()=>{
-    console.log("flexb");
     MonitorDrawingsTable.getRecent()
       .then( latestRecord => {
         if(!latestRecord) return;
@@ -21,7 +20,7 @@ export default function MonitorModule(){
         setUseSamplingMode(true);
       })
       .then(()=>{
-        console.log("flexing");
+
       })
   }
 

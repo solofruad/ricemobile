@@ -57,9 +57,9 @@ export default function Sampling(props: SamplingProps) {
   const [showGuide, setShowGuide] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
-  const [capturedSamples, setCapturedSamples] = useState<SamplingData[][]>([]);
-  const [vertexIndex, setVertexIndex] = useState<number>(-1);
-  const [sampleIndex, setSampleIndex] = useState<number>(-1);
+  const [capturedSamples, setCapturedSamples] = useState<SamplingData[][]>([]); // matriz De detecciones
+  const [vertexIndex, setVertexIndex] = useState<number>(-1); //indice punto de toma de muestras
+  const [sampleIndex, setSampleIndex] = useState<number>(-1); //indice mmuestra en punto de toma de muestras
 
   const [totalSamplingPoints, setTotalSamplingPoints] = useState(0);
   const vertexIndexRef = useRef(-1);
@@ -78,6 +78,9 @@ export default function Sampling(props: SamplingProps) {
   const samplingPathSharedData = useSharedValue<PolygonSharedValue>([]);
 
   useEffect(() => {
+    //TODO: check if already exists unfinished samplings related to the actual monitorDrawing
+    //TODO do it with the "processed" Monitorings table field
+
     const polygonList = polygon.current.generateLinkedList();
     const samplingList = samplingPath.current.generateLinkedList();
     polygonSharedData.set(polygonList);
@@ -143,7 +146,8 @@ export default function Sampling(props: SamplingProps) {
         },
       ];
 
-      //SamplingsTable.insert( newR[activeVertexIndex].at(-1)! );
+      console.log(newR[activeVertexIndex].at(-1));
+      // SamplingsTable.insert( newR[activeVertexIndex].at(-1)! );
 
       completenessPerSamplingPoint.set(newR.map((samples) => (samples?.length || 0) / MAX_SAMPLES_PER_POINT));
 
@@ -177,7 +181,7 @@ export default function Sampling(props: SamplingProps) {
         </View>
       </Animated.View>
 
-      {allPointsComplete ? (
+      {!allPointsComplete ? (
         <Animated.Text
           style={{
             position: "absolute",
@@ -190,7 +194,7 @@ export default function Sampling(props: SamplingProps) {
             opacity: animHelpTextOpacity,
           }}
         >
-          "SELECCIONE UN PUNTO DEL TRAZADO PARA TOMAR MUESTRAS"
+          SELECCIONE UN PUNTO DEL TRAZADO PARA TOMAR MUESTRAS
         </Animated.Text>
       ) : (
         <Animated.View

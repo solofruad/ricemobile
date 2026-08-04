@@ -2,7 +2,7 @@ import { useColorScheme, View } from 'react-native';
 import Slider from './Slider';
 import { Icon } from 'react-native-paper';
 
-
+const FOCUS_SLIDER_STEPS = 12;
 
 type FocusSliderProps = {
   height:number,
@@ -35,7 +35,7 @@ const FocusSlider = (props:FocusSliderProps) => {
           height={props.height} 
           min={0.001} 
           max={props.minFocusDistance} 
-          steps={10} 
+          steps={FOCUS_SLIDER_STEPS} 
           thumb={{width:24,height:24}} 
           onChange={(n)=>{props.setFocusDepth(n)}}/>
       </View>

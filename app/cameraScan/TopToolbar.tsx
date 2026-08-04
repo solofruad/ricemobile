@@ -1,7 +1,7 @@
 import { Animated, View } from "react-native"
 import FocusSlider from "./FocusSlider"
 import { useRef, useState } from "react"
-import { Button, Icon, MD3Colors, MD3DarkTheme } from "react-native-paper"
+import { Button, Icon } from "react-native-paper"
 
 type TopToolbarProps = {
   setFocusDepth: (n:number)=>void
@@ -38,7 +38,7 @@ export default function TopToolbar(props: TopToolbarProps){
       <Animated.View style={[{position:"absolute",bottom:120, right:-50},{transform: [{ translateX: fadeAnim }]}]}>
         <FocusSlider 
           setFocusDepth={props.setFocusDepth} 
-          height={270} 
+          height={290} 
           minFocusDistance={props.minFocusDistance}/>
       </Animated.View>
     <View style={{position:"absolute",right:16,bottom:30}}>

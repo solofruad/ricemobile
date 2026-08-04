@@ -73,9 +73,9 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
     : null ;
 
 
-  return <View style={{flex:2, display:"flex",alignItems:"center"}}>
-          {props.useGestureHandler ? canvasWithControls : canvas}
-        </View>
+  // return <View style={{flex:2, display:"flex",alignItems:"center"}}>
+          return <>{props.useGestureHandler ? canvasWithControls : canvas}</>
+        // </View>
 }
 
 export default ScanCanvas;
