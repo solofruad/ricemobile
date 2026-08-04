@@ -18,7 +18,7 @@ export default function TopToolbar(props: TopToolbarProps){
     props.onShow?.();
     setShowing(true);
     Animated.timing(fadeAnim, {
-      toValue: -60,
+      toValue: -150,
       duration: 200,
       useNativeDriver: true,
     }).start();
@@ -28,14 +28,14 @@ export default function TopToolbar(props: TopToolbarProps){
     props.onHide?.();
     setShowing(false);
     Animated.timing(fadeAnim, {
-      toValue: 0,
+      toValue: 20,
       duration: 300,
       useNativeDriver: true,
     }).start();
   }
 
   return <>
-      <Animated.View style={[{position:"absolute",bottom:120, right:-50},{transform: [{ translateX: fadeAnim }]}]}>
+      <Animated.View style={[{position:"absolute",bottom:120, right:-140},{transform: [{ translateX: fadeAnim }]}]}>
         <FocusSlider 
           setFocusDepth={props.setFocusDepth} 
           height={290} 

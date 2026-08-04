@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useColorScheme, View } from "react-native";
+import { Text, useColorScheme, View } from "react-native";
 
 type SliderProps = {
   width:number,
@@ -10,11 +10,13 @@ type SliderProps = {
   thumb:{width:number,height:number}
   onChange:(value:number)=>void
   valueAt?:(t:number)=>number
+  valueLabel?:(value:number)=>string
 }
 export default function Slider(props:SliderProps){
   const [yTouchStart,setYTouchStart] = useState<number|null>(null)
   const [yTouchEnd,setYTouchEnd] = useState<number>(0) 
   const [y,setY] = useState(0) 
+  const [labelWidth,setLabelWidth] = useState(0)
 
   const interval = props.max-props.min;
   const delta = props.height/props.steps;
@@ -51,6 +53,8 @@ export default function Slider(props:SliderProps){
     }
   }
 
+  const currentValue = props.valueAt ? props.valueAt(y/props.height) : props.min + (y/props.height)*interval;
+
   return <View style={{
     width:props.width,
     height:props.height,
@@ -60,6 +64,30 @@ export default function Slider(props:SliderProps){
     <View style={{height:"100%", marginHorizontal:"auto", width:12, backgroundColor:"rgb(150, 150, 150)",borderRadius:10, borderColor:"#161616", borderWidth:2}}>
       <View style={{width:"100%", height:y, backgroundColor:"white", position:"absolute",borderRadius:3}} />
     </View>
+
+    {props.valueLabel && <View style={{
+      position:"absolute",
+      top:y - props.thumb.height/2,
+      left:props.width/2 - props.thumb.width/2 - labelWidth - 4
+    }}>
+      <Text
+        numberOfLines={1}
+        onLayout={(e)=>{setLabelWidth(e.nativeEvent.layout.width)}}
+        style={{
+        fontSize:props.valueLabel(currentValue) == "∞"?30:19,
+        lineHeight:16,
+        textAlign:"center",
+        width:"135%",
+        maxWidth:"135%",
+        color:"#000000",
+        backgroundColor:"#ffffffcc",
+        borderRadius:3,
+        paddingHorizontal:3,
+        paddingVertical:1,
+        borderColor:"#00000055",
+        borderWidth:1
+      }}>{props.valueLabel(currentValue)}</Text>
+    </View>}
 
     <View 
       onTouchStart={(e)=>{setYTouchStart(e.nativeEvent.pageY -y)}}

@@ -101,7 +101,7 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
         />
       </View>
 
-      <SaveModal isModalVisible={isModalVisible} setIsModalVisible={setIsModalVisible} />
+      <SaveModal isModalVisible={isModalVisible} setIsModalVisible={setIsModalVisible} goBackCamera={close} />
     </View>
   );
 };

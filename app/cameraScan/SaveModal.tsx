@@ -4,9 +4,10 @@ import { Modal, View, Text, Button, StyleSheet } from "react-native";
 type SaveModalProps = {
   isModalVisible:boolean,
   setIsModalVisible:(value: boolean) => void
+  goBackCamera:() => void
 }
 
-export default function SaveModal ({isModalVisible,setIsModalVisible}: SaveModalProps){
+export default function SaveModal ({isModalVisible,setIsModalVisible,goBackCamera}: SaveModalProps){
   useEffect(() => {
     let timer: number;
     if (isModalVisible) {
@@ -14,8 +15,6 @@ export default function SaveModal ({isModalVisible,setIsModalVisible}: SaveModal
         setIsModalVisible(false);
       }, 3500);
     }
-    // Cleanup function to clear the timer if the component unmounts
-    // or if isModalVisible changes before the timer finishes
     return () => {
       if (timer) {
         clearTimeout(timer);
@@ -34,7 +33,7 @@ export default function SaveModal ({isModalVisible,setIsModalVisible}: SaveModal
             <View style={styles.centeredView}>
               <View style={styles.modalView}>
                 <Text style={styles.modalText}>El resultado del escaneo ha sido guardado.</Text>
-                <Button title="Cerrar" onPress={() => setIsModalVisible(false)} />
+                <Button title="Cerrar" onPress={() => {setIsModalVisible(false); goBackCamera();}} />
               </View>
             </View>
           </Modal>;
