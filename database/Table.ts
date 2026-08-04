@@ -97,7 +97,7 @@ export default class Table<T> {
       throw new Error("Data to insert in the database must to be a dictionary");
     }
     if(!this.insertDataHavesRequiredFields(data)){
-      throw new Error(`Data to insert in the database must to have all required fields: ${this.queryingConfig.requiredFields.join(", ")}`);
+      throw new Error(`Data to insert in the database must to have all required fields: ${this.queryingConfig.requiredFields.join(", ")}. But got ${Object.keys(data)}`);
     }
 
     return new Promise<number>((resolve, reject) => {

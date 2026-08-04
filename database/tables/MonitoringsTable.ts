@@ -14,7 +14,7 @@ export default class MonitoringsTable {
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         id_monitor_drawing INTEGER NOT NULL,
         processed   BOOLEAN DEFAULT FALSE,
-        created_at  TEXT DEFAULT (datetime('now','localtime'))
+        created_at  TEXT DEFAULT (datetime('now','localtime')),
         FOREIGN KEY (id_monitor_drawing) REFERENCES monitorDrawings(id) ON DELETE CASCADE
       );
     `,

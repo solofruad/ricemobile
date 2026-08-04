@@ -15,7 +15,7 @@ export type SamplingRecord = {
 export default class SamplingsTable {
   private static queryingConfig = {
     initTable: `
-      CREATE TABLE IF NOT EXISTS samples (
+      CREATE TABLE IF NOT EXISTS samplings (
         id_monitoring          INTEGER,
         index_sampling_point INTEGER NOT NULL,
         index_photo_in_sampling_point INTEGER NOT NULL,
@@ -23,12 +23,12 @@ export default class SamplingsTable {
         detection_json TEXT NOT NULL,
         created_at  TEXT DEFAULT (datetime('now','localtime')),
 
-        PRIMARY KEY (id_monitoring, index_sampling_point, index_photo_in_sampling_point),
+        PRIMARY KEY (id_monitoring, index_sampling_point, index_photo_in_sampling_point)
       );
     `,
     tableName: "samplings",
     searchField: "id",
-    requiredFields: ["id_monitoring", "index_sampling_point", "index_photo_in_sampling_point", "photo_dir", "detection_json"],
+    requiredFields: ["id_monitoring", "index_sampling_point", "index_photo_in_sampling_point", "photo_dir", "detection"],
     willUseSelectRecent: true,
   };
 
