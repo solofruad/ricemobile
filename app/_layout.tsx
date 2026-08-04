@@ -9,12 +9,12 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
-  const { loadPhase, ready } = useAppInitialization();
+  const { loadPhase, error, ready } = useAppInitialization();
 
   if (!ready) {
     return (
       <>
-        <LoadingScreen message={loadPhase} />
+        <LoadingScreen message={loadPhase} error={error} />
         <StatusBar style="auto" />
       </>
     );

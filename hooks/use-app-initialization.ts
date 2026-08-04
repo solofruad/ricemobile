@@ -28,6 +28,7 @@ function startTtsVoice(): Promise<void> {
 async function runInitializationStep(
   name: string,
   setLoadPhase: (phase: string) => void,
+  setErrorText: (errorText: string) => void,
   task: () => Promise<void>,
 ) {
   setLoadPhase(name);
@@ -35,11 +36,14 @@ async function runInitializationStep(
     await task();
   } catch (err) {
     console.log(`Error initializing ${name}`, err);
+    setErrorText(`Error inicializando la dependencia ${name}`)
+    throw err;
   }
 }
 
 export function useAppInitialization() {
   const [loadPhase, setLoadPhase] = useState("");
+  const [error, setErrorText] = useState<string|null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -47,17 +51,17 @@ export function useAppInitialization() {
 
     const initialize = async () => {
       new Database();
-      await runInitializationStep("DetectionsTable", setLoadPhase, () =>
+      await runInitializationStep("DetectionsTable", setLoadPhase, setErrorText, () =>
         DetectionsTable.initTable(),
       );
-      await runInitializationStep("MonitorDrawingsTable", setLoadPhase, () =>
+      await runInitializationStep("MonitorDrawingsTable", setLoadPhase, setErrorText, () =>
         MonitorDrawingsTable.initTable(),
       );
-      await runInitializationStep("TtsVoices", setLoadPhase, startTtsVoice);
-      await runInitializationStep("ObjectDetection", setLoadPhase, () =>
+      await runInitializationStep("TtsVoices", setLoadPhase, setErrorText, startTtsVoice);
+      await runInitializationStep("ObjectDetection", setLoadPhase, setErrorText, () =>
         ObjectDetection.initializeDetector(OBJECT_DETECTOR_MAX_RESULTS, OBJECT_DETECTOR_SCORE_THRESHOLD),
       );
-      await runInitializationStep("VoskSTT", setLoadPhase, () =>
+      await runInitializationStep("VoskSTT", setLoadPhase, setErrorText, () =>
         vosk.loadModel('model-es-es'),
       );
       if (mounted) setReady(true);
@@ -70,5 +74,5 @@ export function useAppInitialization() {
     };
   }, []);
 
-  return { loadPhase, ready };
+  return { loadPhase, error, ready };
 }
