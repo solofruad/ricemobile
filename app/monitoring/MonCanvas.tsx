@@ -19,7 +19,7 @@ interface MonCanvasProps {
 
   completenessPerSamplingPoint?: SharedValue<Array<number>>;
   markerPos?: SharedValue<Point | null>
-  hidePolygonVertexHandlers?: boolean
+  samplingMode?: boolean
 }
 
 // WORKLETS
@@ -37,12 +37,12 @@ const generatePath = (pointsList: PolygonSharedValue, isClosedPath: boolean) => 
   return skPath;
 };
 
-const generateHandlers = (pointsList: PolygonSharedValue, useExtraDistance: boolean = false, completenessPerPoint?: Array<number>) => {
+const generateHandlers = (pointsList: PolygonSharedValue, useExtraDistance: boolean = false, completenessPerPoint?: Array<number>, increasedRadius?: boolean) => {
   "worklet";
   const skPath = Skia.Path.Make();
   if (pointsList.length === 0) return skPath;
 
-  let medianDistanceBetweenPts = 8.5;
+  let medianDistanceBetweenPts = increasedRadius ? 12 : 9;
   if (useExtraDistance) {
     for (let i = 0; i < pointsList.length - 1; i++) {
       const nextIndex = (i + 1) % pointsList.length;
@@ -98,8 +98,8 @@ export default function MonCanvas(props: MonCanvasProps) {
   const gPath = useDerivedValue(() => generatePath(props.polygonSharedData.value, true));
   const gPathW = useDerivedValue(() => generatePath(props.samplingPathSharedData.value, false));
   const gVertexes = useDerivedValue(() => generateHandlers(props.polygonSharedData.value));
-  const gVertexesW = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence?.value || false));
-  const gVertexesWCompleteness = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence?.value || false, props.completenessPerSamplingPoint?.value));
+  const gVertexesW = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence?.value || false, undefined, props.samplingMode));
+  const gVertexesWCompleteness = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence?.value || false, props.completenessPerSamplingPoint?.value, props.samplingMode));
   const gMarker = useDerivedValue(()=> generateMarker(raf.value, (props.markerPos === undefined ? null : props.markerPos!.value)))
 
   const image = useImage(require("../../assets/textures/field.jpg"));
@@ -135,14 +135,15 @@ export default function MonCanvas(props: MonCanvasProps) {
             fit={"scaleDown"}
           />
         </SkPath>
+        {props.samplingMode && <SkPath path={gPath} color="black" style="fill" opacity={0.3} />}
         
         {/* Bordes y Vértices del Terreno */}
         <SkPath path={gPath} color="brown" style="stroke" strokeWidth={4} />
-        {!props.hidePolygonVertexHandlers && <SkPath path={gVertexes} color="orange" style="stroke" strokeWidth={3} />}
+        {!props.samplingMode && <SkPath path={gVertexes} color="orange" style="stroke" strokeWidth={3} />}
         
         {/* Ruta de Muestras (W-Path) y sus Vértices */}
         <SkPath path={gPathW} color="#2cac0f" style="stroke" strokeWidth={5} />
-        <SkPath path={gVertexesW} color="#a7ff3b" style="stroke" strokeWidth={3} />
+        <SkPath path={gVertexesW} color="#a6ff3a" style="stroke" strokeWidth={3} />
         {
           props.completenessPerSamplingPoint && <SkPath path={gVertexesWCompleteness} color="#3cff00" style="fill"/>
         }

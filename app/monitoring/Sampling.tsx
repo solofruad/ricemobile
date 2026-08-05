@@ -146,12 +146,12 @@ export default function Sampling(props: SamplingProps) {
         },
       ];
 
-      console.log(newR[activeVertexIndex].at(-1));
+      // console.log(newR[activeVertexIndex].at(-1));
       // SamplingsTable.insert( newR[activeVertexIndex].at(-1)! );
 
       completenessPerSamplingPoint.set(newR.map((samples) => (samples?.length || 0) / MAX_SAMPLES_PER_POINT));
 
-      console.log(newR);
+      // console.log(newR);
 
       return newR;
     });
@@ -176,7 +176,7 @@ export default function Sampling(props: SamplingProps) {
             markerPos={vertexToEdit}
             completenessPerSamplingPoint={completenessPerSamplingPoint}
             onTap={handleTap}
-            hidePolygonVertexHandlers={true}
+            samplingMode={true}
           />
         </View>
       </Animated.View>
