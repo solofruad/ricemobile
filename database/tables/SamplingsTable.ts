@@ -54,6 +54,14 @@ export default class SamplingsTable {
     return this.tableInstance.getRecent();
   }
 
+  static getByMonitoringId (id_monitoring: number) {
+    return this.tableInstance.getBy("id_monitoring", id_monitoring);
+  }
+
+  static deleteByMonitoringId (id_monitoring: number) {
+    return this.tableInstance.deleteBy("id_monitoring", id_monitoring);
+  }
+
   static delete (id: number) {
     return this.tableInstance.delete(id);
   };

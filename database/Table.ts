@@ -27,17 +27,18 @@ export type QueryingConfig = {
 
 
   const preprocessInputData = (data: any): any => {
-    const keys = Object.keys(data);
+    const result = { ...data };
+    const keys = Object.keys(result);
 
     for (const key of keys) {
-      const item = data[key];
+      const item = result[key];
 
       if (isObject(item) || Array.isArray(item)) {
-        data[key+"_json"] = JSON.stringify(item);
-        delete data[key];
+        result[key+"_json"] = JSON.stringify(item);
+        delete result[key];
       }
     }
-    return data;
+    return result;
   }
 
   const preprocessOutputData = (data: any): any => {
@@ -163,6 +164,22 @@ export default class Table<T> {
     }) as Promise<T | null>;
   }
 
+  getBy (field: string, value: string | number): Promise<Array<T>> {
+    return new Promise<Array<T>>((resolve, reject) => {
+      Database.getDB()
+      .then(db=>{
+        db.getAllAsync<T>(`SELECT * FROM ${this.queryingConfig.tableName} WHERE ${field} = ?`, [value])
+        .then( rows =>{
+          resolve( rows.map(row => (preprocessOutputData(row) as T)) );
+        })
+        .catch(err=>{
+          reject(err);
+        });
+      })
+      .catch(err=>reject(err));
+    });
+  }
+
   delete (id: number) {
     return new Promise<void>((resolve, reject) => {
       Database.getDB()
@@ -174,6 +191,20 @@ export default class Table<T> {
       })
     });
   };
+
+  deleteBy (field: string, value: string | number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      Database.getDB()
+      .then(db=>{
+        db.runAsync(`DELETE FROM ${this.queryingConfig.tableName} WHERE ${field} = ?`, [value])
+        .then(() => {
+          resolve();
+        })
+        .catch(err => reject(err));
+      })
+      .catch(err=>reject(err));
+    });
+  }
 
   clearAll () {
     return new Promise<void>((resolve, reject) => {
