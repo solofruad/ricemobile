@@ -138,7 +138,7 @@ export default function MonCanvas(props: MonCanvasProps) {
         {props.samplingMode && <SkPath path={gPath} color="black" style="fill" opacity={0.3} />}
         
         {/* Bordes y Vértices del Terreno */}
-        <SkPath path={gPath} color="brown" style="stroke" strokeWidth={4} />
+        <SkPath path={gPath} color="#d25151" style="stroke" strokeWidth={4} />
         {!props.samplingMode && <SkPath path={gVertexes} color="orange" style="stroke" strokeWidth={3} />}
         
         {/* Ruta de Muestras (W-Path) y sus Vértices */}
