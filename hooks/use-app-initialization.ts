@@ -1,6 +1,8 @@
 import Database from '@/database/Database';
 import DetectionsTable from '@/database/tables/DetectionsTable';
 import MonitorDrawingsTable from '@/database/tables/MonitorDrawingsTable';
+import MonitoringsTable from '@/database/tables/MonitoringsTable';
+import SamplingsTable from '@/database/tables/SamplingsTable';
 import { TtsVoices } from '@/src/TtsVoices';
 import { useEffect, useState } from 'react';
 import * as vosk from 'react-native-vosk';
@@ -56,6 +58,12 @@ export function useAppInitialization() {
       );
       await runInitializationStep("MonitorDrawingsTable", setLoadPhase, setErrorText, () =>
         MonitorDrawingsTable.initTable(),
+      );
+      await runInitializationStep("MonitoringsTable", setLoadPhase, setErrorText, () =>
+        MonitoringsTable.initTable(),
+      );
+      await runInitializationStep("SamplingsTable", setLoadPhase, setErrorText, () =>
+        SamplingsTable.initTable(),
       );
       await runInitializationStep("TtsVoices", setLoadPhase, setErrorText, startTtsVoice);
       await runInitializationStep("ObjectDetection", setLoadPhase, setErrorText, () =>
