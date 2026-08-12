@@ -86,6 +86,29 @@ export default function Sampling(props: SamplingProps) {
     polygonSharedData.set(polygonList);
     samplingPathSharedData.set(samplingList);
     setTotalSamplingPoints(samplingList.length);
+
+    const idMonitoring = props.drawingData?.id;
+    if (idMonitoring === undefined) return;
+
+    SamplingsTable.getByMonitoringId(idMonitoring)
+      .then(records => {
+        const matrix: SamplingData[][] = [];
+        records.forEach((record) => {
+          const point = record.index_sampling_point;
+          if (matrix[point] === undefined) {
+            matrix[point] = [];
+          }
+          matrix[point][record.index_photo_in_sampling_point] = {
+            id_monitoring: record.id_monitoring,
+            index_sampling_point: record.index_sampling_point,
+            index_photo_in_sampling_point: record.index_photo_in_sampling_point,
+            photo_dir: record.photo_dir,
+            detection: record.detection,
+          };
+        });
+        setCapturedSamples(matrix);
+        completenessPerSamplingPoint.set(matrix.map((samples) => (samples?.length || 0) / MAX_SAMPLES_PER_POINT));
+      });
   }, []);
 
   useEffect(() => {
@@ -128,6 +151,16 @@ export default function Sampling(props: SamplingProps) {
       return;
     }
 
+    const sample: SamplingData = {
+      id_monitoring: props.drawingData?.id || 0,
+      index_sampling_point: activeVertexIndex,
+      index_photo_in_sampling_point: capturedSamples[activeVertexIndex]?.length || 0,
+      photo_dir: result.photo_dir,
+      detection: result.detection,
+    };
+
+    SamplingsTable.insert(sample).catch((error) => console.error("Error al guardar la muestra", error));
+
     setCapturedSamples((prev) => {
       const newR = [...prev];
 
@@ -135,29 +168,15 @@ export default function Sampling(props: SamplingProps) {
         newR[activeVertexIndex] = [];
       }
 
-      newR[activeVertexIndex] = [
-        ...newR[activeVertexIndex],
-        {
-          id_monitoring: props.drawingData?.id || 0,
-          index_sampling_point: activeVertexIndex,
-          index_photo_in_sampling_point: newR[activeVertexIndex].length,
-          photo_dir: result.photo_dir,
-          detection: result.detection,
-        },
-      ];
-
-      // console.log(newR[activeVertexIndex].at(-1));
-      // SamplingsTable.insert( newR[activeVertexIndex].at(-1)! );
+      newR[activeVertexIndex] = [...newR[activeVertexIndex], sample];
 
       completenessPerSamplingPoint.set(newR.map((samples) => (samples?.length || 0) / MAX_SAMPLES_PER_POINT));
-
-      // console.log(newR);
 
       return newR;
     });
 
     setShowCamera(false);
-  }, [props.drawingData?.id]);
+  }, [props.drawingData?.id, capturedSamples]);
 
   const allPointsComplete =
     totalSamplingPoints > 0 &&
@@ -268,7 +287,7 @@ export default function Sampling(props: SamplingProps) {
               }}
             >
               <Text style={{ color: MD3Colors.neutral30, fontSize: 20, fontWeight: "bold" }}>
-                {sample.detection.length}
+                {sample.detection?.length}
               </Text>
               <Text style={{ color: MD3Colors.neutral30, fontSize: 12, textAlign: "center" }}>
                 detección{sample.detection.length === 1 ? "" : "es"}
@@ -317,6 +336,11 @@ export default function Sampling(props: SamplingProps) {
               title="Sí, realizar rediseño"
               onPress={() => {
                 setShowResetModal(false);
+                if (props.drawingData?.id != null) {
+                  SamplingsTable.deleteByMonitoringId(props.drawingData.id).catch((error) =>
+                    console.error("Error al borrar las muestras", error)
+                  );
+                }
                 props.forcefullyGoToEditMode();
               }}
             />
