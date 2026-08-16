@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { Modal, View, Text, Button, StyleSheet } from "react-native";
+import { Modal, View, Text, StyleSheet } from "react-native";
+import AppButton from "@/components/ui/app-button";
 
 type SaveModalProps = {
   isModalVisible:boolean,
@@ -33,7 +34,7 @@ export default function SaveModal ({isModalVisible,setIsModalVisible,goBackCamer
             <View style={styles.centeredView}>
               <View style={styles.modalView}>
                 <Text style={styles.modalText}>El resultado del escaneo ha sido guardado.</Text>
-                <Button title="Cerrar" onPress={() => {setIsModalVisible(false); goBackCamera();}} />
+                <AppButton title="Cerrar" onPress={() => {setIsModalVisible(false); goBackCamera();}} />
               </View>
             </View>
           </Modal>;

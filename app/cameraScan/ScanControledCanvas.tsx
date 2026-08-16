@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Button, Text, View } from "react-native";
+import { Text, View } from "react-native";
+
+import AppButton from "@/components/ui/app-button";
 
 import DetectionsTable from "@/database/tables/DetectionsTable";
 import { ObjectDetectionResult } from "@/src/ObjectDetection";
@@ -93,8 +95,8 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
       </View>
 
       <View style={{ display: "flex", flexDirection: "row", gap: 15, marginHorizontal: "auto", marginBottom: 15 }}>
-        <Button title="Descartar" onPress={close} />
-        <Button
+        <AppButton title="Descartar" onPress={close} />
+        <AppButton
           disabled={saved || saving}
           title={saving ? "Guardando" : saved ? "Guardado" : "Guardar"}
           onPress={save}

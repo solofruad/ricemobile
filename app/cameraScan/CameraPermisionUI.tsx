@@ -1,4 +1,5 @@
-import { Button, View, Text } from "react-native";
+import { View, Text } from "react-native";
+import AppButton from "@/components/ui/app-button";
 import PermissionModal from "./PermissionModal";
 import { useState } from "react";
 
@@ -25,7 +26,7 @@ export default function CameraPermisionUI(props:CameraPermisionUIProps){
         Actualmente, no se tiene permiso para el uso de la cámara del dispositivo
       </Text>
       <View style={{marginHorizontal:"auto"}}>
-        <Button 
+        <AppButton 
           title="Comprobar Permiso" 
           onPress={checkPermission} />
       </View>

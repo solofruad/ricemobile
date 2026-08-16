@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Dimensions, LayoutChangeEvent, Text, ToastAndroid, Vibration, View } from "react-native";
+import { Dimensions, LayoutChangeEvent, Text, ToastAndroid, Vibration, View } from "react-native";
 import { MD2Colors, MD3Colors } from "react-native-paper";
 import { useSharedValue } from "react-native-reanimated";
 import { Modal } from "react-native-reanimated-modal";
@@ -14,6 +14,7 @@ import Path, { VERTEX_OPERATION } from "./path/Path";
 import Vertex from "./path/Vertex";
 import MonitorDrawingsTable, { MonitorDrawingRecord } from "@/database/tables/MonitorDrawingsTable";
 import MonitoringsTable from "@/database/tables/MonitoringsTable";
+import AppButton from "@/components/ui/app-button";
 
 export type MonitorDrawingData = {
   polygon: PolygonSharedValue;
@@ -328,7 +329,7 @@ export default function MonEdit(props: MonEditProps) {
           <Text style={{ fontSize: 22, fontWeight: "bold", marginHorizontal: "auto" }}>Reiniciar Trazado</Text>
           <Text style={{ fontSize: 16, textAlign: "center", marginVertical: 30 }}>¿Está seguro de que desea reiniciar el polígono?</Text>
           <View style={{ display: "flex", flexDirection: "row", marginTop: 10, marginHorizontal: "auto", gap: 10 }}>
-            <Button
+            <AppButton
               title="Aceptar"
               onPress={() => {
                 history.current = new History();
@@ -338,7 +339,7 @@ export default function MonEdit(props: MonEditProps) {
                 setShowResetModal(false);
               }}
             />
-            <Button title="Cancelar" onPress={() => setShowResetModal(false)} />
+            <AppButton title="Cancelar" onPress={() => setShowResetModal(false)} />
           </View>
         </View>
       </Modal>
@@ -354,7 +355,7 @@ export default function MonEdit(props: MonEditProps) {
             El trazado no podrá ser editado una vez iniciado el monitoreo, pero podrá ser visualizado y utilizado para el seguimiento.
           </Text>
           <View style={{ display: "flex", flexDirection: "column", marginTop: 25,  marginBottom:10, marginHorizontal: "auto", gap: 10 }}>
-            <Button
+            <AppButton
               title="Sí, iniciar monitoreo"
               onPress={() => {
                 setShowEditEndModal(false);
@@ -367,7 +368,7 @@ export default function MonEdit(props: MonEditProps) {
                   .catch(error => console.error("Error al iniciar el monitoreo", error));
               }}
             />
-            <Button title="No, seguir editando" onPress={() => setShowEditEndModal(false)} />
+            <AppButton title="No, seguir editando" onPress={() => setShowEditEndModal(false)} />
           </View>
         </View>
       </Modal>

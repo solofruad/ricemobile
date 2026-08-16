@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { Button, View, Modal, Linking, Alert, Text, StyleSheet } from "react-native";
+import { View, Modal, Linking, Alert, Text, StyleSheet } from "react-native";
+import AppButton from "@/components/ui/app-button";
 
 type PermissionModalProps = {
   visible:boolean
@@ -45,11 +46,11 @@ const PermissionModal = (props:PermissionModalProps) => {
               Porfavor habilite el permiso de uso de la camara en los Ajustes del dispositivo.
             </Text>
             <View style={styles.botonera}>
-              <Button 
+              <AppButton 
                 title="Ir a Ajustes" 
                 onPress={openSettings}
               />
-              <Button title="Cerrar" onPress={toggleModal} />
+              <AppButton title="Cerrar" onPress={toggleModal} />
             </View>
           </View>
         </View>
