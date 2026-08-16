@@ -1,9 +1,10 @@
 import { Point } from "@/types/types";
-import { Canvas, ImageShader, Path as SkPath, Skia, useClock, useImage } from "@shopify/react-native-skia";
+import { Canvas, ImageShader, Path as SkPath, Skia, useClock } from "@shopify/react-native-skia";
 import React, { useEffect, useState } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import { SharedValue, useDerivedValue } from "react-native-reanimated";
 import GestureHandler from "./drawingUtilities/GestureHandler";
+import { useFieldTexture } from "./drawingUtilities/texture";
 import { PolygonSharedValue } from "./MonEdit";
 
 const MARKER_SIZE = 18;
@@ -102,7 +103,7 @@ export default function MonCanvas(props: MonCanvasProps) {
   const gVertexesWCompleteness = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence?.value || false, props.completenessPerSamplingPoint?.value, props.samplingMode));
   const gMarker = useDerivedValue(()=> generateMarker(raf.value, (props.markerPos === undefined ? null : props.markerPos!.value)))
 
-  const image = useImage(require("../../assets/textures/field.jpg"));
+  const image = useFieldTexture();
 
 
   if (!dims || !image) {
@@ -131,7 +132,7 @@ export default function MonCanvas(props: MonCanvasProps) {
             image={image}
             tx="repeat"
             ty="repeat"
-            rect={{ x: 0, y: 0, width: 450, height: 1900 }}
+            rect={{ x: 0, y: 0, width: 450, height: 800 }}
             fit={"scaleDown"}
           />
         </SkPath>

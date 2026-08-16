@@ -8,6 +8,7 @@ import { MonitorDrawingRecord } from "@/database/tables/MonitorDrawingsTable";
 import { ObjectDetectionResult } from "@/src/ObjectDetection";
 import { Point } from "@/types/types";
 import CamScan from "../cameraScan/camscan";
+import ScanCanvas from "../cameraScan/ScanCanvas";
 import MonCanvas from "./MonCanvas";
 import EditorActionButton from "./components/EditorActionButton";
 import EditorPanel from "./components/EditorPanel";
@@ -58,6 +59,7 @@ export default function Sampling(props: SamplingProps) {
   const [showResetModal, setShowResetModal] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [capturedSamples, setCapturedSamples] = useState<SamplingData[][]>([]); // matriz De detecciones
+  const [selectedSample, setSelectedSample] = useState<SamplingData | null>(null);
   const [vertexIndex, setVertexIndex] = useState<number>(-1); //indice punto de toma de muestras
   const [sampleIndex, setSampleIndex] = useState<number>(-1); //indice mmuestra en punto de toma de muestras
 
@@ -273,8 +275,9 @@ export default function Sampling(props: SamplingProps) {
           showsHorizontalScrollIndicator={false}
         >
           {capturedSamples[vertexIndex]?.map((sample, index) => (
-            <View
+            <TouchableOpacity
               key={`${sample.photo_dir}-${index}`}
+              onPress={() => setSelectedSample(sample)}
               style={{
                 borderColor: "rgb(189, 109, 23)",
                 borderWidth: 4,
@@ -290,9 +293,9 @@ export default function Sampling(props: SamplingProps) {
                 {sample.detection?.length}
               </Text>
               <Text style={{ color: MD3Colors.neutral30, fontSize: 12, textAlign: "center" }}>
-                detección{sample.detection.length === 1 ? "" : "es"}
+                detección{sample.detection?.length === 1 ? "" : "es"}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))}
           {(capturedSamples[vertexIndex]?.length < MAX_SAMPLES_PER_POINT || !capturedSamples[vertexIndex]) && (
             <TouchableOpacity
@@ -348,6 +351,36 @@ export default function Sampling(props: SamplingProps) {
           </View>
         </View>
       </Modal>
+
+      {selectedSample && (
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, backgroundColor: "#fffeef", display: "flex", gap: 15 }}>
+          <Text
+            style={{
+              color: MD3Colors.neutral30,
+              marginHorizontal: "auto",
+              fontSize: 24,
+              marginTop: 15,
+              zIndex: 10,
+              backgroundColor: "#fffef4",
+              paddingVertical: 5,
+              paddingHorizontal: 8,
+              borderRadius: 5,
+            }}
+          >
+            Resultados de Reconocimiento
+          </Text>
+          <View style={{ flex: 2, display: "flex", alignItems: "center" }}>
+            <ScanCanvas
+              detection={selectedSample.detection}
+              photoUri={selectedSample.photo_dir}
+              useGestureHandler={true}
+            />
+          </View>
+          <View style={{ display: "flex", flexDirection: "row", marginHorizontal: "auto", marginBottom: 15 }}>
+            <Button title="Cerrar" onPress={() => setSelectedSample(null)} />
+          </View>
+        </View>
+      )}
 
       {showCamera && (
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
