@@ -31,7 +31,7 @@ interface GestureHandlerProps {
   children: (matrix: SharedValue<Matrix4>) => React.ReactNode;
 }
 
-export default function GestureHandler ({ size, children }: GestureHandlerProps) {
+export default function DetectionsCanvasGestureHandler ({ size, children }: GestureHandlerProps) {
   const matrix = useSharedValue<Matrix4>(Matrix4());
 
   const prevTranslation = useSharedValue({ x: 0, y: 0 });

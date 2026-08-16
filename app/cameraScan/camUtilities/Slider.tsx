@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, useColorScheme, View } from "react-native";
+import { Text, View } from "react-native";
 
 type SliderProps = {
   width:number,

@@ -1,9 +1,9 @@
 import { Canvas, Group, Image, Skia, SkImage } from "@shopify/react-native-skia";
 import { useEffect, useRef, useState } from "react";
-import { Dimensions, View } from "react-native";
-import GestureHandler from "./GestureHandler";
-import ScanLabels from "./ScanLabels";
-import ScanRects from "./ScanRects";
+import { Dimensions } from "react-native";
+import DetectionsCanvasGestureHandler from "./detectionsUtilities/DetectionsCanvasGestureHandler";
+import ScanLabels from "./detectionsUtilities/ScanLabels";
+import ScanRects from "./detectionsUtilities/ScanRects";
 
 
 import { ObjectDetectionResult } from '@/src/ObjectDetection';
@@ -52,7 +52,7 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
     : null ;
 
   const canvasWithControls = (image && dims) ?  
-    <GestureHandler size={{width:dims.x, height:dims.y,x:0,y:0}}>
+    <DetectionsCanvasGestureHandler size={{width:dims.x, height:dims.y,x:0,y:0}}>
       {(matrix) => 
         <Canvas ref={canvasRef} style={{width:dims.x, height:dims.y,  marginTop:"auto", marginBottom:"auto", position:"relative", backgroundColor:"#404e5c35"}}>
           <Group matrix={matrix}>
@@ -69,7 +69,7 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
           </Group>
         </Canvas>
       }
-    </GestureHandler>
+    </DetectionsCanvasGestureHandler>
     : null ;
 
 

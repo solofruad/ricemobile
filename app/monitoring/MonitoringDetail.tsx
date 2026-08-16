@@ -8,7 +8,7 @@ import { Point } from "@/types/types";
 import ScanCanvas from "../cameraScan/ScanCanvas";
 import MonCanvas from "./MonCanvas";
 import Path from "./path/Path";
-import { PolygonSharedValue } from "./MonEdit";
+import { PolygonSharedValue } from "./MonCanvas";
 import { MonitoringDetailData } from "./MonitoringsPanel";
 import { SamplingData, summarizeDetections, computeHealthPerPoint } from "./samplingUtils";
 

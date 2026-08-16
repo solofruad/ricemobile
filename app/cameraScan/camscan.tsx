@@ -8,7 +8,7 @@ import { ObjectDetection, ObjectDetectionResult } from '@/src/ObjectDetection';
 import { CameraFocusInfo } from '@/src/CameraFocusInfo';
 import { IconButton, MD3Colors } from "react-native-paper";
 import { SafeAreaProvider,  useSafeAreaInsets } from 'react-native-safe-area-context';
-import CameraPermisionUI from './CameraPermisionUI';
+import CameraPermisionUI from './camUtilities/CameraPermisionUI';
 import ScanControledCanvas from './ScanControledCanvas';
 import TopToolbar from './TopToolbar';
 

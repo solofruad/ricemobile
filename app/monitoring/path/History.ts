@@ -1,7 +1,7 @@
 import { Point } from "@/types/types"
-import { EDIT_PATH } from "../MonCanvas"
 import Path from "./Path";
 import Vertex from "./Vertex";
+import { EDIT_PATH } from "../MonEdit";
 
 export enum PATH_OP {
   INSERT,

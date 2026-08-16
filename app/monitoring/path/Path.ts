@@ -1,7 +1,7 @@
 import { Point } from "@/types/types";
 import Edge from "./Edge";
 import Vertex from "./Vertex";
-import { PolygonSharedValue } from "../MonEdit";
+import { PolygonSharedValue } from "../MonCanvas";
 
 export enum VERTEX_OPERATION {
   VERTEX_ADDED,

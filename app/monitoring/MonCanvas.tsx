@@ -3,9 +3,11 @@ import { Canvas, ImageShader, Path as SkPath, Skia, useClock } from "@shopify/re
 import React, { useEffect, useState } from "react";
 import { Dimensions, StyleSheet, View } from "react-native";
 import { SharedValue, useDerivedValue } from "react-native-reanimated";
-import GestureHandler from "./drawingUtilities/GestureHandler";
+import MonitoringCanvasGestureHandler from "./drawingUtilities/MonitoringCanvasGestureHandler";
 import { useFieldTexture } from "./drawingUtilities/texture";
-import { PolygonSharedValue } from "./MonEdit";
+
+export type VertexSharedValue = { x: number; y: number; id: string };
+export type PolygonSharedValue = Array<VertexSharedValue>;
 
 const MARKER_SIZE = 18;
 
@@ -128,7 +130,7 @@ export default function MonCanvas(props: MonCanvasProps) {
   }
 
   return (
-    <GestureHandler
+    <MonitoringCanvasGestureHandler
       panStart={props.onPanStart}
       pan={props.onPan}
       panEnd={props.onPanEnd}
@@ -175,7 +177,7 @@ export default function MonCanvas(props: MonCanvasProps) {
         
         <SkPath path={gMarker} color="#1dbfe0" style="fill" strokeWidth={5} />
       </Canvas>
-    </GestureHandler>
+    </MonitoringCanvasGestureHandler>
   );
 }
 

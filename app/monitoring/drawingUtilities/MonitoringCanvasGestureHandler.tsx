@@ -12,7 +12,7 @@ interface GestureHandlerProps {
   children: any;
 }
 
-export default function GestureHandler (props: GestureHandlerProps) {
+export default function MonitoringCanvasGestureHandler (props: GestureHandlerProps) {
 
   const pan = Gesture.Pan()
     .minDistance(11)

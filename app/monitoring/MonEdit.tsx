@@ -5,7 +5,7 @@ import { useSharedValue } from "react-native-reanimated";
 import { Modal } from "react-native-reanimated-modal";
 
 import { Point } from "@/types/types";
-import MonCanvas from "./MonCanvas"; // Importamos el componente visual
+import MonCanvas, {VertexSharedValue, PolygonSharedValue} from "./MonCanvas"; // Importamos el componente visual
 import EditorActionButton from "./components/EditorActionButton";
 import EditorPanel from "./components/EditorPanel";
 import MonGuide from "./components/MonGuide";
@@ -54,9 +54,6 @@ export enum EDIT_PATH {
   POLYGON,
   W_PATH,
 }
-
-export type VertexSharedValue = { x: number; y: number; id: string };
-export type PolygonSharedValue = Array<VertexSharedValue>;
 
 type MonEditProps = {
   tryGoToSamplingMode: (monitoringId?: number) => void;

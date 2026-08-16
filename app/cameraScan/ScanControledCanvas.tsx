@@ -6,7 +6,7 @@ import AppButton from "@/components/ui/app-button";
 import DetectionsTable from "@/database/tables/DetectionsTable";
 import { ObjectDetectionResult } from "@/src/ObjectDetection";
 import { Directory, File, Paths } from "expo-file-system";
-import SaveModal from "./SaveModal";
+import SaveModal from "./detectionsUtilities/SaveModal";
 import ScanCanvas from "./ScanCanvas";
 import { MD3Colors } from "react-native-paper";
 
