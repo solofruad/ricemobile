@@ -2,12 +2,14 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import MonEdit from "./MonEdit";
 import { useEffect, useState } from "react";
 import MonitorDrawingsTable, { MonitorDrawingRecord } from "@/database/tables/MonitorDrawingsTable";
+import MonitoringsTable from "@/database/tables/MonitoringsTable";
 import Sampling from "./Sampling";
 import { loadFieldTexture } from "./drawingUtilities/texture";
 
 export default function MonitorModule(){
   const [useSamplingMode, setUseSamplingMode] = useState(false);
   const [drawingData, setDrawingData] = useState<MonitorDrawingRecord|null>(null);
+  const [monitoringId, setMonitoringId] = useState<number|null>(null);
   const [ready, setReady] = useState(false);
   useEffect(()=>{
     loadFieldTexture().catch(()=>{});
@@ -15,18 +17,35 @@ export default function MonitorModule(){
       .then( latestRecord => {
         if(!latestRecord) return;
         setDrawingData(latestRecord);
-        setUseSamplingMode(true);
+        return MonitoringsTable.getActiveByDrawingId(latestRecord.id)
+          .then(activeMonitoring => {
+            if(activeMonitoring){
+              setMonitoringId(activeMonitoring.id);
+              setUseSamplingMode(true);
+            } else {
+              setUseSamplingMode(true);
+            }
+          });
       })
       .catch(error => console.error("Error al cargar el trazado reciente", error))
       .finally(()=>setReady(true));
   },[]);
 
-  const tryGoToSamplingMode = ()=>{
+  const tryGoToSamplingMode = (newMonitoringId?: number)=>{
+    if (newMonitoringId !== undefined) {
+      setMonitoringId(newMonitoringId);
+      setUseSamplingMode(true);
+      return;
+    }
     MonitorDrawingsTable.getRecent()
       .then( latestRecord => {
         if(!latestRecord) return;
         setDrawingData(latestRecord);
-        setUseSamplingMode(true);
+        return MonitoringsTable.getActiveByDrawingId(latestRecord.id)
+          .then(activeMonitoring => {
+            if(activeMonitoring) setMonitoringId(activeMonitoring.id);
+            setUseSamplingMode(true);
+          });
       })
       .catch(error => console.error("Error al cargar el trazado reciente", error));
   }
@@ -48,6 +67,7 @@ export default function MonitorModule(){
         <Sampling 
           forcefullyGoToEditMode={forcefullyGoToEditMode}
           drawingData={drawingData}
+          monitoringId={monitoringId}
         /> :
         <MonEdit tryGoToSamplingMode={tryGoToSamplingMode}
           drawingData={drawingData}

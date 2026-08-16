@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Button, ScrollView, Text, TouchableOpacity, Vibration, View } from "react-native";
+import { ScrollView, Text, ToastAndroid, TouchableOpacity, Vibration, View } from "react-native";
 import { Icon, MD3Colors } from "react-native-paper";
 import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
 import { Modal } from "react-native-reanimated-modal";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { MonitorDrawingRecord } from "@/database/tables/MonitorDrawingsTable";
 import { ObjectDetectionResult } from "@/src/ObjectDetection";
@@ -16,18 +17,15 @@ import MonGuide from "./components/MonGuide";
 import Path from "./path/Path";
 import Vertex from "./path/Vertex";
 import SamplingsTable from "@/database/tables/SamplingsTable";
+import MonitoringsTable from "@/database/tables/MonitoringsTable";
+import { buildSamplingsMatrix, SamplingData } from "./samplingUtils";
+import MonitoringsPanel, { MonitoringDetailData } from "./MonitoringsPanel";
+import MonitoringDetail from "./MonitoringDetail";
+import AppButton from "@/components/ui/app-button";
 
 const MAX_SAMPLES_PER_POINT = 5;
 
 const PANEL_SPRING = { damping: 18, stiffness: 180, mass: 0.6 };
-
-export type SamplingData = {
-  id_monitoring: number;
-  index_sampling_point: number;
-  index_photo_in_sampling_point: number;
-  photo_dir: string;
-  detection: Array<ObjectDetectionResult>;
-};
 
 type VertexSharedValue = { x: number; y: number; id: string };
 type PolygonSharedValue = Array<VertexSharedValue>;
@@ -35,31 +33,19 @@ type PolygonSharedValue = Array<VertexSharedValue>;
 type SamplingProps = {
   forcefullyGoToEditMode: () => void;
   drawingData: MonitorDrawingRecord | null;
+  monitoringId?: number | null;
 };
 
-const detectionsListing = (tableInfo: SamplingData[][]) => { //TODO: IMPLEMENTAR
-  return tableInfo
-  .flat() //Per sample
-	.map(
-		e => {
-      //TODO: hacer unico por si en una misma muestra se detecta mas de una vez la misma enfermedad
-			return e.detection.map( //per detection in each sample
-				h => ({
-					detection:h.labels[0], 
-					index_sampling_point:e.index_sampling_point, 
-					index_photo_in_sampling_point: e.index_photo_in_sampling_point
-				})
-			)
-	})
-	.flat()
-}
-
 export default function Sampling(props: SamplingProps) {
+  const insets = useSafeAreaInsets();
   const [showGuide, setShowGuide] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [showMonitoringsPanel, setShowMonitoringsPanel] = useState(false);
+  const [selectedMonitoring, setSelectedMonitoring] = useState<MonitoringDetailData | null>(null);
   const [capturedSamples, setCapturedSamples] = useState<SamplingData[][]>([]); // matriz De detecciones
   const [selectedSample, setSelectedSample] = useState<SamplingData | null>(null);
+  const [monitoringId, setMonitoringId] = useState<number | null>(props.monitoringId ?? null);
   const [vertexIndex, setVertexIndex] = useState<number>(-1); //indice punto de toma de muestras
   const [sampleIndex, setSampleIndex] = useState<number>(-1); //indice mmuestra en punto de toma de muestras
 
@@ -80,37 +66,44 @@ export default function Sampling(props: SamplingProps) {
   const samplingPathSharedData = useSharedValue<PolygonSharedValue>([]);
 
   useEffect(() => {
-    //TODO: check if already exists unfinished samplings related to the actual monitorDrawing
-    //TODO do it with the "processed" Monitorings table field
-
     const polygonList = polygon.current.generateLinkedList();
     const samplingList = samplingPath.current.generateLinkedList();
     polygonSharedData.set(polygonList);
     samplingPathSharedData.set(samplingList);
     setTotalSamplingPoints(samplingList.length);
 
-    const idMonitoring = props.drawingData?.id;
-    if (idMonitoring === undefined) return;
+    const idDrawing = props.drawingData?.id;
+    if (idDrawing === undefined) return;
 
-    SamplingsTable.getByMonitoringId(idMonitoring)
-      .then(records => {
-        const matrix: SamplingData[][] = [];
-        records.forEach((record) => {
-          const point = record.index_sampling_point;
-          if (matrix[point] === undefined) {
-            matrix[point] = [];
-          }
-          matrix[point][record.index_photo_in_sampling_point] = {
-            id_monitoring: record.id_monitoring,
-            index_sampling_point: record.index_sampling_point,
-            index_photo_in_sampling_point: record.index_photo_in_sampling_point,
-            photo_dir: record.photo_dir,
-            detection: record.detection,
-          };
+    const loadSamples = (idMonitoring: number) => {
+      SamplingsTable.getByMonitoringId(idMonitoring)
+        .then(records => {
+          const matrix = buildSamplingsMatrix(records);
+          setCapturedSamples(matrix);
+          completenessPerSamplingPoint.set(matrix.map((samples) => (samples?.length || 0) / MAX_SAMPLES_PER_POINT));
         });
-        setCapturedSamples(matrix);
-        completenessPerSamplingPoint.set(matrix.map((samples) => (samples?.length || 0) / MAX_SAMPLES_PER_POINT));
-      });
+    };
+
+    if (monitoringId !== null) {
+      loadSamples(monitoringId);
+      return;
+    }
+
+    MonitoringsTable.getActiveByDrawingId(idDrawing)
+      .then(activeMonitoring => {
+        if (activeMonitoring) {
+          setMonitoringId(activeMonitoring.id);
+          loadSamples(activeMonitoring.id);
+        } else {
+          MonitoringsTable.insert({ id_monitor_drawing: idDrawing })
+            .then(newMonitoringId => {
+              setMonitoringId(newMonitoringId);
+              loadSamples(newMonitoringId);
+            })
+            .catch(error => console.error("Error al crear el monitoreo", error));
+        }
+      })
+      .catch(error => console.error("Error al buscar el monitoreo activo", error));
   }, []);
 
   useEffect(() => {
@@ -145,16 +138,26 @@ export default function Sampling(props: SamplingProps) {
     setShowCamera(true);
   }, []);
 
+  const handleProcessSamples = useCallback(() => {
+    if (monitoringId === null) return;
+    MonitoringsTable.markProcessed(monitoringId)
+      .then(() => {
+        ToastAndroid.show("Monitoreo procesado", ToastAndroid.SHORT);
+        props.forcefullyGoToEditMode();
+      })
+      .catch(error => console.error("Error al procesar el monitoreo", error));
+  }, [monitoringId, props]);
+
   const handleCameraResult = useCallback((result: { photo_dir: string; detection: ObjectDetectionResult[] }) => {
     const activeVertexIndex = vertexIndexRef.current;
 
-    if (activeVertexIndex < 0) {
+    if (activeVertexIndex < 0 || monitoringId === null) {
       setShowCamera(false);
       return;
     }
 
     const sample: SamplingData = {
-      id_monitoring: props.drawingData?.id || 0,
+      id_monitoring: monitoringId,
       index_sampling_point: activeVertexIndex,
       index_photo_in_sampling_point: capturedSamples[activeVertexIndex]?.length || 0,
       photo_dir: result.photo_dir,
@@ -178,7 +181,7 @@ export default function Sampling(props: SamplingProps) {
     });
 
     setShowCamera(false);
-  }, [props.drawingData?.id, capturedSamples]);
+  }, [monitoringId, capturedSamples]);
 
   const allPointsComplete =
     totalSamplingPoints > 0 &&
@@ -227,18 +230,19 @@ export default function Sampling(props: SamplingProps) {
           }}
         >
           <View style={{width:"auto",marginHorizontal:"auto"}}>
-            <Button title="PROCESAR MUESTRAS TOMADAS" />
+            <AppButton title="PROCESAR MUESTRAS TOMADAS" onPress={handleProcessSamples} />
           </View>
         </Animated.View>
       )}
 
-      <View style={{ position: "absolute", left: 4, top: 38 }}>
+      <View style={{ position: "absolute", left: 4, top: insets.top + 8 }}>
         <EditorPanel>
           <EditorActionButton icon="delete-outline" action={() => setShowResetModal(true)} />
+          <EditorActionButton icon="history" action={() => setShowMonitoringsPanel(true)} />
         </EditorPanel>
       </View>
 
-      <View style={{ position: "absolute", right: 4, top: 38 }}>
+      <View style={{ position: "absolute", right: 4, top: insets.top + 8 }}>
         <EditorPanel>
           <EditorActionButton icon="help" action={() => setShowGuide(true)} />
         </EditorPanel>
@@ -335,19 +339,19 @@ export default function Sampling(props: SamplingProps) {
             Cambiar el diseño descartará el trazado actual y las muestras que se hayan tomado hasta ahora.
           </Text>
           <View style={{ display: "flex", flexDirection: "column", marginTop: 25, marginBottom: 10, marginHorizontal: "auto", gap: 10 }}>
-            <Button
+            <AppButton
               title="Sí, realizar rediseño"
               onPress={() => {
                 setShowResetModal(false);
-                if (props.drawingData?.id != null) {
-                  SamplingsTable.deleteByMonitoringId(props.drawingData.id).catch((error) =>
+                if (monitoringId != null) {
+                  SamplingsTable.deleteByMonitoringId(monitoringId).catch((error) =>
                     console.error("Error al borrar las muestras", error)
                   );
                 }
                 props.forcefullyGoToEditMode();
               }}
             />
-            <Button title="No, seguir monitoreando" onPress={() => setShowResetModal(false)} />
+            <AppButton title="No, seguir monitoreando" onPress={() => setShowResetModal(false)} />
           </View>
         </View>
       </Modal>
@@ -377,7 +381,7 @@ export default function Sampling(props: SamplingProps) {
             />
           </View>
           <View style={{ display: "flex", flexDirection: "row", marginHorizontal: "auto", marginBottom: 15 }}>
-            <Button title="Cerrar" onPress={() => setSelectedSample(null)} />
+            <AppButton title="Cerrar" onPress={() => setSelectedSample(null)} />
           </View>
         </View>
       )}
@@ -386,6 +390,19 @@ export default function Sampling(props: SamplingProps) {
         <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
           <CamScan onResult={handleCameraResult} onClose={() => setShowCamera(false)} />
         </View>
+      )}
+
+      <MonitoringsPanel
+        visible={showMonitoringsPanel}
+        onClose={() => setShowMonitoringsPanel(false)}
+        onSelectMonitoring={(data) => {
+          setShowMonitoringsPanel(false);
+          setSelectedMonitoring(data);
+        }}
+      />
+
+      {selectedMonitoring && (
+        <MonitoringDetail data={selectedMonitoring} onClose={() => setSelectedMonitoring(null)} />
       )}
     </>
   );

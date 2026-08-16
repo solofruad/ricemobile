@@ -1,4 +1,4 @@
-import { SamplingData } from '@/app/monitoring/Sampling';
+import { SamplingData } from '@/app/monitoring/samplingUtils';
 import Table from '../Table';
 import { ObjectDetectionResult } from '@/src/ObjectDetection';
 

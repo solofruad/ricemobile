@@ -13,6 +13,7 @@ import History, { PATH_OP } from "./path/History";
 import Path, { VERTEX_OPERATION } from "./path/Path";
 import Vertex from "./path/Vertex";
 import MonitorDrawingsTable, { MonitorDrawingRecord } from "@/database/tables/MonitorDrawingsTable";
+import MonitoringsTable from "@/database/tables/MonitoringsTable";
 
 export type MonitorDrawingData = {
   polygon: PolygonSharedValue;
@@ -57,7 +58,7 @@ export type VertexSharedValue = { x: number; y: number; id: string };
 export type PolygonSharedValue = Array<VertexSharedValue>;
 
 type MonEditProps = {
-  tryGoToSamplingMode: ()=>void;
+  tryGoToSamplingMode: (monitoringId?: number) => void;
   drawingData: MonitorDrawingRecord | null;
 }
 
@@ -356,13 +357,14 @@ export default function MonEdit(props: MonEditProps) {
             <Button
               title="Sí, iniciar monitoreo"
               onPress={() => {
-                // Aquí iría la lógica para iniciar el monitoreo con el trazado actual
                 setShowEditEndModal(false);
                 MonitorDrawingsTable.insert({
                   polygon: polygon.current.generateLinkedList(),
                   samplingPath: samplingPath.current.generateLinkedList(),
                   })
-                  .then(_=>{props.tryGoToSamplingMode()});
+                  .then(newDrawingId => MonitoringsTable.insert({ id_monitor_drawing: newDrawingId }))
+                  .then(newMonitoringId => props.tryGoToSamplingMode(newMonitoringId))
+                  .catch(error => console.error("Error al iniciar el monitoreo", error));
               }}
             />
             <Button title="No, seguir editando" onPress={() => setShowEditEndModal(false)} />

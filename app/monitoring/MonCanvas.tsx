@@ -19,6 +19,7 @@ interface MonCanvasProps {
   onTap: (point: Point) => void;
 
   completenessPerSamplingPoint?: SharedValue<Array<number>>;
+  healthPerSamplingPoint?: SharedValue<Array<number>>;
   markerPos?: SharedValue<Point | null>
   samplingMode?: boolean
 }
@@ -70,6 +71,21 @@ const generateHandlers = (pointsList: PolygonSharedValue, useExtraDistance: bool
   return skPath;
 };
 
+const generateHealthVertices = (pointsList: PolygonSharedValue, healthPerPoint?: Array<number>, increasedRadius?: boolean) => {
+  "worklet";
+  const grayPath = Skia.Path.Make();
+  const greenPath = Skia.Path.Make();
+  const redPath = Skia.Path.Make();
+  if (!healthPerPoint) return { grayPath, greenPath, redPath };
+
+  const radius = (increasedRadius ? 12 : 9) + 0;
+  pointsList.forEach((v, i) => {
+    const target = healthPerPoint[i] === 2 ? redPath : healthPerPoint[i] === 1 ? greenPath : grayPath;
+    target.addCircle(v.x, v.y, radius);
+  });
+  return { grayPath, greenPath, redPath };
+};
+
 const generateMarker = (time:number, point: Point|null) => {
   "worklet";
   // console.log(point)
@@ -101,6 +117,7 @@ export default function MonCanvas(props: MonCanvasProps) {
   const gVertexes = useDerivedValue(() => generateHandlers(props.polygonSharedData.value));
   const gVertexesW = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence?.value || false, undefined, props.samplingMode));
   const gVertexesWCompleteness = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence?.value || false, props.completenessPerSamplingPoint?.value, props.samplingMode));
+  const gHealthVertices = useDerivedValue(() => generateHealthVertices(props.samplingPathSharedData.value, props.healthPerSamplingPoint?.value, props.samplingMode));
   const gMarker = useDerivedValue(()=> generateMarker(raf.value, (props.markerPos === undefined ? null : props.markerPos!.value)))
 
   const image = useFieldTexture();
@@ -147,6 +164,13 @@ export default function MonCanvas(props: MonCanvasProps) {
         <SkPath path={gVertexesW} color="#a6ff3a" style="stroke" strokeWidth={3} />
         {
           props.completenessPerSamplingPoint && <SkPath path={gVertexesWCompleteness} color="#3cff00" style="fill"/>
+        }
+        {
+          props.healthPerSamplingPoint && <>
+            <SkPath path={gHealthVertices.value.grayPath} color="#9e9e9e" style="fill" />
+            <SkPath path={gHealthVertices.value.greenPath} color="#2cac0f" style="fill" />
+            <SkPath path={gHealthVertices.value.redPath} color="#d25151" style="fill" />
+          </>
         }
         
         <SkPath path={gMarker} color="#1dbfe0" style="fill" strokeWidth={5} />
