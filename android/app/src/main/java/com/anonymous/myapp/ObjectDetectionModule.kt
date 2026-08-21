@@ -5,9 +5,6 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import com.facebook.react.bridge.*
 import java.io.InputStream
-import org.tensorflow.lite.support.image.TensorImage
-import org.tensorflow.lite.task.vision.detector.ObjectDetector
-import org.tensorflow.lite.task.core.BaseOptions
 
 
 class ObjectDetectionModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {

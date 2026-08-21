@@ -68,6 +68,7 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
     ObjectDetection.detectObjects(uri)
       //@ts-ignore
       .then((res: Array<{ label: string, confidence: number }>) => {
+        console.log(res);
         setDetection(res as any);
         setPhotoUri(uri);
         setIsDetecting(false);
