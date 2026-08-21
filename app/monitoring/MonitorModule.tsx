@@ -32,15 +32,15 @@ export default function MonitorModule(){
   },[]);
 
   const tryGoToSamplingMode = (newMonitoringId?: number)=>{
-    if (newMonitoringId !== undefined) {
-      setMonitoringId(newMonitoringId);
-      setUseSamplingMode(true);
-      return;
-    }
     MonitorDrawingsTable.getRecent()
       .then( latestRecord => {
         if(!latestRecord) return;
         setDrawingData(latestRecord);
+        if (newMonitoringId !== undefined) {
+          setMonitoringId(newMonitoringId);
+          setUseSamplingMode(true);
+          return;
+        }
         return MonitoringsTable.getActiveByDrawingId(latestRecord.id)
           .then(activeMonitoring => {
             if(activeMonitoring) setMonitoringId(activeMonitoring.id);

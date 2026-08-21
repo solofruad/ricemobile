@@ -10,7 +10,7 @@ import { IconButton, MD3Colors } from "react-native-paper";
 import { SafeAreaProvider,  useSafeAreaInsets } from 'react-native-safe-area-context';
 import CameraPermisionUI from './camUtilities/CameraPermisionUI';
 import ScanControledCanvas from './ScanControledCanvas';
-import TopToolbar from './TopToolbar';
+import TopToolbar from './camUtilities/TopToolbar';
 
 const MIN_FOCUS_DISTANCE = 15;
 
@@ -38,18 +38,24 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
   const camera = useRef<CameraRef>(null);
 
   const handleRequestPermission = async (attempts = 1) => {
-    const isGranted = await askPermission();
-    if (isGranted) {
-      setPermissionGranted(true);
-      setTimesPermissionRejected(0);
-    } else {
-      setTimesPermissionRejected(prev => prev + 1);
-      if (attempts < 2) handleRequestPermission(attempts + 1);
+    try {
+      const isGranted = await askPermission();
+      if (isGranted) {
+        setPermissionGranted(true);
+        setTimesPermissionRejected(0);
+      } else {
+        setTimesPermissionRejected(prev => prev + 1);
+        if (attempts < 2) handleRequestPermission(attempts + 1);
+      }
+    } catch (e) {
+      console.warn("No se pudo solicitar el permiso de cámara:", e);
     }
   };
 
   useEffect(() => {
-    handleRequestPermission();
+    if (!hasPermission) {
+      handleRequestPermission();
+    }
     CameraFocusInfo.getMinFocusDistance().then((diopters: number | null) => {
       if (typeof diopters === "number" && diopters > 0) {
         //Por 1.3 para intentar forzar un poco más el enfoque, ya que la cámara puede estar descalibrada.

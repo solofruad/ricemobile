@@ -3,7 +3,7 @@ import { Image as RNImage } from "react-native";
 import { Skia } from "@shopify/react-native-skia";
 import type { SkImage } from "@shopify/react-native-skia";
 
-const fieldTextureSource = require("../../../assets/textures/field.jpg");
+const fieldTextureSource = require("../../../assets/textures/field.webp");
 
 let texturePromise: Promise<SkImage | null> | null = null;
 
