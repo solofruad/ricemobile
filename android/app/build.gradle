@@ -96,12 +96,10 @@ android {
         versionName "1.0.0"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
-        defaultConfig {
-            
-            ndk {
-                // Esto evita que compile para x86 y armv7, ahorrando MUCHO tiempo
-                abiFilters "arm64-v8a"
-            }
+
+        ndk {
+            // Esto evita que compile para x86 y armv7, ahorrando MUCHO tiempo
+            abiFilters "arm64-v8a"
         }
     }
     signingConfigs {
@@ -150,6 +148,17 @@ android {
             // Esto le dice a Android agregue la carpeta con los modelos los assets del proyecto
             assets.srcDirs += ['../../assets/models']
         }
+    }
+}
+
+// Fuerza la compilación solo para arm64-v8a DESPUÉS del plugin de React Native.
+// `expo run:android` inyecta `-PreactNativeArchitectures=<ABIs del dispositivo>`,
+// que el plugin añade a `abiFilters` en su propio finalizeDsl; este bloque corre
+// después y lo sobreescribe.
+androidComponents {
+    finalizeDsl { ext ->
+        ext.defaultConfig.ndk.abiFilters.clear()
+        ext.defaultConfig.ndk.abiFilters.add("arm64-v8a")
     }
 }
 
@@ -206,9 +215,6 @@ dependencies {
     implementation 'com.google.mediapipe:tasks-vision:0.10.32'
     // Librería de tensorflow
     implementation 'org.tensorflow:tensorflow-lite-task-vision:0.4.4'
-    // Opcional: GPU delegate para mayor velocidad
-    implementation 'org.tensorflow:tensorflow-lite-gpu:2.9.0'
-
 
         
 }
