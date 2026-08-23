@@ -141,9 +141,19 @@ export default function Sampling(props: SamplingProps) {
   const handleProcessSamples = useCallback(() => {
     if (monitoringId === null) return;
     MonitoringsTable.markProcessed(monitoringId)
-      .then(() => {
+      .then(async () => {
         ToastAndroid.show("Monitoreo procesado", ToastAndroid.SHORT);
-        props.forcefullyGoToEditMode();
+        try {
+          const monitoring = await MonitoringsTable.getProcessedWithDrawingById(monitoringId);
+          const records = await SamplingsTable.getByMonitoringId(monitoringId);
+          if (monitoring) {
+            setSelectedMonitoring({ monitoring, samplings: buildSamplingsMatrix(records) });
+          } else {
+            props.forcefullyGoToEditMode();
+          }
+        } catch {
+          props.forcefullyGoToEditMode();
+        }
       })
       .catch(error => console.error("Error al procesar el monitoreo", error));
   }, [monitoringId, props]);

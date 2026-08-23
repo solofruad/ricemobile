@@ -1,6 +1,5 @@
 import { Gesture, GestureDetector} from "react-native-gesture-handler";
 
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Point } from "@/types/types";
 import { runOnJS } from "react-native-worklets";
 
@@ -38,10 +37,8 @@ export default function MonitoringCanvasGestureHandler (props: GestureHandlerPro
   const gesture = Gesture.Simultaneous(pan, tap);
 
   return (
-      <GestureHandlerRootView>
-        <GestureDetector gesture={gesture}>
-          {props.children}
-        </GestureDetector>
-      </GestureHandlerRootView>
+      <GestureDetector gesture={gesture}>
+        {props.children}
+      </GestureDetector>
   );
 };

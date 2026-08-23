@@ -1,6 +1,6 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { Icon, MD3Colors } from "react-native-paper";
+import { Icon, MD3Colors, Menu } from "react-native-paper";
 import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -10,7 +10,7 @@ import MonCanvas from "./MonCanvas";
 import Path from "./path/Path";
 import { PolygonSharedValue } from "./MonCanvas";
 import { MonitoringDetailData } from "./MonitoringsPanel";
-import { SamplingData, summarizeDetections, computeHealthPerPoint } from "./samplingUtils";
+import { SamplingData, summarizeDetections, computeHealthPerPointFiltered } from "./samplingUtils";
 
 const PANEL_SPRING = { damping: 18, stiffness: 180, mass: 0.6 };
 
@@ -25,6 +25,8 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
 
   const [vertexIndex, setVertexIndex] = useState<number>(-1);
   const [selectedSample, setSelectedSample] = useState<SamplingData | null>(null);
+  const [selectedDisease, setSelectedDisease] = useState<string>("__all__");
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const vertexToEdit = useSharedValue<Point | null>(null);
   const animSamplesBottom = useSharedValue(-160);
@@ -32,7 +34,11 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
 
   const polygonSharedData = useSharedValue<PolygonSharedValue>(monitoring.polygon || []);
   const samplingPathSharedData = useSharedValue<PolygonSharedValue>(monitoring.samplingPath || []);
-  const healthPerSamplingPoint = useSharedValue<number[]>(computeHealthPerPoint(samplings));
+  const healthPerSamplingPoint = useSharedValue<number[]>(computeHealthPerPointFiltered(samplings, null));
+
+  useEffect(() => {
+    healthPerSamplingPoint.value = computeHealthPerPointFiltered(samplings, selectedDisease === "__all__" ? null : selectedDisease);
+  }, [selectedDisease]);
 
   const samplingPath = useRef(new Path(monitoring.samplingPath || []));
   const vertexIndexRef = useRef(-1);
@@ -99,26 +105,75 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
           }}
         >
           <Text style={{ color: MD3Colors.neutral30, fontSize: 18, fontWeight: "bold", textAlign: "center" }}>
-            Monitoreo del {monitoring.created_at.slice(0, 16)}
+            Monitoreo del {new Date(monitoring.created_at).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase())}
           </Text>
-          <Text style={{ color: MD3Colors.neutral40, fontSize: 13, marginTop: 4, textAlign: "center" }}>
+        </View>
+      </View>
+
+      <View
+        style={{
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          display: "flex",
+          flexDirection: "row",
+          justifyContent: "center",
+          zIndex: 10,
+          paddingHorizontal: 12,
+          paddingBottom: 12,
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: "#fffef4",
+            borderRadius: 10,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            boxShadow: "0px 0px 4px 2px rgba(0, 0, 0, 0.25)",
+            maxWidth: "85%",
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ color: MD3Colors.neutral40, fontSize: 13, textAlign: "center", marginBottom: 6 }}>
             {summary.pointsWithSamples} de {samplingPathSharedData.value.length} puntos muestreados · {summary.totalSamples} muestras
           </Text>
-          <View style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6, justifyContent: "center" }}>
-            {summary.diseases.length === 0 ? (
-              <View style={{ backgroundColor: "#dcefd6", borderRadius: 12, paddingVertical: 3, paddingHorizontal: 10 }}>
-                <Text style={{ color: "#2cac0f", fontSize: 12, fontWeight: "bold" }}>Sin detecciones de enfermedades</Text>
-              </View>
-            ) : (
-              summary.diseases.map((disease) => (
-                <View key={disease.name} style={{ backgroundColor: "#f6dcdc", borderRadius: 12, paddingVertical: 3, paddingHorizontal: 10 }}>
-                  <Text style={{ color: "#a33a3a", fontSize: 12, fontWeight: "bold" }}>
-                    {disease.name} ×{disease.count} ({(disease.avgConfidence * 100).toFixed(1)}%)
+          {summary.diseases.length > 0 ? (
+            <Menu
+              visible={menuVisible}
+              onDismiss={() => setMenuVisible(false)}
+              anchor={
+                <TouchableOpacity
+                  onPress={() => setMenuVisible(true)}
+                  style={{ backgroundColor: "#e8e8e0", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 8 }}
+                >
+                  <Text style={{ color: MD3Colors.neutral30, fontSize: 13, fontWeight: "bold", flexShrink: 1 }} numberOfLines={1}>
+                    {selectedDisease === "__all__" ? "Todas las enfermedades" : selectedDisease}
                   </Text>
-                </View>
-              ))
-            )}
-          </View>
+                  <Icon source="menu-down" size={20} color={MD3Colors.neutral30} />
+                </TouchableOpacity>
+              }
+              contentStyle={{ backgroundColor: "#fffef4", borderRadius: 8 }}
+            >
+              <Menu.Item
+                onPress={() => { setSelectedDisease("__all__"); setMenuVisible(false); }}
+                title="Todas las enfermedades"
+                trailingIcon={selectedDisease === "__all__" ? "check" : undefined}
+              />
+              {summary.diseases.map((disease) => (
+                <Menu.Item
+                  key={disease.name}
+                  onPress={() => { setSelectedDisease(disease.name); setMenuVisible(false); }}
+                  title={`${disease.name} (×${disease.count})`}
+                  trailingIcon={selectedDisease === disease.name ? "check" : undefined}
+                />
+              ))}
+            </Menu>
+          ) : (
+            <View style={{ backgroundColor: "#dcefd6", borderRadius: 12, paddingVertical: 3, paddingHorizontal: 10 }}>
+              <Text style={{ color: "#2cac0f", fontSize: 12, fontWeight: "bold" }}>Sin detecciones de enfermedades</Text>
+            </View>
+          )}
         </View>
       </View>
 

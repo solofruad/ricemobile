@@ -93,6 +93,30 @@ export default class MonitoringsTable {
     });
   }
 
+  static getProcessedWithDrawingById (id: number): Promise<MonitoringsWithDrawingRecord | null> {
+    return new Promise<MonitoringsWithDrawingRecord | null>((resolve, reject) => {
+      Database.getDB()
+        .then(db => {
+          db.getFirstAsync<RawMonitoringWithDrawingRow>(`
+            SELECT m.*, d.polygon_json, d.samplingPath_json
+            FROM monitorings m
+            JOIN monitorDrawings d ON d.id = m.id_monitor_drawing
+            WHERE m.id = ? AND m.processed = 1
+          `, [id])
+            .then(row => {
+              if (!row) return resolve(null);
+              resolve({
+                ...row,
+                polygon: row.polygon_json ? JSON.parse(row.polygon_json) : null,
+                samplingPath: row.samplingPath_json ? JSON.parse(row.samplingPath_json) : null,
+              });
+            })
+            .catch(err => reject(err));
+        })
+        .catch(err => reject(err));
+    });
+  }
+
   static getActiveByDrawingId (id_monitor_drawing: number): Promise<MonitoringsRecord | null> {
     return new Promise<MonitoringsRecord | null>((resolve, reject) => {
       Database.getDB()

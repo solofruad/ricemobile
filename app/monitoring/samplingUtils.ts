@@ -73,3 +73,14 @@ export const computeHealthPerPoint = (samplings: SamplingData[][]): number[] => 
     return hasDetection ? 2 : 1;
   });
 };
+
+export const computeHealthPerPointFiltered = (samplings: SamplingData[][], diseaseName: string | null): number[] => {
+  if (!diseaseName) return computeHealthPerPoint(samplings);
+  return samplings.map((samples) => {
+    if (!samples?.length) return 0;
+    const hasDisease = samples.some((sample) =>
+      sample.detection.some((det) => det.labels.some((label) => label.text === diseaseName))
+    );
+    return hasDisease ? 2 : 1;
+  });
+};

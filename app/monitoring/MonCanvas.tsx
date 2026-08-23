@@ -119,7 +119,18 @@ export default function MonCanvas(props: MonCanvasProps) {
   const gVertexes = useDerivedValue(() => generateHandlers(props.polygonSharedData.value));
   const gVertexesW = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence?.value || false, undefined, props.samplingMode));
   const gVertexesWCompleteness = useDerivedValue(() => generateHandlers(props.samplingPathSharedData.value, props.showWVertexInfluence?.value || false, props.completenessPerSamplingPoint?.value, props.samplingMode));
-  const gHealthVertices = useDerivedValue(() => generateHealthVertices(props.samplingPathSharedData.value, props.healthPerSamplingPoint?.value, props.samplingMode));
+  const gGrayHealthPath = useDerivedValue(() => {
+    const { grayPath } = generateHealthVertices(props.samplingPathSharedData.value, props.healthPerSamplingPoint?.value, props.samplingMode);
+    return grayPath;
+  });
+  const gGreenHealthPath = useDerivedValue(() => {
+    const { greenPath } = generateHealthVertices(props.samplingPathSharedData.value, props.healthPerSamplingPoint?.value, props.samplingMode);
+    return greenPath;
+  });
+  const gRedHealthPath = useDerivedValue(() => {
+    const { redPath } = generateHealthVertices(props.samplingPathSharedData.value, props.healthPerSamplingPoint?.value, props.samplingMode);
+    return redPath;
+  });
   const gMarker = useDerivedValue(()=> generateMarker(raf.value, (props.markerPos === undefined ? null : props.markerPos!.value)))
 
   const image = useFieldTexture();
@@ -169,9 +180,9 @@ export default function MonCanvas(props: MonCanvasProps) {
         }
         {
           props.healthPerSamplingPoint && <>
-            <SkPath path={gHealthVertices.value.grayPath} color="#9e9e9e" style="fill" />
-            <SkPath path={gHealthVertices.value.greenPath} color="#2cac0f" style="fill" />
-            <SkPath path={gHealthVertices.value.redPath} color="#d25151" style="fill" />
+            <SkPath path={gGrayHealthPath} color="#9e9e9e" style="fill" />
+            <SkPath path={gGreenHealthPath} color="#2cac0f" style="fill" />
+            <SkPath path={gRedHealthPath} color="#d25151" style="fill" />
           </>
         }
         
