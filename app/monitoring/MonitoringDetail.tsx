@@ -158,13 +158,16 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
               <Menu.Item
                 onPress={() => { setSelectedDisease("__all__"); setMenuVisible(false); }}
                 title="Todas las enfermedades"
+                titleStyle={{ color: MD3Colors.neutral30 }}
                 trailingIcon={selectedDisease === "__all__" ? "check" : undefined}
+                style={{ borderBottomWidth: 1, borderBottomColor: "#e8e8e0" }}
               />
               {summary.diseases.map((disease) => (
                 <Menu.Item
                   key={disease.name}
                   onPress={() => { setSelectedDisease(disease.name); setMenuVisible(false); }}
                   title={`${disease.name} (×${disease.count})`}
+                  titleStyle={{ color: MD3Colors.neutral30 }}
                   trailingIcon={selectedDisease === disease.name ? "check" : undefined}
                 />
               ))}
