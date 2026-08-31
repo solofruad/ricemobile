@@ -11,6 +11,7 @@ import { SafeAreaProvider,  useSafeAreaInsets } from 'react-native-safe-area-con
 import CameraPermisionUI from './camUtilities/CameraPermisionUI';
 import ScanControledCanvas from './ScanControledCanvas';
 import TopToolbar from './camUtilities/TopToolbar';
+import { filterDetectionsByConfidence } from '@/app/monitoring/samplingUtils';
 
 const MIN_FOCUS_DISTANCE = 15;
 
@@ -68,8 +69,9 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
     ObjectDetection.detectObjects(uri)
       //@ts-ignore
       .then((res: Array<{ label: string, confidence: number }>) => {
-        console.log(res);
-        setDetection(res as any);
+        const filtered = filterDetectionsByConfidence(res as any);
+        console.log(filtered);
+        setDetection(filtered);
         setPhotoUri(uri);
         setIsDetecting(false);
       });

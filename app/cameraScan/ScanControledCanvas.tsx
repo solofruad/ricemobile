@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Text, View } from "react-native";
 
 import AppButton from "@/components/ui/app-button";
@@ -9,6 +9,7 @@ import { Directory, File, Paths } from "expo-file-system";
 import SaveModal from "./detectionsUtilities/SaveModal";
 import ScanCanvas from "./ScanCanvas";
 import { MD3Colors } from "react-native-paper";
+import { getDiseaseColorMap } from "@/app/monitoring/diseaseColors";
 
 type ScanCanvasProps = {
   detection: ObjectDetectionResult[];
@@ -43,6 +44,13 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
   const [saving, setIsSaving] = useState(false);
   const [saved, setIsSaved] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const diseaseColorMap = useMemo(() => {
+    const diseaseNames = props.detection
+      .flatMap((det) => det.labels.map((l) => l.text))
+      .filter((name): name is string => !!name);
+    return getDiseaseColorMap([...new Set(diseaseNames)]);
+  }, [props.detection]);
 
   const save = () => {
     setIsSaving(true);
@@ -91,7 +99,7 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
           Resultados de Reconocimiento
         </Text>
       <View style={{ flex: 2, display: "flex", alignItems: "center" }}>
-        <ScanCanvas detection={props.detection} photoUri={props.photoUri} useGestureHandler={true} />
+        <ScanCanvas detection={props.detection} photoUri={props.photoUri} useGestureHandler={true} diseaseColorMap={diseaseColorMap} />
       </View>
 
       <View style={{ display: "flex", flexDirection: "row", gap: 15, marginHorizontal: "auto", marginBottom: 15 }}>

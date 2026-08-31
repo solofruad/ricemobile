@@ -13,6 +13,7 @@ type ScanCanvasProps = {
   detection?: ObjectDetectionResult[],
   photoUri: string
   useGestureHandler?: boolean
+  diseaseColorMap?: Record<string, string>
 }
 
 const ScanCanvas = (props: ScanCanvasProps)=>{
@@ -42,12 +43,13 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
             transform={[{rotate:(90 *Math.PI)/180}]} 
             origin={{x:dims.x*0.5,y:dims.x*0.5}}>
               <Image width={dims.y} height={dims.x} image={image}/>
-              <ScanRects rects={props.detection} scale={scale}/>
+              <ScanRects rects={props.detection} scale={scale} diseaseColorMap={props.diseaseColorMap}/>
           </Group>
           <ScanLabels 
             rects={props.detection} 
             imageDims={{width:dims.x,height:dims.y}} 
-            scale={scale}/>
+            scale={scale}
+            diseaseColorMap={props.diseaseColorMap}/>
       </Canvas> 
     : null ;
 
@@ -60,12 +62,13 @@ const ScanCanvas = (props: ScanCanvasProps)=>{
               transform={[{rotate:(90 *Math.PI)/180}]} 
               origin={{x:dims.x*0.5,y:dims.x*0.5}}>
                 <Image width={dims.y} height={dims.x} image={image}/>
-                <ScanRects rects={props.detection} scale={scale}/>
+                <ScanRects rects={props.detection} scale={scale} diseaseColorMap={props.diseaseColorMap}/>
             </Group>
             <ScanLabels 
               rects={props.detection} 
               imageDims={{width:dims.x,height:dims.y}} 
-              scale={scale}/>
+              scale={scale}
+              diseaseColorMap={props.diseaseColorMap}/>
           </Group>
         </Canvas>
       }
