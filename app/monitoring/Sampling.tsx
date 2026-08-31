@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, Text, ToastAndroid, TouchableOpacity, Vibration, View } from "react-native";
 import { Icon, MD3Colors } from "react-native-paper";
 import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
@@ -18,7 +18,8 @@ import Path from "./path/Path";
 import Vertex from "./path/Vertex";
 import SamplingsTable from "@/database/tables/SamplingsTable";
 import MonitoringsTable from "@/database/tables/MonitoringsTable";
-import { buildSamplingsMatrix, SamplingData } from "./samplingUtils";
+import { buildSamplingsMatrix, SamplingData, summarizeDetections } from "./samplingUtils";
+import { getDiseaseColorMap } from "./diseaseColors";
 import MonitoringsPanel, { MonitoringDetailData } from "./MonitoringsPanel";
 import MonitoringDetail from "./MonitoringDetail";
 import AppButton from "@/components/ui/app-button";
@@ -197,6 +198,11 @@ export default function Sampling(props: SamplingProps) {
     totalSamplingPoints > 0 &&
     capturedSamples.length >= totalSamplingPoints &&
     capturedSamples.every((samples) => (samples?.length || 0) >= MAX_SAMPLES_PER_POINT);
+
+  const sampleDiseaseColorMap = useMemo(() => {
+    const summary = summarizeDetections(capturedSamples);
+    return getDiseaseColorMap(summary.diseases.map((d) => d.name));
+  }, [capturedSamples]);
 
   return (
     <>
@@ -388,6 +394,7 @@ export default function Sampling(props: SamplingProps) {
               detection={selectedSample.detection}
               photoUri={selectedSample.photo_dir}
               useGestureHandler={true}
+              diseaseColorMap={sampleDiseaseColorMap}
             />
           </View>
           <View style={{ display: "flex", flexDirection: "row", marginHorizontal: "auto", marginBottom: 15 }}>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { Icon, MD3Colors, Menu } from "react-native-paper";
 import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
@@ -10,7 +10,8 @@ import MonCanvas from "./MonCanvas";
 import Path from "./path/Path";
 import { PolygonSharedValue } from "./MonCanvas";
 import { MonitoringDetailData } from "./MonitoringsPanel";
-import { SamplingData, summarizeDetections, computeHealthPerPointFiltered } from "./samplingUtils";
+import { SamplingData, summarizeDetections, computeHealthPerPointFiltered, computeDiseaseDistribution, computeIncidenceByZone, MIN_CONFIDENCE } from "./samplingUtils";
+import { getDiseaseColorMap, getDiseaseColor } from "./diseaseColors";
 
 const PANEL_SPRING = { damping: 18, stiffness: 180, mass: 0.6 };
 
@@ -43,7 +44,20 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
   const samplingPath = useRef(new Path(monitoring.samplingPath || []));
   const vertexIndexRef = useRef(-1);
 
-  const summary = summarizeDetections(samplings);
+  const summary = useMemo(() => summarizeDetections(samplings), [samplings]);
+  const diseaseDistribution = useMemo(() => computeDiseaseDistribution(samplings), [samplings]);
+  const incidenceByZone = useMemo(() => computeIncidenceByZone(samplings), [samplings]);
+  const diseaseColorMap = useMemo(
+    () => getDiseaseColorMap(summary.diseases.map((d) => d.name)),
+    [summary.diseases]
+  );
+
+  const topAffectedZones = useMemo(() => {
+    return incidenceByZone
+      .filter((z) => z.photosWithDetections > 0)
+      .sort((a, b) => b.incidenceRate - a.incidenceRate)
+      .slice(0, 3);
+  }, [incidenceByZone]);
 
   const handleTap = useCallback((point: Point) => {
     const vertex = samplingPath.current.getNearestVertexToGivenPoint(point);
@@ -117,11 +131,12 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
           left: 0,
           right: 0,
           display: "flex",
-          flexDirection: "row",
-          justifyContent: "center",
+          flexDirection: "column",
+          alignItems: "center",
           zIndex: 10,
           paddingHorizontal: 12,
           paddingBottom: 12,
+          gap: 6,
         }}
       >
         <View
@@ -135,7 +150,7 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
             alignItems: "center",
           }}
         >
-          <Text style={{ color: MD3Colors.neutral40, fontSize: 13, textAlign: "center", marginBottom: 6 }}>
+          <Text style={{ color: MD3Colors.neutral40, fontSize: 15, textAlign: "center", marginBottom: 6 }}>
             {summary.pointsWithSamples} de {samplingPathSharedData.value.length} puntos muestreados · {summary.totalSamples} muestras
           </Text>
           {summary.diseases.length > 0 ? (
@@ -168,6 +183,9 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
                   onPress={() => { setSelectedDisease(disease.name); setMenuVisible(false); }}
                   title={`${disease.name} (×${disease.count})`}
                   titleStyle={{ color: MD3Colors.neutral30 }}
+                  leadingIcon={() => (
+                    <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: getDiseaseColor(disease.name), marginRight: 8 }} />
+                  )}
                   trailingIcon={selectedDisease === disease.name ? "check" : undefined}
                 />
               ))}
@@ -178,6 +196,55 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
             </View>
           )}
         </View>
+
+        {diseaseDistribution.length > 0 && (
+          <View
+            style={{
+              backgroundColor: "#fffef4",
+              borderRadius: 10,
+              paddingVertical: 6,
+              paddingHorizontal: 10,
+              boxShadow: "0px 0px 4px 2px rgba(0, 0, 0, 0.25)",
+              maxWidth: "85%",
+              width: "100%",
+            }}
+          >
+            {diseaseDistribution.slice(0, 3).map((d) => (
+              <View key={d.name} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 2 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: getDiseaseColor(d.name) }} />
+                  <Text style={{ color: MD3Colors.neutral30, fontSize: 11 }} numberOfLines={1}>{d.name}</Text>
+                </View>
+                <Text style={{ color: MD3Colors.neutral40, fontSize: 11 }}>
+                  {d.percentage.toFixed(0)}% · conf. {Math.round(d.avgConfidence * 100)}%
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {topAffectedZones.length > 0 && (
+          <View
+            style={{
+              backgroundColor: "#fffef4",
+              borderRadius: 10,
+              paddingVertical: 6,
+              paddingHorizontal: 10,
+              boxShadow: "0px 0px 4px 2px rgba(0, 0, 0, 0.25)",
+              maxWidth: "85%",
+              width: "100%",
+            }}
+          >
+            <Text style={{ color: MD3Colors.neutral40, fontSize: 10, fontWeight: "bold", marginBottom: 2, textAlign: "center" }}>
+              ZONAS CON MAYOR INCIDENCIA
+            </Text>
+            {topAffectedZones.map((z) => (
+              <Text key={z.pointIndex} style={{ color: MD3Colors.neutral30, fontSize: 11, textAlign: "center" }}>
+                Punto {z.pointIndex + 1}: {z.incidenceRate > 0 ? `${(z.incidenceRate * 100).toFixed(0)}% muestras con detecciones` : "sin detecciones"}
+              </Text>
+            ))}
+          </View>
+        )}
       </View>
 
       <View style={{ position: "absolute", left: 4, top: insets.top + 8, zIndex: 10 }}>
@@ -273,6 +340,7 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
               detection={selectedSample.detection}
               photoUri={selectedSample.photo_dir}
               useGestureHandler={true}
+              diseaseColorMap={diseaseColorMap}
             />
           </View>
           <View style={{ display: "flex", flexDirection: "row", marginHorizontal: "auto", marginBottom: 15 }}>
