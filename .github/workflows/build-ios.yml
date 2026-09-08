@@ -24,7 +24,7 @@ name: Build iOS (unsigned IPA)
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, iOS]
 
 concurrency:
   group: build-ios-${{ github.ref_name }}
