@@ -6,6 +6,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
+    "prebuild:ios": "node scripts/prebuild-ios.js",
+    "build:ios:unsigned": "echo 'Repo publico -> GitHub -> pestaña Actions -> Build iOS (unsigned IPA) -> Run workflow. El .ipa queda como artifact descargable.'",
     "lint": "expo lint",
     "postinstall": "patch-package"
   },
