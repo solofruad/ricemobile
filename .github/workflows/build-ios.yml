@@ -1,0 +1,107 @@
+# Compila la app para iOS en un runner macOS de GitHub y genera un .ipa SIN
+# firmar como artifact descargable. No se necesita Mac local ni cuenta de
+# Apple Developer para esto.
+#
+# Requisitos:
+#   - El repositorio debe ser PUBLICO: los runners macOS son ilimitados y
+#     gratuitos solo para repos publicos (en repos privados consumen ~10x
+#     minutos del plan gratuito).
+#
+# El .ipa resultante se instala en un iPhone con AltStore (re-firma con un
+# Apple ID gratuito, caduca a los 7 dias y hay que refrescar) o con
+# TrollStore, segun la version de iOS del dispositivo.
+#
+# Que hace el pipeline:
+#   1. npm ci (ejecuta postinstall -> patch-package)
+#   2. npx expo prebuild -p ios --clean  (regenera ios/ desde app.json;
+#      los plugins re-inyectan el pod RiceNative y model.tflite)
+#   3. pod install
+#   4. xcodebuild archive sin firma (Release, incluye bundle JS + Hermes)
+#   5. Empaqueta el .app en un Payload/.ipa y lo sube como artifact
+
+name: Build iOS (unsigned IPA)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: build-ios-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: iOS unsigned build (macOS runner)
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Version de Xcode
+        run: xcodebuild -version
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias JS
+        run: npm ci
+
+      - name: Expo prebuild (genera ios/ desde app.json + plugins)
+        env:
+          CI: '1'
+          EXPO_NO_TELEMETRY: '1'
+        run: npx expo prebuild -p ios --clean
+
+      - name: CocoaPods install
+        run: pod install --project-directory=ios
+
+      - name: Resolver workspace y scheme
+        id: resolve
+        run: |
+          WORKSPACE_PATH=$(find ios -maxdepth 1 -type d -name '*.xcworkspace' | head -n 1)
+          if [ -z "$WORKSPACE_PATH" ]; then
+            echo "No se encontro un .xcworkspace dentro de ios/" >&2
+            exit 1
+          fi
+          SCHEME=$(basename "$WORKSPACE_PATH" .xcworkspace)
+          echo "workspace=$WORKSPACE_PATH" >> "$GITHUB_OUTPUT"
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+
+      - name: Compilar archive (sin firma)
+        run: |
+          xcodebuild \
+            -workspace "${{ steps.resolve.outputs.workspace }}" \
+            -scheme "${{ steps.resolve.outputs.scheme }}" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            clean archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Empaquetar IPA (Payload)
+        run: |
+          APP_PATH=$(find build/App.xcarchive/Products/Applications -maxdepth 1 -type d -name '*.app' | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No se encontro el .app dentro del archive" >&2
+            exit 1
+          fi
+          cd "$(dirname "$APP_PATH")"
+          mkdir -p Payload
+          cp -R "$(basename "$APP_PATH")" Payload/
+          zip -qry "$GITHUB_WORKSPACE/app-unsigned.ipa" Payload
+
+      - name: Subir IPA como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-unsigned-ipa
+          path: app-unsigned.ipa
+          retention-days: 14
