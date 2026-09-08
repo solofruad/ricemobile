@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.myapp"
+      "bundleIdentifier": "com.anonymous.myapp",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Se necesita acceso a la cámara para escanear y detectar objetos."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -48,7 +51,8 @@
       ],
       "expo-sqlite",
       "expo-font",
-      "react-native-enriched-markdown"
+      "react-native-enriched-markdown",
+      "./plugins/with-ricenative.js"
     ],
     "experiments": {
       "typedRoutes": true,
