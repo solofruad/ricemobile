@@ -124,21 +124,24 @@ final class ObjectDetectionModule: NSObject {
   /// Convierte ObjectDetectorResult al mismo formato JS que produce Android:
   /// frame.origin = esquina superior izquierda, frame.size = ancho/alto del box.
   private static func toJsPayload(_ result: ObjectDetectorResult) -> [[String: Any]] {
-    result.detections.map { detection in
+    var payload: [[String: Any]] = []
+    payload.reserveCapacity(result.detections.count)
+    for detection in result.detections {
       let box = detection.boundingBox
-      return [
-        "frame": [
-          "origin": ["x": Int(box.minX), "y": Int(box.minY)],
-          "size": ["x": Int(box.width), "y": Int(box.height)]
-        ],
-        "labels": detection.categories.map { category in
-          [
-            "text": category.categoryName ?? "",
-            "confidence": Double(category.score)
-          ]
-        ] as [[String: Any]]
-      ] as [String: Any]
+      let frame: [String: Any] = [
+        "origin": ["x": Int(box.minX), "y": Int(box.minY)],
+        "size": ["x": Int(box.width), "y": Int(box.height)]
+      ]
+      var labels: [[String: Any]] = []
+      for category in detection.categories {
+        labels.append([
+          "text": category.categoryName ?? "",
+          "confidence": Double(category.score)
+        ])
+      }
+      payload.append(["frame": frame, "labels": labels])
     }
+    return payload
   }
 
   private static func riceError(_ code: Int, _ message: String) -> NSError {

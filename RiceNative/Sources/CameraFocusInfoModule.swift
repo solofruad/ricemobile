@@ -30,11 +30,13 @@ final class CameraFocusInfoModule: NSObject {
       return
     }
 
-    // minFocusDistance esta en dioptrias, igual que LENS_INFO_MINIMUM_FOCUS_DISTANCE
-    // en Android. Un valor de 0 indica foco fijo o distancia desconocida.
-    let diopters = device.minFocusDistance
-    if diopters > 0 {
-      resolve(Double(diopters))
+    // AVCaptureDevice.minimumFocusDistance (iOS 15+) esta en MILIMETROS; -1 si
+    // es desconocido. Android devuelve diopters (LENS_INFO_MINIMUM_FOCUS_DISTANCE),
+    // asi que convertimos con diopter = 1000 / distancia_en_metros para que la
+    // app reciba la misma unidad en ambas plataformas.
+    let millimeters = device.minimumFocusDistance
+    if millimeters > 0 {
+      resolve(Double(1000.0) / Double(millimeters))
     } else {
       resolve(nil)
     }
