@@ -105,3 +105,86 @@ jobs:
           name: app-unsigned-ipa
           path: app-unsigned.ipa
           retention-days: 14
+
+  # Job separado: build para iOS Simulator, pensado para probar la app en el
+  # navegador con Appetize.io (appetize.io/manager) sin Mac ni iPhone fisico.
+  #
+  # Notas:
+  #   - Release (no Debug) para que la app sea standalone y no espere a Metro.
+  #   - ONLY_ACTIVE_ARCH=NO genera slices arm64 y x86_64 (los servers de
+  #     Appetize pueden pedir cualquiera de los dos).
+  #   - En el simulador NO hay camara fisica: vision-camera no mostrara imagen;
+  #     si funcionan TTS, SQLite, deteccion sobre fotos del album, chatbot.
+  build-sim:
+    name: iOS simulator build (para Appetize)
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Version de Xcode
+        run: xcodebuild -version
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias JS
+        run: npm ci
+
+      - name: Expo prebuild (genera ios/ desde app.json + plugins)
+        env:
+          CI: '1'
+          EXPO_NO_TELEMETRY: '1'
+        run: npx expo prebuild -p ios --clean
+
+      - name: CocoaPods install
+        run: pod install --project-directory=ios
+
+      - name: Resolver workspace y scheme
+        id: resolve
+        run: |
+          WORKSPACE_PATH=$(find ios -maxdepth 1 -type d -name '*.xcworkspace' | head -n 1)
+          if [ -z "$WORKSPACE_PATH" ]; then
+            echo "No se encontro un .xcworkspace dentro de ios/" >&2
+            exit 1
+          fi
+          SCHEME=$(basename "$WORKSPACE_PATH" .xcworkspace)
+          echo "workspace=$WORKSPACE_PATH" >> "$GITHUB_OUTPUT"
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+
+      - name: Compilar para simulador (sin firma)
+        run: |
+          xcodebuild \
+            -workspace "${{ steps.resolve.outputs.workspace }}" \
+            -scheme "${{ steps.resolve.outputs.scheme }}" \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-sim \
+            build \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Empaquetar .app para Appetize
+        run: |
+          APP_PATH=$(find build-sim/Build/Products/Release-iphonesimulator -maxdepth 1 -type d -name '*.app' | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "No se encontro el .app de simulador en build-sim" >&2
+            exit 1
+          fi
+          cd "$(dirname "$APP_PATH")"
+          zip -qry "$GITHUB_WORKSPACE/app-simulator.zip" "$(basename "$APP_PATH")"
+
+      - name: Subir app de simulador como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-simulator
+          path: app-simulator.zip
+          retention-days: 14
