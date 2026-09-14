@@ -1,34 +1,55 @@
 import {DetectionRecord} from "@/database/tables/DetectionsTable"
 import SpeechText from "@/src/SpeechText";
 import { TtsVoices } from "@/src/TtsVoices";
+import LlmServer from "@/src/LlmServer";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { TextInput, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from "react-native";
 import { GiftedChat, IMessage,  MessageText, Send } from "react-native-gifted-chat";
-import { IconButton, MD3Colors } from "react-native-paper";
-import Bot from "./Bot";
+import { Button, IconButton, MD3Colors } from "react-native-paper";
 
 type ChatBotModuleProps = {
 	detection?: DetectionRecord
 }
 
+type ConnectionState = "scanning" | "connected" | "failed"
+
 export default function ChatBotModule (props: ChatBotModuleProps) {
-	const bot = useMemo(() => new Bot(), []);
+	const llmServer = useMemo(() => new LlmServer(), []);
 	const inputRef = useRef<TextInput>(null);
 	const [speechDetect, setSpeechDetect] = useState<SpeechText|null>(null);
 	const [recording, setRecording] = useState(false);
 	const [inputHasContent, setInputHasContent] = useState(false);
 	const headerHeight = useHeaderHeight();
-
+	const [connectionState, setConnectionState] = useState<ConnectionState>("scanning");
+	const [pendingResponse, setPendingResponse] = useState(false);
+	const contextSentRef = useRef(false);
 	const [messages, setMessages] = useState([
 		{
 			_id: 1,
-			text: bot.hello(),
+			text: "Bienvenido. ¿En qué puedo ayudarte?",
 			createdAt: new Date(),
 			user: { _id: 2, name: "Chatbot" },
 		},
 	]);
+
+	const handshake = ()=>{
+		setConnectionState("scanning");
+		llmServer.handshake()
+			.then(()=>{
+				setConnectionState("connected");
+				contextSentRef.current = false;
+			})
+			.catch((error)=>{
+				console.error("Handshake fallido:", error);
+				setConnectionState("failed");
+			});
+	}
+
+	useEffect(()=>{
+		handshake();
+	},[]);
 
 	useEffect(()=>{
 		setSpeechDetect(
@@ -48,13 +69,28 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 			console.log("Received detection data in ChatBotModule:", props.detection);
 	},[props.detection]);
 
-	const handleSend = (newMessages:Array<IMessage> = []) => {
+	const handleSend = async (newMessages:Array<IMessage> = []) => {
+		if(pendingResponse || connectionState !== "connected"){ return }
+
 		setMessages((previousMessages) =>
 			GiftedChat.append(previousMessages, newMessages as any)
 		);
 
 		const userMessage = newMessages[0].text;
-		const botResponse = generateChatbotResponse(userMessage);
+		//La detección recibida desde el Album se envía como contexto solo en el primer mensaje de la conversación
+		const hasContext = props.detection !== undefined && !contextSentRef.current;
+		contextSentRef.current = true;
+		const context = hasContext ? props.detection!.detection : undefined;
+		setPendingResponse(true);
+		let botResponse: string;
+		try{
+			botResponse = await llmServer.sendMessage(userMessage, context);
+		}catch(error){
+			console.error("Error al conversar con el servidor LLM:", error);
+			botResponse = "No se pudo obtener respuesta del servidor de LLM. Intenta de nuevo.";
+		}finally{
+			setPendingResponse(false);
+		}
 
 		setMessages((previousMessages) =>
 			GiftedChat.append(previousMessages, [
@@ -66,10 +102,6 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 				},
 			])
 		);
-	};
-
-	const generateChatbotResponse = (userMessage: string) => {
-		return bot.responseLogic(userMessage);
 	};
 
 	const microphoneButtonLogic = ()=>{
@@ -121,7 +153,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 				
 				renderSend={ (sendProps)=>(
 					<View style={{display:"flex", flexDirection:"row", alignItems:"center"}}>
-						{inputHasContent && !recording &&
+						{inputHasContent && !recording && !pendingResponse && connectionState === "connected" &&
 							<Send {...sendProps} label="Enviar">
 								<IconButton
 								size={32} 
@@ -146,6 +178,43 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 					</View>
 				)}
 			/>
+
+			{connectionState !== "connected" &&
+				<View style={styles.connectionOverlay}>
+					{connectionState === "scanning" ? (
+						<>
+							<ActivityIndicator size="large" color="#793d09"/>
+							<Text style={styles.overlayText}>Buscando servidor de LLM...</Text>
+						</>
+					):(
+						<>
+							<Text style={styles.overlayText}>No se encontró el servidor de LLM</Text>
+							<Text style={styles.overlayText}>Verifique que esté conectado al hotspot del dispositivo e intente de nuevo.</Text>
+							<Button mode="contained-tonal" icon="refresh" onPress={handshake}>
+								Reintentar
+							</Button>
+						</>
+					)}
+				</View>
+			}
 		</View>
 	);
 };
+
+const styles = StyleSheet.create({
+	connectionOverlay: {
+		position: "absolute",
+		width: "100%",
+		height: "100%",
+		backgroundColor: "rgba(0,0,0,0.75)",
+		display: "flex",
+		justifyContent: "center",
+		alignItems: "center",
+		gap: 10,
+		padding: 30,
+	},
+	overlayText: {
+		color: "white",
+		textAlign: "center",
+	},
+});
