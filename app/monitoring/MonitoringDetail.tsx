@@ -118,12 +118,13 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
             alignItems: "center",
           }}
         >
-          <Text style={{ color: MD3Colors.neutral30, fontSize: 18, fontWeight: "bold", textAlign: "center" }}>
-            Monitoreo del {new Date(monitoring.created_at).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase())}
+          <Text style={{ color: MD3Colors.neutral30, fontSize: 17, fontWeight: "bold", textAlign: "center" }}>
+            Monitoreo del {new Date(monitoring.created_at).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase())} ({summary.totalSamples} muestras)
           </Text>
         </View>
       </View>
 
+      {vertexIndex === -1 && (
       <View
         style={{
           position: "absolute",
@@ -141,18 +142,18 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
       >
         <View
           style={{
-            backgroundColor: "#fffef4",
+            // backgroundColor: "#fffef4",
             borderRadius: 10,
             paddingVertical: 8,
             paddingHorizontal: 12,
-            boxShadow: "0px 0px 4px 2px rgba(0, 0, 0, 0.25)",
+            // boxShadow: "0px 0px 4px 2px rgba(0, 0, 0, 0.25)",
             maxWidth: "85%",
             alignItems: "center",
           }}
         >
-          <Text style={{ color: MD3Colors.neutral40, fontSize: 15, textAlign: "center", marginBottom: 6 }}>
+          {/* <Text style={{ color: MD3Colors.neutral40, fontSize: 15, textAlign: "center", marginBottom: 6 }}>
             {summary.pointsWithSamples} de {samplingPathSharedData.value.length} puntos muestreados · {summary.totalSamples} muestras
-          </Text>
+          </Text> */}
           {summary.diseases.length > 0 ? (
             <Menu
               visible={menuVisible}
@@ -162,6 +163,7 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
                   onPress={() => setMenuVisible(true)}
                   style={{ backgroundColor: "#e8e8e0", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 8 }}
                 >
+                  <Text style={{ color: MD3Colors.neutral40, fontSize: 13 }}>Filtrar: </Text>
                   <Text style={{ color: MD3Colors.neutral30, fontSize: 13, fontWeight: "bold", flexShrink: 1 }} numberOfLines={1}>
                     {selectedDisease === "__all__" ? "Todas las enfermedades" : selectedDisease}
                   </Text>
@@ -181,10 +183,12 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
                 <Menu.Item
                   key={disease.name}
                   onPress={() => { setSelectedDisease(disease.name); setMenuVisible(false); }}
-                  title={`${disease.name} (×${disease.count})`}
+                  title={`${disease.name} (${disease.affectedSamples} ${disease.affectedSamples === 1 ? "muestra" : "muestras"})`}
                   titleStyle={{ color: MD3Colors.neutral30 }}
                   leadingIcon={() => (
+                    
                     <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: getDiseaseColor(disease.name), marginRight: 8 }} />
+
                   )}
                   trailingIcon={selectedDisease === disease.name ? "check" : undefined}
                 />
@@ -205,25 +209,28 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
               paddingVertical: 6,
               paddingHorizontal: 10,
               boxShadow: "0px 0px 4px 2px rgba(0, 0, 0, 0.25)",
-              maxWidth: "85%",
+              maxWidth: "90%",
               width: "100%",
             }}
           >
+            <Text style={{ color: MD3Colors.neutral40, fontSize: 14, fontWeight: "bold", marginBottom: 2, textAlign: "center" }}>
+              TOP DETECCIONES
+            </Text>
             {diseaseDistribution.slice(0, 3).map((d) => (
               <View key={d.name} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 2 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 }}>
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: getDiseaseColor(d.name) }} />
-                  <Text style={{ color: MD3Colors.neutral30, fontSize: 11 }} numberOfLines={1}>{d.name}</Text>
+                  <Text style={{ color: MD3Colors.neutral30, fontSize: 13 }} numberOfLines={1}>{d.name}</Text>
                 </View>
-                <Text style={{ color: MD3Colors.neutral40, fontSize: 11 }}>
-                  {d.percentage.toFixed(0)}% · conf. {Math.round(d.avgConfidence * 100)}%
+                <Text style={{ color: MD3Colors.neutral40, fontSize: 13 }}>
+                  en {d.affectedSamples} {d.affectedSamples === 1 ? "muestra" : "muestras"} · conf. {Math.round(d.avgConfidence * 100)}%
                 </Text>
               </View>
             ))}
           </View>
         )}
 
-        {topAffectedZones.length > 0 && (
+        {/* {topAffectedZones.length > 0 && (
           <View
             style={{
               backgroundColor: "#fffef4",
@@ -244,8 +251,9 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
               </Text>
             ))}
           </View>
-        )}
+        )} */}
       </View>
+      )}
 
       <View style={{ position: "absolute", left: 4, top: insets.top + 8, zIndex: 10 }}>
         <TouchableOpacity
@@ -291,7 +299,13 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
           horizontal
           showsHorizontalScrollIndicator={false}
         >
-          {samplings[vertexIndex]?.map((sample, index) => (
+          {samplings[vertexIndex]?.map((sample, index) => {
+            const hasSelectedDisease =
+              selectedDisease !== "__all__" &&
+              (sample.detection || []).some((det) =>
+                det.labels.some((label) => label.text === selectedDisease && label.confidence >= MIN_CONFIDENCE)
+              );
+            return (
             <TouchableOpacity
               key={`${sample.photo_dir}-${index}`}
               onPress={() => setSelectedSample(sample)}
@@ -313,8 +327,22 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
               <Text style={{ color: MD3Colors.neutral30, fontSize: 12, textAlign: "center" }}>
                 detección{sample.detection?.length === 1 ? "" : "es"}
               </Text>
+              {hasSelectedDisease && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 4,
+                    right: 4,
+                    width: 12,
+                    height: 12,
+                    borderRadius: 6,
+                    backgroundColor: getDiseaseColor(selectedDisease),
+                  }}
+                />
+              )}
             </TouchableOpacity>
-          ))}
+            );
+          })}
         </ScrollView>
       </Animated.View>
 

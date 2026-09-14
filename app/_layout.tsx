@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import LoadingScreen from '@/components/loading-screen';
+import FarmFormModal from '@/components/farm/FarmFormModal';
 import { useAppInitialization } from '@/hooks/use-app-initialization';
 
 export const unstable_settings = {
@@ -11,7 +12,7 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
-  const { loadPhase, error, ready } = useAppInitialization();
+  const { loadPhase, error, ready, showFarmForm, setShowFarmForm } = useAppInitialization();
 
   if (!ready) {
     return (
@@ -29,6 +30,7 @@ export default function RootLayout() {
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           </Stack>
+          <FarmFormModal visible={showFarmForm} onClose={() => setShowFarmForm(false)} />
           <StatusBar style="auto" />
         </ThemeProvider>
       </PaperProvider>

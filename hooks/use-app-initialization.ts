@@ -1,8 +1,10 @@
 import Database from '@/database/Database';
 import DetectionsTable from '@/database/tables/DetectionsTable';
+import FarmFormTable from '@/database/tables/FarmFormTable';
 import MonitorDrawingsTable from '@/database/tables/MonitorDrawingsTable';
 import MonitoringsTable from '@/database/tables/MonitoringsTable';
 import SamplingsTable from '@/database/tables/SamplingsTable';
+import { processFarmForm } from '@/services/farm-form';
 import { TtsVoices } from '@/src/TtsVoices';
 import { useEffect, useState } from 'react';
 import * as vosk from 'react-native-vosk';
@@ -47,6 +49,7 @@ export function useAppInitialization() {
   const [loadPhase, setLoadPhase] = useState("");
   const [error, setErrorText] = useState<string|null>(null);
   const [ready, setReady] = useState(false);
+  const [showFarmForm, setShowFarmForm] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -65,6 +68,9 @@ export function useAppInitialization() {
       await runInitializationStep("SamplingsTable", setLoadPhase, setErrorText, () =>
         SamplingsTable.initTable(),
       );
+      await runInitializationStep("FarmFormTable", setLoadPhase, setErrorText, () =>
+        FarmFormTable.initTable(),
+      );
       await runInitializationStep("TtsVoices", setLoadPhase, setErrorText, startTtsVoice);
       await runInitializationStep("ObjectDetection", setLoadPhase, setErrorText, () =>
         ObjectDetection.initializeDetector(OBJECT_DETECTOR_MAX_RESULTS, OBJECT_DETECTOR_SCORE_THRESHOLD),
@@ -72,6 +78,14 @@ export function useAppInitialization() {
       await runInitializationStep("VoskSTT", setLoadPhase, setErrorText, () =>
         vosk.loadModel('model-es-es'),
       );
+      // Fase adicional: formulario de información de la finca (mostrarlo o enviarlo si hay conexión)
+      await runInitializationStep("FarmForm", setLoadPhase, setErrorText, async () => {
+        const { shouldShowForm } = await processFarmForm();
+        if (mounted && shouldShowForm) {
+          await FarmFormTable.markRequested();
+          setShowFarmForm(true);
+        }
+      });
       if (mounted) setReady(true);
     };
 
@@ -82,5 +96,5 @@ export function useAppInitialization() {
     };
   }, []);
 
-  return { loadPhase, error, ready };
+  return { loadPhase, error, ready, showFarmForm, setShowFarmForm };
 }

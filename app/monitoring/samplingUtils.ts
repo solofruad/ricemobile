@@ -58,18 +58,24 @@ export const summarizeDetections = (samplings: SamplingData[][], threshold: numb
   const allSamples = samplings.flat().filter((s): s is SamplingData => !!s);
   const totalSamples = allSamples.length;
   const pointsWithSamples = samplings.filter((samples) => samples?.length > 0).length;
-  const diseases: Record<string, { count: number; confidenceSum: number; affectedPoints: Set<number> }> = {};
+  const diseases: Record<string, { count: number; confidenceSum: number; affectedPoints: Set<number>; affectedSamples: number }> = {};
   let totalDetections = 0;
 
   allSamples.forEach((sample) => {
     const filtered = filterDetectionsByConfidence(sample.detection, threshold);
+    if (filtered.length === 0) return;
+    const sampleDiseases = new Set<string>();
     filtered.forEach((det) => {
       det.labels.forEach((label) => {
         totalDetections++;
-        const entry = diseases[label.text] || (diseases[label.text] = { count: 0, confidenceSum: 0, affectedPoints: new Set() });
+        const entry = diseases[label.text] || (diseases[label.text] = { count: 0, confidenceSum: 0, affectedPoints: new Set(), affectedSamples: 0 });
         entry.count++;
         entry.confidenceSum += label.confidence;
         entry.affectedPoints.add(sample.index_sampling_point);
+        if (!sampleDiseases.has(label.text)) {
+          sampleDiseases.add(label.text);
+          entry.affectedSamples++;
+        }
       });
     });
   });
@@ -83,6 +89,7 @@ export const summarizeDetections = (samplings: SamplingData[][], threshold: numb
       count: value.count,
       avgConfidence: value.confidenceSum / value.count,
       affectedPoints: value.affectedPoints.size,
+      affectedSamples: value.affectedSamples,
     })),
   };
 };
@@ -92,7 +99,7 @@ export type DiseaseDistribution = {
   count: number;
   avgConfidence: number;
   affectedPoints: number;
-  percentage: number;
+  affectedSamples: number;
 };
 
 export const computeDiseaseDistribution = (samplings: SamplingData[][], threshold: number = MIN_CONFIDENCE): DiseaseDistribution[] => {
@@ -100,10 +107,7 @@ export const computeDiseaseDistribution = (samplings: SamplingData[][], threshol
   if (summary.totalDetections === 0) return [];
 
   return summary.diseases
-    .map((d) => ({
-      ...d,
-      percentage: (d.count / summary.totalDetections) * 100,
-    }))
+    .map((d) => ({ ...d }))
     .sort((a, b) => b.count - a.count);
 };
 
