@@ -12,15 +12,20 @@ import CameraPermisionUI from './camUtilities/CameraPermisionUI';
 import ScanControledCanvas from './ScanControledCanvas';
 import TopToolbar from './camUtilities/TopToolbar';
 import { filterDetectionsByConfidence } from '@/app/monitoring/samplingUtils';
+import HowItWorksButton from '@/components/ui/how-it-works-button';
+import { useModuleTour } from '@/hooks/useModuleTour';
+import { TOUR_IDS } from '@/constants/tours/tourIds';
+import { buildDeteccionTourSteps } from '@/constants/tours/deteccion';
 
 const MIN_FOCUS_DISTANCE = 15;
 
 type CamScanProps = {
   onResult?: (result: { photo_dir: string; detection: ObjectDetectionResult[] }) => void;
   onClose?: () => void;
+  showTourButton?: boolean;
 }
 
-export default function CamScan({ onResult, onClose }: CamScanProps) {
+export default function CamScan({ onResult, onClose, showTourButton = true }: CamScanProps) {
   const insets = useSafeAreaInsets();
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [timesPermissionRejected, setTimesPermissionRejected] = useState(0);
@@ -37,6 +42,18 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
   const photoOutput = usePhotoOutput()
   //@ts-ignore
   const camera = useRef<CameraRef>(null);
+  const shutterRef = useRef<View>(null);
+  const focusButtonRef = useRef<View>(null);
+  const { startModuleTour } = useModuleTour();
+
+  const handleStartTour = () => {
+    startModuleTour(TOUR_IDS.DETECCION, () =>
+      buildDeteccionTourSteps({
+        shutterRef,
+        focusRef: focusButtonRef,
+      }),
+    );
+  };
 
   const handleRequestPermission = async (attempts = 1) => {
     try {
@@ -138,6 +155,11 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
   return (
     <SafeAreaProvider>
       <View style={{ flex: 1, position: "relative", backgroundColor: "#091520" }}>
+          {showTourButton && (
+            <View style={{ position: "absolute", top: insets.top + 12, right: 16, zIndex: 20 }}>
+              <HowItWorksButton onPress={handleStartTour} />
+            </View>
+          )}
           <View style={[styles.stageLayer, { }]}>
                 <Camera
                   ref={camera}
@@ -150,24 +172,26 @@ export default function CamScan({ onResult, onClose }: CamScanProps) {
                 />
 
             <View style={styles.buttonContainer}>
-              <IconButton 
-                icon="camera" 
-                onPress={takePicture} 
-                mode='contained' 
-                iconColor="rgb(87, 87, 87)"
-                containerColor="rgb(255, 255, 255)"
-                size={35} 
-                style={{ marginHorizontal: "auto", 
-                        width: 75, // Custom outer button width
-                        height: 75, // Custom outer button height
-                        borderRadius: 45,
-                        alignItems: 'center',
-                        borderWidth: 3, // Border thickness
-                        borderColor: '#6a6a6a90', // Border color
-                 }}/>
+              <View ref={shutterRef} collapsable={false} style={styles.shutterRefWrapper}>
+                <IconButton
+                  icon="camera"
+                  onPress={takePicture}
+                  mode='contained'
+                  iconColor="rgb(87, 87, 87)"
+                  containerColor="rgb(255, 255, 255)"
+                  size={35}
+                  style={{ width: 75, // Custom outer button width
+                          height: 75, // Custom outer button height
+                          borderRadius: 45,
+                          alignItems: 'center',
+                          borderWidth: 3, // Border thickness
+                          borderColor: '#6a6a6a90', // Border color
+                  }}/>
+              </View>
             </View>
 
-            <TopToolbar 
+            <TopToolbar
+              focusButtonRef={focusButtonRef}
               onShow={() => { 
                 setShowFocusControl(true);
                 (camera.current?.controller as CameraController).setZoom(2); 
@@ -215,5 +239,6 @@ const styles = StyleSheet.create({
   stageLayer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
   camera: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   buttonContainer: { position: "absolute", bottom: 10, width: "100%", flexDirection: "row" },
+  shutterRefWrapper: { flex: 1, alignItems: "center", justifyContent: "center" },
   overlayText: { color: MD3Colors.neutral30, fontSize: 24, fontWeight: 'bold' }
 });

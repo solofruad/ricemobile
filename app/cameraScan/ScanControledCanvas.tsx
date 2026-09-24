@@ -1,7 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Text, View } from "react-native";
 
 import AppButton from "@/components/ui/app-button";
+import HowItWorksButton from "@/components/ui/how-it-works-button";
+import { useModuleTour } from "@/hooks/useModuleTour";
+import { TOUR_IDS } from "@/constants/tours/tourIds";
+import {
+  buildDeteccionResultadosTourSteps,
+} from "@/constants/tours/deteccion";
 
 import DetectionsTable from "@/database/tables/DetectionsTable";
 import { ObjectDetectionResult } from "@/src/ObjectDetection";
@@ -45,6 +51,21 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
   const [saved, setIsSaved] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
+  const headerRef = useRef<View>(null);
+  const discardRef = useRef(null);
+  const saveRef = useRef(null);
+  const { startModuleTour } = useModuleTour();
+
+  const handleStartTour = () => {
+    startModuleTour(TOUR_IDS.DETECCION_RESULTADOS, () =>
+      buildDeteccionResultadosTourSteps({
+        headerRef,
+        discardRef,
+        saveRef,
+      }),
+    );
+  };
+
   const diseaseColorMap = useMemo(() => {
     const diseaseNames = props.detection
       .flatMap((det) => det.labels.map((l) => l.text))
@@ -86,28 +107,34 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
 
   return (
     <View style={{ flex: 1, display: "flex", gap:15 }}>
-      <Text style={{ 
-        color: MD3Colors.neutral30, 
-        marginHorizontal: "auto", 
-        fontSize: 24, 
-        marginTop:15,
-        zIndex:10, 
-        backgroundColor: "#fffef4", 
-        paddingVertical:5, 
-        paddingHorizontal:8, 
-        borderRadius:5 }}>
-          Resultados de Reconocimiento
-        </Text>
+      <View style={{ position: "absolute", top: 15, right: 10, zIndex: 20 }}>
+        <HowItWorksButton onPress={handleStartTour} />
+      </View>
+      <View ref={headerRef} collapsable={false} style={{ alignSelf: "center" }}>
+        <Text style={{
+          color: MD3Colors.neutral30,
+          marginHorizontal: "auto",
+          fontSize: 24,
+          marginTop:15,
+          zIndex:10,
+          backgroundColor: "#fffef4",
+          paddingVertical:5,
+          paddingHorizontal:8,
+          borderRadius:5 }}>
+            Resultados de Reconocimiento
+          </Text>
+      </View>
       <View style={{ flex: 2, display: "flex", alignItems: "center" }}>
         <ScanCanvas detection={props.detection} photoUri={props.photoUri} useGestureHandler={true} diseaseColorMap={diseaseColorMap} />
       </View>
 
       <View style={{ display: "flex", flexDirection: "row", gap: 15, marginHorizontal: "auto", marginBottom: 15 }}>
-        <AppButton title="Descartar" onPress={close} />
+        <AppButton title="Descartar" onPress={close} innerRef={discardRef} />
         <AppButton
           disabled={saved || saving}
           title={saving ? "Guardando" : saved ? "Guardado" : "Guardar"}
           onPress={save}
+          innerRef={saveRef}
         />
       </View>
 

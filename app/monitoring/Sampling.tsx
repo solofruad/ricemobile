@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, Text, ToastAndroid, TouchableOpacity, Vibration, View } from "react-native";
+import { Dimensions, ScrollView, Text, ToastAndroid, TouchableOpacity, Vibration, View } from "react-native";
 import { Icon, MD3Colors } from "react-native-paper";
 import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
 import { Modal } from "react-native-reanimated-modal";
@@ -13,7 +13,6 @@ import ScanCanvas from "../cameraScan/ScanCanvas";
 import MonCanvas from "./MonCanvas";
 import EditorActionButton from "./components/EditorActionButton";
 import EditorPanel from "./components/EditorPanel";
-import MonGuide from "./components/MonGuide";
 import Path from "./path/Path";
 import Vertex from "./path/Vertex";
 import SamplingsTable from "@/database/tables/SamplingsTable";
@@ -23,6 +22,9 @@ import { getDiseaseColorMap } from "./diseaseColors";
 import MonitoringsPanel, { MonitoringDetailData } from "./MonitoringsPanel";
 import MonitoringDetail from "./MonitoringDetail";
 import AppButton from "@/components/ui/app-button";
+import { useModuleTour } from "@/hooks/useModuleTour";
+import { TOUR_IDS } from "@/constants/tours/tourIds";
+import { buildSamplingTourSteps, ReferenciasTourSampling } from "@/constants/tours/sampling";
 
 const MAX_SAMPLES_PER_POINT = 5;
 
@@ -39,7 +41,6 @@ type SamplingProps = {
 
 export default function Sampling(props: SamplingProps) {
   const insets = useSafeAreaInsets();
-  const [showGuide, setShowGuide] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [showMonitoringsPanel, setShowMonitoringsPanel] = useState(false);
@@ -52,6 +53,24 @@ export default function Sampling(props: SamplingProps) {
 
   const [totalSamplingPoints, setTotalSamplingPoints] = useState(0);
   const vertexIndexRef = useRef(-1);
+  const samplesScrollRef = useRef<ScrollView>(null);
+  const samplesPanelRef = useRef<View | null>(null);
+  const processSamplesRef = useRef<View | null>(null);
+  const resetHistoryRef = useRef<View | null>(null);
+  const { startModuleTour } = useModuleTour();
+
+  const handleStartTour = () => {
+    const refs: ReferenciasTourSampling = {
+      samplesPanelRef,
+      resetHistoryRef,
+      processRef: allPointsComplete ? processSamplesRef : undefined,
+      windowSize: Dimensions.get("window"),
+    };
+    startModuleTour(TOUR_IDS.SAMPLING, () => buildSamplingTourSteps(refs));
+  };
+  const pendingSamplesAutoScrollRef = useRef(false);
+  const lastVertexIndexRef = useRef(-1);
+  const detailOpenedAfterProcessRef = useRef(false);
 
   const vertexToEdit = useSharedValue<Point | null>(null);
   const animSamplesBottom = useSharedValue(-160);
@@ -111,6 +130,21 @@ export default function Sampling(props: SamplingProps) {
     vertexIndexRef.current = vertexIndex;
   }, [vertexIndex]);
 
+  useEffect(() => {
+    const previousVertexIndex = lastVertexIndexRef.current;
+    lastVertexIndexRef.current = vertexIndex;
+
+    if (pendingSamplesAutoScrollRef.current) {
+      pendingSamplesAutoScrollRef.current = false;
+      requestAnimationFrame(() => samplesScrollRef.current?.scrollToEnd({ animated: true }));
+      return;
+    }
+
+    if (vertexIndex !== previousVertexIndex) {
+      requestAnimationFrame(() => samplesScrollRef.current?.scrollTo({ x: 0, animated: false }));
+    }
+  }, [vertexIndex, capturedSamples]);
+
   const handlePress = useCallback((open: boolean) => {
     animSamplesBottom.value = withSpring(open ? 0 : -160, PANEL_SPRING);
     animHelpTextOpacity.value = withSpring(open ? 0 : 1, PANEL_SPRING);
@@ -123,6 +157,11 @@ export default function Sampling(props: SamplingProps) {
       const actualVertexIndex = samplingPathSharedData.value.findIndex((v) => v.id === vertex!.id);
       setVertexIndex(actualVertexIndex);
       vertexIndexRef.current = actualVertexIndex;
+      const pointSamples = capturedSamples[actualVertexIndex];
+      const pointSamplesCount = pointSamples?.length || 0;
+      if (pointSamplesCount > 0 && pointSamplesCount < MAX_SAMPLES_PER_POINT) {
+        pendingSamplesAutoScrollRef.current = true;
+      }
 
       vertexToEdit.set(vertex.getAsPoint());
       handlePress(true);
@@ -133,7 +172,7 @@ export default function Sampling(props: SamplingProps) {
       vertexToEdit.set(null);
       handlePress(false);
     }
-  }, [handlePress]);
+  }, [handlePress, capturedSamples]);
 
   const openTakePhoto = useCallback(() => {
     setShowCamera(true);
@@ -148,6 +187,7 @@ export default function Sampling(props: SamplingProps) {
           const monitoring = await MonitoringsTable.getProcessedWithDrawingById(monitoringId);
           const records = await SamplingsTable.getByMonitoringId(monitoringId);
           if (monitoring) {
+            detailOpenedAfterProcessRef.current = true;
             setSelectedMonitoring({ monitoring, samplings: buildSamplingsMatrix(records) });
           } else {
             props.forcefullyGoToEditMode();
@@ -158,6 +198,34 @@ export default function Sampling(props: SamplingProps) {
       })
       .catch(error => console.error("Error al procesar el monitoreo", error));
   }, [monitoringId, props]);
+
+  const resetSamplingForNewMonitoring = useCallback(() => {
+    const idDrawing = props.drawingData?.id;
+    if (idDrawing !== undefined) {
+      MonitoringsTable.getActiveByDrawingId(idDrawing)
+        .then(activeMonitoring => {
+          if (activeMonitoring) {
+            setMonitoringId(activeMonitoring.id);
+          } else {
+            MonitoringsTable.insert({ id_monitor_drawing: idDrawing })
+              .then(newMonitoringId => setMonitoringId(newMonitoringId))
+              .catch(error => console.error("Error al crear el monitoreo", error));
+          }
+        })
+        .catch(error => console.error("Error al buscar el monitoreo activo", error));
+    }
+
+    setCapturedSamples([]);
+    completenessPerSamplingPoint.set(Array(totalSamplingPoints).fill(0));
+    setSelectedSample(null);
+    setShowCamera(false);
+    setVertexIndex(-1);
+    vertexIndexRef.current = -1;
+    vertexToEdit.set(null);
+    handlePress(false);
+    pendingSamplesAutoScrollRef.current = false;
+    lastVertexIndexRef.current = -1;
+  }, [props.drawingData, totalSamplingPoints, completenessPerSamplingPoint, vertexToEdit, handlePress]);
 
   const handleCameraResult = useCallback((result: { photo_dir: string; detection: ObjectDetectionResult[] }) => {
     const activeVertexIndex = vertexIndexRef.current;
@@ -176,6 +244,8 @@ export default function Sampling(props: SamplingProps) {
     };
 
     SamplingsTable.insert(sample).catch((error) => console.error("Error al guardar la muestra", error));
+
+    pendingSamplesAutoScrollRef.current = true;
 
     setCapturedSamples((prev) => {
       const newR = [...prev];
@@ -238,6 +308,8 @@ export default function Sampling(props: SamplingProps) {
         </Animated.Text>
       ) : (
         <Animated.View
+          ref={processSamplesRef}
+          collapsable={false}
           style={{
             position: "absolute",
             width: "100%",
@@ -251,7 +323,7 @@ export default function Sampling(props: SamplingProps) {
         </Animated.View>
       )}
 
-      <View style={{ position: "absolute", left: 4, top: insets.top + 8 }}>
+      <View ref={resetHistoryRef} collapsable={false} style={{ position: "absolute", left: 4, top: insets.top + 8 }}>
         <EditorPanel>
           <EditorActionButton icon="delete-outline" action={() => setShowResetModal(true)} />
           <EditorActionButton icon="history" action={() => setShowMonitoringsPanel(true)} />
@@ -260,11 +332,13 @@ export default function Sampling(props: SamplingProps) {
 
       <View style={{ position: "absolute", right: 4, top: insets.top + 8 }}>
         <EditorPanel>
-          <EditorActionButton icon="help" action={() => setShowGuide(true)} />
+          <EditorActionButton icon="help" action={handleStartTour} />
         </EditorPanel>
       </View>
 
       <Animated.View
+        ref={samplesPanelRef}
+        collapsable={false}
         style={{
           position: "absolute",
           bottom: animSamplesBottom,
@@ -289,6 +363,7 @@ export default function Sampling(props: SamplingProps) {
         </Text>
 
         <ScrollView
+          ref={samplesScrollRef}
           style={{ width: "100%" }}
           contentContainerStyle={{ display: "flex", flexDirection: "row", gap: 10 }}
           horizontal
@@ -333,15 +408,11 @@ export default function Sampling(props: SamplingProps) {
                 setSampleIndex(capturedSamples[vertexIndex]?.length)
               }}
             >
-              <Icon source="leaf" size={45} color="rgb(26, 189, 23)" />
+              <Icon source="plus-box-outline" size={50} color="rgb(26, 189, 23)" />
             </TouchableOpacity>
           )}
         </ScrollView>
       </Animated.View>
-
-      <Modal visible={showGuide} onBackdropPress={() => setShowGuide(false)}>
-        <MonGuide isVisible={showGuide} onClose={() => setShowGuide(false)} />
-      </Modal>
 
       <Modal visible={showResetModal} onBackdropPress={() => setShowResetModal(false)}>
         <View style={{ backgroundColor: "white", padding: 20, borderRadius: 10, margin: 20 }}>
@@ -414,12 +485,22 @@ export default function Sampling(props: SamplingProps) {
         onClose={() => setShowMonitoringsPanel(false)}
         onSelectMonitoring={(data) => {
           setShowMonitoringsPanel(false);
+          detailOpenedAfterProcessRef.current = false;
           setSelectedMonitoring(data);
         }}
       />
 
       {selectedMonitoring && (
-        <MonitoringDetail data={selectedMonitoring} onClose={() => setSelectedMonitoring(null)} />
+        <MonitoringDetail
+          data={selectedMonitoring}
+          onClose={() => {
+            setSelectedMonitoring(null);
+            if (detailOpenedAfterProcessRef.current) {
+              detailOpenedAfterProcessRef.current = false;
+              resetSamplingForNewMonitoring();
+            }
+          }}
+        />
       )}
     </>
   );

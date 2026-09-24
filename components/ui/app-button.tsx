@@ -1,16 +1,19 @@
 import { StyleProp, Text, TouchableOpacity, ViewStyle } from "react-native";
+import type { Ref } from "react";
 
-type AppButtonProps = {
+type AppButtonProps<T extends object = object> = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   color?: string;
-};
+  innerRef?: Ref<any>;
+} & T;
 
-export default function AppButton(props: AppButtonProps) {
+export default function AppButton<T extends object>(props: AppButtonProps<T>) {
   return (
     <TouchableOpacity
+      ref={props.innerRef}
       disabled={props.disabled}
       onPress={props.onPress}
       style={[

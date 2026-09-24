@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Dimensions, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { Icon, MD3Colors } from "react-native-paper";
 import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
@@ -7,6 +7,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MonitoringsTable, { MonitoringsWithDrawingRecord } from "@/database/tables/MonitoringsTable";
 import SamplingsTable from "@/database/tables/SamplingsTable";
 import { buildSamplingsMatrix, SamplingData, summarizeDetections } from "./samplingUtils";
+import HowItWorksButton from "@/components/ui/how-it-works-button";
+import { useModuleTour } from "@/hooks/useModuleTour";
+import { TOUR_IDS } from "@/constants/tours/tourIds";
+import { buildPanelMonitoreosTourSteps } from "@/constants/tours/monitoreos";
 
 const PANEL_SPRING = { damping: 18, stiffness: 180, mass: 0.6 };
 
@@ -29,6 +33,20 @@ const formatDate = (createdAt: string) => {
 export default function MonitoringsPanel(props: MonitoringsPanelProps) {
   const [items, setItems] = useState<MonitoringDetailData[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const headerRef = useRef<View | null>(null);
+  const listRef = useRef<ScrollView | null>(null);
+  const { startModuleTour } = useModuleTour();
+
+  const handleStartTour = () => {
+    startModuleTour(TOUR_IDS.MONITOREOS_PANEL, () =>
+      buildPanelMonitoreosTourSteps({
+        headerRef,
+        listRef,
+        windowSize: Dimensions.get("window"),
+      }),
+    );
+  };
 
   const panelWidth = Dimensions.get("window").width * 0.85;
   const translateX = useSharedValue(panelWidth);
@@ -100,11 +118,14 @@ export default function MonitoringsPanel(props: MonitoringsPanelProps) {
           paddingHorizontal: 12,
         }}
       >
-        <View style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <View ref={headerRef} collapsable={false} style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <Text style={{ color: MD3Colors.neutral30, fontSize: 18, fontWeight: "bold" }}>MONITOREOS REALIZADOS</Text>
-          <TouchableOpacity onPress={props.onClose}>
-            <Icon source="close" size={28} color={MD3Colors.neutral30} />
-          </TouchableOpacity>
+          <View style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <HowItWorksButton onPress={handleStartTour} />
+            <TouchableOpacity onPress={props.onClose}>
+              <Icon source="close" size={28} color={MD3Colors.neutral30} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {loading ? (

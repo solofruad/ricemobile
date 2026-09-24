@@ -23,12 +23,12 @@ export default function TabLayout() {
           title: 'Detección',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="camera.fill" color={color} />,
         }}
-      />
+      />      
       <Tabs.Screen
-        name="chatbot"
+        name="monitor"
         options={{
-          title: 'Chatbot',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="message" color={color} />,
+          title: 'Monitoreo',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.pie" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -39,10 +39,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="monitor"
+        name="chatbot"
         options={{
-          title: 'Monitoreo',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="chart.pie" color={color} />,
+          title: 'Chatbot',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="message" color={color} />,
         }}
       />
     </Tabs>

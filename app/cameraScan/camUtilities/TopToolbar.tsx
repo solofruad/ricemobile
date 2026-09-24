@@ -8,6 +8,7 @@ type TopToolbarProps = {
   minFocusDistance: number,
   onShow?: ()=>void,
   onHide?: ()=>void
+  focusButtonRef?: React.RefObject<any>
 }
 
 export default function TopToolbar(props: TopToolbarProps){
@@ -41,7 +42,7 @@ export default function TopToolbar(props: TopToolbarProps){
           height={290} 
           minFocusDistance={props.minFocusDistance}/>
       </Animated.View>
-    <View style={{position:"absolute",right:16,bottom:30}}>
+    <View ref={props.focusButtonRef} collapsable={false} style={{position:"absolute",right:16,bottom:30}}>
       <Button 
         icon={()=><Icon source="ruler" size={28} color={showing ? "rgb(240, 240, 240)" : "rgb(87, 87, 87)"}/>}
         mode="contained"

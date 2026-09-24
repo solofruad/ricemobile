@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { FlatList, Image, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from "react";
+import { FlatList, Image, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { Button, IconButton, MD3DarkTheme } from "react-native-paper";
 
 import PagerView from 'react-native-pager-view';
@@ -9,6 +9,10 @@ import { useIsFocused } from "@react-navigation/native";
 import { File } from 'expo-file-system';
 import { router } from 'expo-router';
 import ScanCanvas from "../cameraScan/ScanCanvas";
+import HowItWorksButton from "@/components/ui/how-it-works-button";
+import { useModuleTour } from "@/hooks/useModuleTour";
+import { TOUR_IDS } from "@/constants/tours/tourIds";
+import { buildAlbumTourSteps, buildAlbumFotoTourSteps } from "@/constants/tours/album";
 
 function PhotoSliderViewer(items:Array<DetectionRecord>, selectedIndex:number, setViewing:(index:number)=>void){
   return <PagerView style={{width:"100%", height:"100%"}} initialPage={selectedIndex} onPageSelected={(e)=>setViewing(e.nativeEvent.position)}>
@@ -26,6 +30,33 @@ export default function AlbumModule(){
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
   const [viewing, setViewing] = useState<number>(-1);
   const isFocused = useIsFocused();
+  const windowSize = useWindowDimensions();
+
+  const galleryRef = useRef<FlatList>(null);
+  const deleteRef = useRef(null);
+  const chatbotRef = useRef(null);
+  const closeRef = useRef(null);
+  const { startModuleTour } = useModuleTour();
+
+  const handleStartGalleryTour = () => {
+    startModuleTour(TOUR_IDS.ALBUM, () =>
+      buildAlbumTourSteps({
+        galleryRef,
+        windowSize: { width: windowSize.width, height: windowSize.height },
+      }),
+    );
+  };
+
+  const handleStartPhotoTour = () => {
+    startModuleTour(TOUR_IDS.ALBUM_FOTO, () =>
+      buildAlbumFotoTourSteps({
+        deleteRef,
+        chatbotRef,
+        closeRef,
+        windowSize: { width: windowSize.width, height: windowSize.height },
+      }),
+    );
+  };
 
   useEffect(()=>{
     if(isFocused){
@@ -63,25 +94,34 @@ export default function AlbumModule(){
     if(selectedImage !== null){
       return <View style={{position:"absolute", bottom:0, left:0, width:"100%", height:"100%", backgroundColor:"rgba(0,0,0,0.8)", display:"flex", justifyContent:"center", alignItems:"center"}}>
               {PhotoSliderViewer(databaseData, selectedImage as number, setViewing)}
-              <Button style={{position:"absolute", bottom:10, left:10}} icon="delete" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
-                deleteImage();
-              }}>
-                Borrar
-              </Button>
-              
-              <Button style={{position:"absolute", bottom:10,left:"50%", transform:[{translateX:"-50%"}]}} icon="layers" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
-                router.push({
-                  pathname: '/(tabs)/chatbot',
-                  params: {detection: JSON.stringify(databaseData[viewing])}
-                });
-
+              <View style={{position:"absolute", top:10, left:10}}>
+                <HowItWorksButton onPress={handleStartPhotoTour} />
+              </View>
+              <View ref={deleteRef} collapsable={false} style={{position:"absolute", bottom:10, left:10}}>
+                <Button icon="delete" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
+                  deleteImage();
                 }}>
-                Chatbot
-              </Button>
+                  Borrar
+                </Button>
+              </View>
 
-              <Button style={{position:"absolute", bottom:10, right:10}} icon="close" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{setSelectedImage(null)}}>
-                Cerrar
-              </Button>
+              <View ref={chatbotRef} collapsable={false} style={{position:"absolute", bottom:10,left:"50%", transform:[{translateX:"-50%"}]}}>
+                <Button icon="layers" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
+                  router.push({
+                    pathname: '/(tabs)/chatbot',
+                    params: {detection: JSON.stringify(databaseData[viewing])}
+                  });
+
+                  }}>
+                  Chatbot
+                </Button>
+              </View>
+
+              <View ref={closeRef} collapsable={false} style={{position:"absolute", bottom:10, right:10}}>
+                <Button icon="close" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{setSelectedImage(null)}}>
+                  Cerrar
+                </Button>
+              </View>
             </View>
     }
     if(images.length === 0){
@@ -94,7 +134,10 @@ export default function AlbumModule(){
 
   }
   return <View style={{width:"100%", height:"100%",backgroundColor:"#121222ff", paddingTop:30, position:"relative"}}>
-    <FlatList 
+    <View style={{position:"absolute", top:16, right:10, zIndex: 20}}>
+      <HowItWorksButton onPress={handleStartGalleryTour} />
+    </View>
+    <FlatList ref={galleryRef}
       data={images}
       numColumns={3}
       renderItem={({item, index})=>(

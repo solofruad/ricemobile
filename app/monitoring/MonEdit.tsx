@@ -8,13 +8,15 @@ import { Point } from "@/types/types";
 import MonCanvas, {VertexSharedValue, PolygonSharedValue} from "./MonCanvas"; // Importamos el componente visual
 import EditorActionButton from "./components/EditorActionButton";
 import EditorPanel from "./components/EditorPanel";
-import MonGuide from "./components/MonGuide";
 import History, { PATH_OP } from "./path/History";
 import Path, { VERTEX_OPERATION } from "./path/Path";
 import Vertex from "./path/Vertex";
 import MonitorDrawingsTable, { MonitorDrawingRecord } from "@/database/tables/MonitorDrawingsTable";
 import MonitoringsTable from "@/database/tables/MonitoringsTable";
 import AppButton from "@/components/ui/app-button";
+import { useModuleTour } from "@/hooks/useModuleTour";
+import { TOUR_IDS } from "@/constants/tours/tourIds";
+import { buildMonEditTourSteps } from "@/constants/tours/monEdit";
 
 export type MonitorDrawingData = {
   polygon: PolygonSharedValue;
@@ -63,10 +65,25 @@ type MonEditProps = {
 export default function MonEdit(props: MonEditProps) {
   const dims = useRef<{ x: number; y: number }>({x:0,y:0});
   const [showEditEndModal, setShowEditEndModal] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showWVertexInfluenceJS, setShowWVertexInfluenceJS] = useState(false);
   const [modeJS, setModeJS] = useState<MONITOR_MODE>(MONITOR_MODE.EDIT);
+
+  const resetUndoRef = useRef<View | null>(null);
+  const helpRef = useRef<View | null>(null);
+  const modesRef = useRef<View | null>(null);
+  const { startModuleTour } = useModuleTour();
+
+  const handleStartTour = () => {
+    startModuleTour(TOUR_IDS.MON_EDIT, () =>
+      buildMonEditTourSteps({
+        resetUndoRef,
+        helpRef,
+        modesRef,
+        windowSize: Dimensions.get('window'),
+      }),
+    );
+  };
 
   const showWVertexInfluence = useSharedValue(false);
   const mode = useSharedValue<MONITOR_MODE>(MONITOR_MODE.EDIT);
@@ -287,15 +304,15 @@ export default function MonEdit(props: MonEditProps) {
         {MONITOR_MODE.LOCK === modeJS ? "EDICIÓN BLOQUEADA" : ""}
       </Text>
 
-      {/* BOTÓN AYUDA */}
-      <View style={{ position: "absolute", right: 4, top: 35 }}>
+      {/* BOTÓN AYUDA: Lanza el tour interactivo del módulo */}
+      <View style={{ position: "absolute", right: 4, top: 35 }} ref={helpRef} collapsable={false}>
         <EditorPanel>
-          <EditorActionButton icon="help" action={() => setShowGuide(true)} />
+          <EditorActionButton icon="help" action={handleStartTour} />
         </EditorPanel>
       </View>
 
       {/* BOTÓN DESHACER (UNDO) */}
-      <View style={{ position: "absolute", left: 4, bottom: 6 }}>
+      <View ref={resetUndoRef} collapsable={false} style={{ position: "absolute", left: 4, bottom: 6 }}>
         <EditorPanel>
           <EditorActionButton icon="restart" action={() => setShowResetModal(true)} />
           <EditorActionButton icon="undo" action={undoAction} />
@@ -303,7 +320,7 @@ export default function MonEdit(props: MonEditProps) {
       </View>
 
       {/* PANEL DE ACCIONES Y MODOS */}
-      <View style={{ position: "absolute", right: 4, bottom: 6 }}>
+      <View ref={modesRef} collapsable={false} style={{ position: "absolute", right: 4, bottom: 6 }}>
         <EditorPanel flexDirection="row">
           <EditorActionButton iconColor={colorBasedInMonitorMode(MONITOR_MODE.EDIT)} icon="pencil" action={() => changeMode(MONITOR_MODE.EDIT)} />
           <EditorActionButton iconColor={showWVertexInfluenceJS ? MD2Colors.green600 : MD3Colors.neutral40} icon="texture-box" action={toggleWVertexInfluence} />
@@ -311,14 +328,6 @@ export default function MonEdit(props: MonEditProps) {
           <EditorActionButton iconColor={colorBasedInMonitorMode(MONITOR_MODE.LOCK)} icon="check-outline" action={() => changeMode(MONITOR_MODE.LOCK)} />
         </EditorPanel>
       </View>
-
-      {/* MODAL GUÍA DE USUARIO */}
-      <Modal visible={showGuide} onBackdropPress={()=>setShowGuide(false)}>
-        <MonGuide 
-          isVisible={showGuide}
-          onClose={() => setShowGuide(false)} 
-        />
-      </Modal>
 
       {/* MODAL DE REINICIO */}
       <Modal visible={showResetModal} onBackdropPress={()=>setShowResetModal(false)}>

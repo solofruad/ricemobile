@@ -8,6 +8,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, TextInput, View } from "react-native";
 import { GiftedChat, IMessage,  MessageText, Send } from "react-native-gifted-chat";
 import { Button, IconButton, MD3Colors } from "react-native-paper";
+import { useWindowDimensions } from "react-native";
+import HowItWorksButton from "@/components/ui/how-it-works-button";
+import { useModuleTour } from "@/hooks/useModuleTour";
+import { TOUR_IDS } from "@/constants/tours/tourIds";
+import { buildChatbotTourSteps } from "@/constants/tours/chatbot";
 
 type ChatBotModuleProps = {
 	detection?: DetectionRecord
@@ -22,6 +27,22 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	const [recording, setRecording] = useState(false);
 	const [inputHasContent, setInputHasContent] = useState(false);
 	const headerHeight = useHeaderHeight();
+	const windowSize = useWindowDimensions();
+	const composerControlsRef = useRef<View | null>(null);
+	const connectionRetryRef = useRef<View | null>(null);
+	const { startModuleTour } = useModuleTour();
+
+	const handleStartTour = () => {
+		startModuleTour(TOUR_IDS.CHATBOT, () =>
+			buildChatbotTourSteps({
+				inputRef: inputRef as unknown as React.RefObject<any>,
+				composerControlsRef,
+				connectionRetryRef,
+				connected: connectionState === "connected",
+				windowSize: { width: windowSize.width, height: windowSize.height },
+			}),
+		);
+	};
 	const [connectionState, setConnectionState] = useState<ConnectionState>("scanning");
 	const [pendingResponse, setPendingResponse] = useState(false);
 	const contextSentRef = useRef(false);
@@ -123,6 +144,9 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 
 	return (
 		<View style={{width:"100%", height:"100%"}}>
+			<View style={{position:"absolute", top: 10, right: 10, zIndex: 30}}>
+				<HowItWorksButton onPress={handleStartTour} />
+			</View>
 			<View style={{position:"absolute", width:"100%", height:"100%"}}>
         <LinearGradient
           colors={['#ffffff','#ffeedf',  '#793d09']}
@@ -152,7 +176,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 				}}
 				
 				renderSend={ (sendProps)=>(
-					<View style={{display:"flex", flexDirection:"row", alignItems:"center"}}>
+					<View ref={composerControlsRef} collapsable={false} style={{display:"flex", flexDirection:"row", alignItems:"center"}}>
 						{inputHasContent && !recording && !pendingResponse && connectionState === "connected" &&
 							<Send {...sendProps} label="Enviar">
 								<IconButton
@@ -189,10 +213,12 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 					):(
 						<>
 							<Text style={styles.overlayText}>No se encontró el servidor de LLM</Text>
-							<Text style={styles.overlayText}>Verifique que esté conectado al hotspot del dispositivo e intente de nuevo.</Text>
+						<Text style={styles.overlayText}>Verifique que esté conectado al hotspot del dispositivo e intente de nuevo.</Text>
+						<View ref={connectionRetryRef} collapsable={false}>
 							<Button mode="contained-tonal" icon="refresh" onPress={handshake}>
 								Reintentar
 							</Button>
+						</View>
 						</>
 					)}
 				</View>

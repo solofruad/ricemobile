@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { Icon, MD3Colors, Menu } from "react-native-paper";
 import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,6 +12,13 @@ import { PolygonSharedValue } from "./MonCanvas";
 import { MonitoringDetailData } from "./MonitoringsPanel";
 import { SamplingData, summarizeDetections, computeHealthPerPointFiltered, computeDiseaseDistribution, computeIncidenceByZone, MIN_CONFIDENCE } from "./samplingUtils";
 import { getDiseaseColorMap, getDiseaseColor } from "./diseaseColors";
+import HowItWorksButton from "@/components/ui/how-it-works-button";
+import { useModuleTour } from "@/hooks/useModuleTour";
+import { TOUR_IDS } from "@/constants/tours/tourIds";
+import {
+  buildMonitoreoDetalleTourSteps,
+  buildMapaDetalleTourSteps,
+} from "@/constants/tours/monitoreos";
 
 const PANEL_SPRING = { damping: 18, stiffness: 180, mass: 0.6 };
 
@@ -28,6 +35,27 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
   const [selectedSample, setSelectedSample] = useState<SamplingData | null>(null);
   const [selectedDisease, setSelectedDisease] = useState<string>("__all__");
   const [menuVisible, setMenuVisible] = useState(false);
+
+  const filterRef = useRef<View | null>(null);
+  const topDetectionsRef = useRef<View | null>(null);
+  const samplesPanelRef = useRef<View | null>(null);
+  const { startModuleTour } = useModuleTour();
+
+  const handleStartTour = () => {
+    startModuleTour(TOUR_IDS.MONITOREOS_DETALLE, () => [
+      ...buildMapaDetalleTourSteps({
+        windowSize: Dimensions.get("window"),
+      }),
+      ...buildMonitoreoDetalleTourSteps({
+        filterRef,
+        topDetectionsRef,
+        samplesPanelRef,
+        samplesVisible: vertexIndex !== -1,
+        filterVisible: summary.diseases.length > 0,
+        windowSize: Dimensions.get("window"),
+      }),
+    ]);
+  };
 
   const vertexToEdit = useSharedValue<Point | null>(null);
   const animSamplesBottom = useSharedValue(-160);
@@ -159,16 +187,18 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
               visible={menuVisible}
               onDismiss={() => setMenuVisible(false)}
               anchor={
-                <TouchableOpacity
-                  onPress={() => setMenuVisible(true)}
-                  style={{ backgroundColor: "#e8e8e0", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 8 }}
-                >
-                  <Text style={{ color: MD3Colors.neutral40, fontSize: 13 }}>Filtrar: </Text>
-                  <Text style={{ color: MD3Colors.neutral30, fontSize: 13, fontWeight: "bold", flexShrink: 1 }} numberOfLines={1}>
-                    {selectedDisease === "__all__" ? "Todas las enfermedades" : selectedDisease}
-                  </Text>
-                  <Icon source="menu-down" size={20} color={MD3Colors.neutral30} />
-                </TouchableOpacity>
+                <View ref={filterRef} collapsable={false}>
+                  <TouchableOpacity
+                    onPress={() => setMenuVisible(true)}
+                    style={{ backgroundColor: "#e8e8e0", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", gap: 8 }}
+                  >
+                    <Text style={{ color: MD3Colors.neutral40, fontSize: 13 }}>Filtrar: </Text>
+                    <Text style={{ color: MD3Colors.neutral30, fontSize: 13, fontWeight: "bold", flexShrink: 1 }} numberOfLines={1}>
+                      {selectedDisease === "__all__" ? "Todas las enfermedades" : selectedDisease}
+                    </Text>
+                    <Icon source="menu-down" size={20} color={MD3Colors.neutral30} />
+                  </TouchableOpacity>
+                </View>
               }
               contentStyle={{ backgroundColor: "#fffef4", borderRadius: 8 }}
             >
@@ -203,6 +233,8 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
 
         {diseaseDistribution.length > 0 && (
           <View
+            ref={topDetectionsRef}
+            collapsable={false}
             style={{
               backgroundColor: "#fffef4",
               borderRadius: 10,
@@ -267,9 +299,14 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
         >
           <Icon source="arrow-left" size={28} color={MD3Colors.neutral30} />
         </TouchableOpacity>
+        <View style={{ marginTop: 6, alignItems: "flex-start" }}>
+          <HowItWorksButton onPress={handleStartTour} />
+        </View>
       </View>
 
       <Animated.View
+        ref={samplesPanelRef}
+        collapsable={false}
         style={{
           position: "absolute",
           bottom: animSamplesBottom,

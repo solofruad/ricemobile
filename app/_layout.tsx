@@ -3,6 +3,10 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
+import {
+  TourGuideProvider,
+  TourGuideOverlay,
+} from '@wrack/react-native-tour-guide';
 import LoadingScreen from '@/components/loading-screen';
 import FarmFormModal from '@/components/farm/FarmFormModal';
 import { useAppInitialization } from '@/hooks/use-app-initialization';
@@ -25,15 +29,18 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <PaperProvider>
-        <ThemeProvider value={DarkTheme}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
-          <FarmFormModal visible={showFarmForm} onClose={() => setShowFarmForm(false)} />
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </PaperProvider>
+      <TourGuideProvider>
+        <PaperProvider>
+          <ThemeProvider value={DarkTheme}>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            </Stack>
+            <FarmFormModal visible={showFarmForm} onClose={() => setShowFarmForm(false)} />
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </PaperProvider>
+        <TourGuideOverlay />
+      </TourGuideProvider>
     </GestureHandlerRootView>
   );
 }

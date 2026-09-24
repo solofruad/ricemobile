@@ -4,6 +4,7 @@ import FarmFormTable from '@/database/tables/FarmFormTable';
 import MonitorDrawingsTable from '@/database/tables/MonitorDrawingsTable';
 import MonitoringsTable from '@/database/tables/MonitoringsTable';
 import SamplingsTable from '@/database/tables/SamplingsTable';
+import ToursTable from '@/database/tables/ToursTable';
 import { processFarmForm } from '@/services/farm-form';
 import { TtsVoices } from '@/src/TtsVoices';
 import { useEffect, useState } from 'react';
@@ -70,6 +71,9 @@ export function useAppInitialization() {
       );
       await runInitializationStep("FarmFormTable", setLoadPhase, setErrorText, () =>
         FarmFormTable.initTable(),
+      );
+      await runInitializationStep("ToursTable", setLoadPhase, setErrorText, () =>
+        ToursTable.initTable(),
       );
       await runInitializationStep("TtsVoices", setLoadPhase, setErrorText, startTtsVoice);
       await runInitializationStep("ObjectDetection", setLoadPhase, setErrorText, () =>
