@@ -45,6 +45,14 @@ const samplingPathBasePoints = [
   { x: 280, y: 450 },
 ];
 
+// Ancho lógico del dispositivo de referencia ( adb shell wm size: 720x1560, density 280 )
+const REFERENCE_SCREEN_WIDTH = 720 / 1.75;
+
+const scaleToScreenWidth = (points: Point[]) => {
+  const factor = Dimensions.get("screen").width / REFERENCE_SCREEN_WIDTH;
+  return points.map((p) => ({ x: p.x * factor, y: p.y * factor }));
+};
+
 enum MONITOR_MODE {
   EDIT,
   DELETE,
@@ -91,8 +99,8 @@ export default function MonEdit(props: MonEditProps) {
   const vertexToEditId = useSharedValue<string | null>(null);
   const pathToEdit = useSharedValue<EDIT_PATH>(EDIT_PATH.NONE);
   
-  const polygon = useRef(new Path(props.drawingData?.polygon || polygonBasePoints));
-  const samplingPath = useRef(new Path(props.drawingData?.samplingPath || samplingPathBasePoints));
+  const polygon = useRef(new Path(props.drawingData?.polygon || scaleToScreenWidth(polygonBasePoints)));
+  const samplingPath = useRef(new Path(props.drawingData?.samplingPath || scaleToScreenWidth(samplingPathBasePoints)));
   const history = useRef(new History());
 
   const polygonSharedData = useSharedValue<PolygonSharedValue>([]);
@@ -339,8 +347,8 @@ export default function MonEdit(props: MonEditProps) {
               title="Aceptar"
               onPress={() => {
                 history.current = new History();
-                polygon.current = new Path(polygonBasePoints);
-                samplingPath.current = new Path(samplingPathBasePoints);
+                polygon.current = new Path(scaleToScreenWidth(polygonBasePoints));
+                samplingPath.current = new Path(scaleToScreenWidth(samplingPathBasePoints));
                 generateSharedValue();
                 setShowResetModal(false);
               }}
