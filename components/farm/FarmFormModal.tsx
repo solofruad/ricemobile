@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { View, Modal, Text, TextInput, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
-import { Menu } from "react-native-paper";
+import { View, Modal, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
+import { Icon, Menu, Provider as PaperProvider } from "react-native-paper";
 import AppButton from "@/components/ui/app-button";
 import { COLOMBIA_LOCATIONS } from "@/constants/colombia-locations";
 import { saveFarmFormResponse } from "@/services/farm-form";
@@ -14,6 +14,7 @@ type Step = "intro" | "form";
 
 const FarmFormModal = (props: FarmFormModalProps) => {
   const [step, setStep] = useState<Step>("intro");
+  const [nombreFinca, setNombreFinca] = useState("");
   const [hectareas, setHectareas] = useState("");
   const [departamento, setDepartamento] = useState<string | null>(null);
   const [municipio, setMunicipio] = useState<string | null>(null);
@@ -28,6 +29,7 @@ const FarmFormModal = (props: FarmFormModalProps) => {
   );
 
   const resetForm = () => {
+    setNombreFinca("");
     setHectareas("");
     setDepartamento(null);
     setMunicipio(null);
@@ -58,6 +60,7 @@ const FarmFormModal = (props: FarmFormModalProps) => {
     setSaving(true);
     try {
       await saveFarmFormResponse({
+        nombre_finca: nombreFinca.trim() || null,
         hectareas: parsedHectareas,
         departamento,
         municipio,
@@ -79,10 +82,11 @@ const FarmFormModal = (props: FarmFormModalProps) => {
       visible={props.visible}
       onRequestClose={handleOmitir}
     >
-      <KeyboardAvoidingView
-        style={styles.centeredView}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <PaperProvider>
+        <KeyboardAvoidingView
+          style={styles.centeredView}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
         {step === "intro" ? (
           <View style={styles.modalView}>
             <Text style={styles.title}>ANTES DE CONTINUAR...</Text>
@@ -109,6 +113,16 @@ const FarmFormModal = (props: FarmFormModalProps) => {
             <View style={styles.modalView}>
               <Text style={styles.title}>INFORMACIÓN DE TU FINCA</Text>
 
+              <Text style={styles.label}>Nombre de la finca (opcional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ej. Finca La Esperanza"
+                placeholderTextColor="#9aa5b1"
+                autoCapitalize="sentences"
+                value={nombreFinca}
+                onChangeText={setNombreFinca}
+              />
+
               <Text style={styles.label}>Extensión de la finca (hectáreas, aproximado)</Text>
               <TextInput
                 style={styles.input}
@@ -124,11 +138,18 @@ const FarmFormModal = (props: FarmFormModalProps) => {
                 visible={deptMenuVisible}
                 onDismiss={() => setDeptMenuVisible(false)}
                 anchor={
-                  <AppButton
-                    title={departamento ?? "Selecciona un departamento"}
+                  <TouchableOpacity
                     onPress={() => setDeptMenuVisible(true)}
-                    color={departamento ? "#5189d2" : "#8a94a6"}
-                  />
+                    style={styles.selector}
+                  >
+                    <Text
+                      style={[styles.selectorText, departamento && styles.selectorTextSelected]}
+                      numberOfLines={1}
+                    >
+                      {departamento ?? "Selecciona un departamento"}
+                    </Text>
+                    <Icon source="menu-down" size={22} color="#2C3E50" />
+                  </TouchableOpacity>
                 }
                 contentStyle={styles.menuContent}
               >
@@ -142,6 +163,9 @@ const FarmFormModal = (props: FarmFormModalProps) => {
                         setMunicipio(null);
                         setDeptMenuVisible(false);
                       }}
+                      trailingIcon={departamento === loc.departamento ? "check" : undefined}
+                      titleStyle={styles.menuItemTitle}
+                      style={styles.menuItem}
                     />
                   ))}
                 </ScrollView>
@@ -152,12 +176,23 @@ const FarmFormModal = (props: FarmFormModalProps) => {
                 visible={munMenuVisible}
                 onDismiss={() => setMunMenuVisible(false)}
                 anchor={
-                  <AppButton
-                    title={municipio ?? (departamento ? "Selecciona un municipio" : "Selecciona primero un departamento")}
+                  <TouchableOpacity
                     onPress={() => departamento && setMunMenuVisible(true)}
-                    color={municipio ? "#5189d2" : "#8a94a6"}
                     disabled={!departamento}
-                  />
+                    style={[styles.selector, !departamento && styles.selectorDisabled]}
+                  >
+                    <Text
+                      style={[
+                        styles.selectorText,
+                        municipio && styles.selectorTextSelected,
+                        !departamento && styles.selectorTextDisabled,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {municipio ?? (departamento ? "Selecciona un municipio" : "Selecciona primero un departamento")}
+                    </Text>
+                    <Icon source="menu-down" size={22} color="#2C3E50" />
+                  </TouchableOpacity>
                 }
                 contentStyle={styles.menuContent}
               >
@@ -170,6 +205,9 @@ const FarmFormModal = (props: FarmFormModalProps) => {
                         setMunicipio(mun);
                         setMunMenuVisible(false);
                       }}
+                      trailingIcon={municipio === mun ? "check" : undefined}
+                      titleStyle={styles.menuItemTitle}
+                      style={styles.menuItem}
                     />
                   ))}
                 </ScrollView>
@@ -192,7 +230,8 @@ const FarmFormModal = (props: FarmFormModalProps) => {
             </View>
           </ScrollView>
         )}
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </PaperProvider>
     </Modal>
   );
 };
@@ -256,7 +295,7 @@ const styles = StyleSheet.create({
   },
   botonera: {
     display: "flex",
-    flexDirection: "row",
+    flexDirection: "column",
     justifyContent: "center",
     gap: 8,
     marginTop: 16,
@@ -266,6 +305,39 @@ const styles = StyleSheet.create({
   },
   menuScroll: {
     maxHeight: 260,
+  },
+  menuItem: {
+    minHeight: 40,
+  },
+  menuItemTitle: {
+    color: "#2C3E50",
+    fontSize: 14,
+  },
+  selector: {
+    backgroundColor: "#f7f9fb",
+    borderWidth: 1,
+    borderColor: "#cfd8e0",
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  selectorDisabled: {
+    opacity: 0.5,
+  },
+  selectorText: {
+    fontSize: 16,
+    color: "#9aa5b1",
+    flexShrink: 1,
+  },
+  selectorTextSelected: {
+    color: "#2C3E50",
+    fontWeight: "600",
+  },
+  selectorTextDisabled: {
+    color: "#9aa5b1",
   },
 });
 

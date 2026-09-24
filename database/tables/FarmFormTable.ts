@@ -3,6 +3,7 @@ import Table from '../Table';
 
 export type FarmFormRecord = {
   id: number;
+  nombre_finca: string | null; // nombre de la finca (opcional)
   hectareas: number | null; // extensión aproximada de la finca en hectáreas
   departamento: string | null;
   municipio: string | null;
@@ -19,6 +20,7 @@ export default class FarmFormTable {
     initTable: `
       CREATE TABLE IF NOT EXISTS farm_form (
         id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre_finca      TEXT,
         hectareas         REAL,
         departamento      TEXT,
         municipio         TEXT,
@@ -85,16 +87,16 @@ export default class FarmFormTable {
   }
 
   // Guarda la información recolectada del formulario
-  static saveResponse (data: { hectareas: number; departamento: string; municipio: string }): Promise<void> {
+  static saveResponse (data: { nombre_finca: string | null; hectareas: number; departamento: string; municipio: string }): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.ensureRow()
         .then(() => Database.getDB())
         .then(db => {
           db.runAsync(
             `UPDATE farm_form
-             SET hectareas = ?, departamento = ?, municipio = ?, uploaded = 0, uploaded_at = NULL
+             SET nombre_finca = ?, hectareas = ?, departamento = ?, municipio = ?, uploaded = 0, uploaded_at = NULL
              WHERE id = ?`,
-            [data.hectareas, data.departamento, data.municipio, SINGLETON_ID],
+            [data.nombre_finca, data.hectareas, data.departamento, data.municipio, SINGLETON_ID],
           )
             .then(() => resolve())
             .catch(err => reject(err));

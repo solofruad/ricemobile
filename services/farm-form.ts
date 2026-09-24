@@ -3,6 +3,7 @@ import { FORM_ENDPOINT, INTERVAL_DAYS_SHOW_FORM } from '@/constants/config';
 import FarmFormTable, { FarmFormRecord } from '@/database/tables/FarmFormTable';
 
 export type FarmFormPayload = {
+  nombre_finca: string | null;
   hectareas: number;
   departamento: string;
   municipio: string;
@@ -30,7 +31,12 @@ export async function processFarmForm (): Promise<{ shouldShowForm: boolean }> {
 
   // Ya hay información recolectada: intentar envío en segundo plano (no bloquea)
   if (form && !form.uploaded) {
-    tryUploadFarmForm({ hectareas: form.hectareas as number, departamento: form.departamento as string, municipio: form.municipio as string });
+    tryUploadFarmForm({
+      nombre_finca: form.nombre_finca ?? null,
+      hectareas: form.hectareas as number,
+      departamento: form.departamento as string,
+      municipio: form.municipio as string,
+    });
   }
 
   return { shouldShowForm: false };
