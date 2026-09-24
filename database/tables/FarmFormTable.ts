@@ -7,6 +7,7 @@ export type FarmFormRecord = {
   hectareas: number | null; // extensión aproximada de la finca en hectáreas
   departamento: string | null;
   municipio: string | null;
+  vereda: string | null; // nombre de la vereda (texto libre, opcional)
   uploaded: boolean; // indica si la información ya fue enviada al servidor
   last_requested_at: string | null; // última vez que se pidió rellenar el formulario
   created_at: string;
@@ -24,6 +25,7 @@ export default class FarmFormTable {
         hectareas         REAL,
         departamento      TEXT,
         municipio         TEXT,
+        vereda            TEXT,
         uploaded          BOOLEAN DEFAULT FALSE,
         last_requested_at TEXT,
         created_at        TEXT DEFAULT (datetime('now','localtime')),
@@ -87,16 +89,16 @@ export default class FarmFormTable {
   }
 
   // Guarda la información recolectada del formulario
-  static saveResponse (data: { nombre_finca: string | null; hectareas: number; departamento: string; municipio: string }): Promise<void> {
+  static saveResponse (data: { nombre_finca: string | null; hectareas: number; departamento: string; municipio: string; vereda: string | null }): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.ensureRow()
         .then(() => Database.getDB())
         .then(db => {
           db.runAsync(
             `UPDATE farm_form
-             SET nombre_finca = ?, hectareas = ?, departamento = ?, municipio = ?, uploaded = 0, uploaded_at = NULL
+             SET nombre_finca = ?, hectareas = ?, departamento = ?, municipio = ?, vereda = ?, uploaded = 0, uploaded_at = NULL
              WHERE id = ?`,
-            [data.nombre_finca, data.hectareas, data.departamento, data.municipio, SINGLETON_ID],
+            [data.nombre_finca, data.hectareas, data.departamento, data.municipio, data.vereda, SINGLETON_ID],
           )
             .then(() => resolve())
             .catch(err => reject(err));

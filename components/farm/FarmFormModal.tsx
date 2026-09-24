@@ -18,6 +18,7 @@ const FarmFormModal = (props: FarmFormModalProps) => {
   const [hectareas, setHectareas] = useState("");
   const [departamento, setDepartamento] = useState<string | null>(null);
   const [municipio, setMunicipio] = useState<string | null>(null);
+  const [vereda, setVereda] = useState("");
   const [deptMenuVisible, setDeptMenuVisible] = useState(false);
   const [munMenuVisible, setMunMenuVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +65,7 @@ const FarmFormModal = (props: FarmFormModalProps) => {
         hectareas: parsedHectareas,
         departamento,
         municipio,
+        vereda: vereda.trim() || null,
       });
       resetForm();
       props.onClose();
@@ -160,7 +162,8 @@ const FarmFormModal = (props: FarmFormModalProps) => {
                       title={loc.departamento}
                       onPress={() => {
                         setDepartamento(loc.departamento);
-                        setMunicipio(null);
+    setMunicipio(null);
+    setVereda("");
                         setDeptMenuVisible(false);
                       }}
                       trailingIcon={departamento === loc.departamento ? "check" : undefined}
@@ -212,6 +215,16 @@ const FarmFormModal = (props: FarmFormModalProps) => {
                   ))}
                 </ScrollView>
               </Menu>
+
+              <Text style={styles.label}>Vereda (opcional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ej. Vereda El Roble"
+                placeholderTextColor="#9aa5b1"
+                autoCapitalize="sentences"
+                value={vereda}
+                onChangeText={setVereda}
+              />
 
               {error && <Text style={styles.error}>{error}</Text>}
 

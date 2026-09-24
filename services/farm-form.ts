@@ -7,6 +7,7 @@ export type FarmFormPayload = {
   hectareas: number;
   departamento: string;
   municipio: string;
+  vereda: string | null;
 };
 
 // Decide qué hacer con el formulario de la finca en la fase posterior a la carga inicial.
@@ -36,6 +37,7 @@ export async function processFarmForm (): Promise<{ shouldShowForm: boolean }> {
       hectareas: form.hectareas as number,
       departamento: form.departamento as string,
       municipio: form.municipio as string,
+      vereda: form.vereda ?? null,
     });
   }
 
