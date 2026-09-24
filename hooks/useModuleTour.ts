@@ -14,12 +14,14 @@ export function useModuleTour() {
   const { startTour, isActive } = useTourGuide();
   const [starting, setStarting] = useState(false);
   const markSeenRef = useRef<string | null>(null);
+  const startingTourIdRef = useRef<string | null>(null);
 
   const startModuleTour = useCallback(
     (tourId: string, getSteps: () => TourStep[], options?: ModuleTourOptions) => {
-      if (isActive) {
+      if (isActive || startingTourIdRef.current) {
         return;
       }
+      startingTourIdRef.current = tourId;
 
       const { getCurrentScrollOffset, ...config } = options ?? {};
       // La app corre en edge-to-edge (app.json edgeToEdgeEnabled: true), por lo que
@@ -60,6 +62,7 @@ export function useModuleTour() {
         })
         .finally(() => {
           setStarting(false);
+          startingTourIdRef.current = null;
           startTour(getSteps(), mergedConfig);
         });
     },

@@ -1,3 +1,4 @@
+import Database from '../Database';
 import Table from '../Table';
 
 export type ToursRecord = {
@@ -29,8 +30,13 @@ export default class ToursTable {
     return record !== null;
   }
 
-  static markSeen (tourId: string) {
-    return this.tableInstance.insert({ tour_id: tourId });
+  static async markSeen (tourId: string) {
+    // INSERT OR IGNORE: idempotente, evita UNIQUE constraint si el tour ya se marcó
+    const db = await Database.getDB();
+    await db.runAsync(
+      `INSERT OR IGNORE INTO ${this.queryingConfig.tableName} (tour_id) VALUES (?)`,
+      [tourId],
+    );
   }
 
   static clearAll () {
