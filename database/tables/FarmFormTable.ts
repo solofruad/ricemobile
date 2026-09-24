@@ -1,5 +1,5 @@
+import Table, { ensureColumn } from '../Table';
 import Database from '../Database';
-import Table from '../Table';
 
 export type FarmFormRecord = {
   id: number;
@@ -9,6 +9,7 @@ export type FarmFormRecord = {
   municipio: string | null;
   vereda: string | null; // nombre de la vereda (texto libre, opcional)
   uploaded: boolean; // indica si la información ya fue enviada al servidor
+  remote_id: number | null; // id de la finca en el backend (una vez creada)
   last_requested_at: string | null; // última vez que se pidió rellenar el formulario
   created_at: string;
   uploaded_at: string | null;
@@ -41,7 +42,8 @@ export default class FarmFormTable {
   private static tableInstance = new Table<FarmFormRecord>(FarmFormTable.queryingConfig);
 
   static initTable () {
-    return this.tableInstance.initTable();
+    return this.tableInstance.initTable()
+      .then(() => ensureColumn("farm_form", "remote_id", "INTEGER"));
   }
 
   static getForm (): Promise<FarmFormRecord | null> {
@@ -116,6 +118,20 @@ export default class FarmFormTable {
             `UPDATE farm_form SET uploaded = 1, uploaded_at = datetime('now','localtime') WHERE id = ?`,
             [SINGLETON_ID],
           )
+            .then(() => resolve())
+            .catch(err => reject(err));
+        })
+        .catch(err => reject(err));
+    });
+  }
+
+  // Guarda el id remoto de la finca creada en el backend (la finca se crea una sola vez)
+  static setRemoteId (remoteId: number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.ensureRow()
+        .then(() => Database.getDB())
+        .then(db => {
+          db.runAsync(`UPDATE farm_form SET remote_id = ? WHERE id = ?`, [remoteId, SINGLETON_ID])
             .then(() => resolve())
             .catch(err => reject(err));
         })

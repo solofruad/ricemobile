@@ -1,12 +1,16 @@
 import Database from '../Database';
-import Table from '../Table';
+import Table, { ensureColumn } from '../Table';
 
 export type MonitoringsRecord = {
   id: number;
   id_monitor_drawing: number; // ID del dibujo del monitor asociado
   processed: boolean; // Indica si el monitoreo ha sido procesado
+  remote_id: number | null; // id del monitoreo en el backend
+  sync_state: SyncState; // PENDING (aún no subido) | UPLOADED (creado en el backend)
   created_at: string; // Fecha de creación del registro
 };
+
+export type SyncState = 'PENDING' | 'UPLOADED';
 
 export type MonitoringsWithDrawingRecord = MonitoringsRecord & {
   polygon: any;
@@ -38,7 +42,9 @@ export default class MonitoringsTable {
   private static tableInstance = new Table<MonitoringsRecord>(MonitoringsTable.queryingConfig);
 
   static initTable () {
-    return this.tableInstance.initTable();
+    return this.tableInstance.initTable()
+      .then(() => ensureColumn("monitorings", "remote_id", "INTEGER"))
+      .then(() => ensureColumn("monitorings", "sync_state", "TEXT DEFAULT 'PENDING'"));
   }
 
   static insert (data: { id_monitor_drawing: number }): Promise<number> {
@@ -134,6 +140,42 @@ export default class MonitoringsTable {
       Database.getDB()
         .then(db => {
           db.runAsync(`UPDATE monitorings SET processed = 1 WHERE id = ?`, [id])
+            .then(() => resolve())
+            .catch(err => reject(err));
+        })
+        .catch(err => reject(err));
+    });
+  }
+
+  static getPendingSync (): Promise<MonitoringsRecord[]> {
+    return new Promise<MonitoringsRecord[]>((resolve, reject) => {
+      Database.getDB()
+        .then(db => {
+          db.getAllAsync<MonitoringsRecord>(`SELECT * FROM monitorings WHERE sync_state IS NULL OR sync_state != 'UPLOADED' ORDER BY id ASC`)
+            .then(rows => resolve(rows))
+            .catch(err => reject(err));
+        })
+        .catch(err => reject(err));
+    });
+  }
+
+  static setRemoteId (id: number, remoteId: number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      Database.getDB()
+        .then(db => {
+          db.runAsync(`UPDATE monitorings SET remote_id = ? WHERE id = ?`, [remoteId, id])
+            .then(() => resolve())
+            .catch(err => reject(err));
+        })
+        .catch(err => reject(err));
+    });
+  }
+
+  static markUploaded (id: number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      Database.getDB()
+        .then(db => {
+          db.runAsync(`UPDATE monitorings SET sync_state = 'UPLOADED' WHERE id = ?`, [id])
             .then(() => resolve())
             .catch(err => reject(err));
         })

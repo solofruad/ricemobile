@@ -6,6 +6,7 @@ import MonitoringsTable from '@/database/tables/MonitoringsTable';
 import SamplingsTable from '@/database/tables/SamplingsTable';
 import ToursTable from '@/database/tables/ToursTable';
 import { processFarmForm } from '@/services/farm-form';
+import { sincronizarAlArranque } from '@/services/sync';
 import { TtsVoices } from '@/src/TtsVoices';
 import { useEffect, useState } from 'react';
 import * as vosk from 'react-native-vosk';
@@ -91,6 +92,12 @@ export function useAppInitialization() {
         }
       });
       if (mounted) setReady(true);
+
+      // Fase final, no bloqueante: sincroniza con el backend (finca una vez,
+      // monitoreos pendientes con sus muestras) sólo si hay conexión.
+      sincronizarAlArranque().catch(err =>
+        console.log("El intento de sincronización al arranque falló", err),
+      );
     };
 
     initialize();

@@ -53,6 +53,24 @@ export type QueryingConfig = {
   }
 
 
+// Agrega una columna a la tabla si aún no existe (migración simple por columna)
+export function ensureColumn (tableName: string, columnName: string, columnDefinition: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    Database.getDB()
+      .then(db => {
+        db.getAllAsync<{ name: string }>(`PRAGMA table_info(${tableName})`)
+          .then(columns => {
+            if (columns.some(col => col.name === columnName)) return resolve();
+            db.runAsync(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`)
+              .then(() => resolve())
+              .catch(err => reject(err));
+          })
+          .catch(err => reject(err));
+      })
+      .catch(err => reject(err));
+  });
+}
+
 const generateQueries = (config: QueryingConfig) => {
   return {
     initTable: config.initTable,
