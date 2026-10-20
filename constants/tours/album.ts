@@ -6,16 +6,34 @@ export type ReferenciasTourAlbum = {
   chatbotRef?: React.RefObject<any>;
   closeRef?: React.RefObject<any>;
   windowSize: { width: number; height: number };
+  /** true si hay fotos guardadas. Si es false, se explica el estado vacío. */
+  hasImages?: boolean;
 };
 
 export function buildAlbumTourSteps(refs: ReferenciasTourAlbum): TourStep[] {
+  // Estado vacío: orientar hacia Detección en vez de apuntar a una lista vacía.
+  if (refs.hasImages === false) {
+    const { width, height } = refs.windowSize;
+    return [
+      {
+        id: 'album-vacio',
+        targetRegion: { x: 20, y: height * 0.35, width: width - 40, height: height * 0.3 },
+        title: 'Aún no tienes fotos',
+        description:
+          'Aún no hay fotos guardadas aquí. Ve a Detección, toma 1 foto de una hoja y dale Guardar. Al volver saldrán 3 por fila para revisar.',
+        tooltipPosition: 'bottom',
+        spotlightBorderRadius: 14,
+      },
+    ];
+  }
+
   return [
     {
-      id: 'album-gallery',
+      id: 'album-galeria',
       targetRef: refs.galleryRef,
-      title: 'Tu galería de escaneos',
+      title: 'Tus fotos guardadas',
       description:
-        'Cada imagen es un resultado de reconocimiento guardado desde Detección. Toca una foto para verla en pantalla completa con sus detecciones.',
+        'Son resultados guardados desde Detección o desde un Muestreo. Se muestran 3 por fila. Toca 1 foto para verla grande con sus recuadros de enfermedad.',
       tooltipPosition: 'top',
       spotlightBorderRadius: 18,
     },
@@ -26,34 +44,35 @@ export function buildAlbumFotoTourSteps(refs: ReferenciasTourAlbum): TourStep[] 
   const { width, height } = refs.windowSize;
   return [
     {
-      id: 'album-foto-lista',
+      id: 'album-foto',
       targetRegion: { x: 20, y: height * 0.2, width: width - 40, height: height * 0.5 },
-      title: 'Vista a pantalla completa',
+      title: 'Foto y colores',
       description:
-        'Desliza a los lados para pasar entre tus escaneos guardados.',
+        'Ves la foto con recuadros de colores, cada color 1 enfermedad con su Conf. %. Desliza a los lados para cambiar de foto. Si se ve girada es normal de la cámara.',
       tooltipPosition: 'bottom',
     },
     {
       id: 'album-foto-delete',
       targetRef: refs.deleteRef,
-      title: 'Borrar',
+      title: 'Borrar no pregunta',
       description:
-        'Elimina este escaneo de tu galería. La foto se borrará definitivamente de la base de datos.',
+        'El botón Borrar de abajo elimina la foto y su resultado al instante, sin pedir confirmación y sin papelera. Úsalo solo si estás muy seguro.',
       tooltipPosition: 'top',
     },
     {
       id: 'album-foto-chatbot',
       targetRef: refs.chatbotRef,
-      title: 'Consultar al Chatbot',
+      title: 'Manda al Chatbot',
       description:
-        'Envía este resultado al Chatbot: el asistente recibirá la información de las enfermedades detectadas y podrás preguntarte por ellas.',
+        'El botón Chatbot lleva esta foto al asistente para preguntar por ella. Allá escribe tu primera pregunta, ej. qué tratamiento le doy, para activar ese resultado.',
       tooltipPosition: 'top',
     },
     {
       id: 'album-foto-close',
       targetRef: refs.closeRef,
-      title: 'Cerrar',
-      description: 'Vuelve a la galería sin hacer cambios.',
+      title: 'Cerrar para volver',
+      description:
+        'El botón Cerrar de abajo es la única forma de volver a la galería. Tocar fuera de la foto no cierra. Arriba tienes ? para repetir la ayuda.',
       tooltipPosition: 'top',
     },
   ];

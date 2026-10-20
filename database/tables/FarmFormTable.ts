@@ -8,6 +8,7 @@ export type FarmFormRecord = {
   departamento: string | null;
   municipio: string | null;
   vereda: string | null; // nombre de la vereda (texto libre, opcional)
+  autoriza_uso_muestras: boolean | null; // null = nunca se preguntó; 0 = no autoriza; 1 = autoriza
   uploaded: boolean; // indica si la información ya fue enviada al servidor
   remote_id: number | null; // id de la finca en el backend (una vez creada)
   last_requested_at: string | null; // última vez que se pidió rellenar el formulario
@@ -43,7 +44,8 @@ export default class FarmFormTable {
 
   static initTable () {
     return this.tableInstance.initTable()
-      .then(() => ensureColumn("farm_form", "remote_id", "INTEGER"));
+      .then(() => ensureColumn("farm_form", "remote_id", "INTEGER"))
+      .then(() => ensureColumn("farm_form", "autoriza_uso_muestras", "INTEGER"));
   }
 
   static getForm (): Promise<FarmFormRecord | null> {
@@ -91,16 +93,16 @@ export default class FarmFormTable {
   }
 
   // Guarda la información recolectada del formulario
-  static saveResponse (data: { nombre_finca: string | null; hectareas: number; departamento: string; municipio: string; vereda: string | null }): Promise<void> {
+  static saveResponse (data: { nombre_finca: string | null; hectareas: number; departamento: string; municipio: string; vereda: string | null; autoriza_uso_muestras: boolean }): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.ensureRow()
         .then(() => Database.getDB())
         .then(db => {
           db.runAsync(
             `UPDATE farm_form
-             SET nombre_finca = ?, hectareas = ?, departamento = ?, municipio = ?, vereda = ?, uploaded = 0, uploaded_at = NULL
+             SET nombre_finca = ?, hectareas = ?, departamento = ?, municipio = ?, vereda = ?, autoriza_uso_muestras = ?, uploaded = 0, uploaded_at = NULL
              WHERE id = ?`,
-            [data.nombre_finca, data.hectareas, data.departamento, data.municipio, data.vereda, SINGLETON_ID],
+            [data.nombre_finca, data.hectareas, data.departamento, data.municipio, data.vereda, data.autoriza_uso_muestras ? 1 : 0, SINGLETON_ID],
           )
             .then(() => resolve())
             .catch(err => reject(err));

@@ -4,7 +4,7 @@ import FarmFormTable from "@/database/tables/FarmFormTable";
 import MonitoringsTable from "@/database/tables/MonitoringsTable";
 import SamplingsTable from "@/database/tables/SamplingsTable";
 import { getToken } from "@/services/api/client";
-import { crearFinca } from "@/services/api/fincas";
+import { actualizarFinca, crearFinca } from "@/services/api/fincas";
 import { crearMonitoreo, finalizarMonitoreo, subirMuestra } from "@/services/api/monitoreos";
 
 // Comprueba si hay conexión a internet disponible
@@ -39,15 +39,24 @@ export async function sincronizarAlArranque (): Promise<void> {
     return;
   }
 
-  const fincaId = await sincronizarFinca();
-  if (fincaId == null) return;
+  const finca = await sincronizarFinca();
+  if (finca == null) return;
 
-  await sincronizarMonitoreos(fincaId);
+  // Sin autorización explícita de uso de muestras (No o sin responder),
+  // solo se sincroniza la información de la finca; los monitoreos quedan locales.
+  if (!finca.autorizaUsoMuestras) {
+    console.log("Sincronización de monitoreos omitida: sin autorización de uso de muestras (solo finca)");
+    return;
+  }
+
+  await sincronizarMonitoreos(finca.fincaId);
 }
 
-// Crea la finca en el backend la primera vez que hay información recolectada.
-// Devuelve el id remoto de la finca, o null si aún no se puede obtener.
-export async function sincronizarFinca (): Promise<number | null> {
+// Crea la finca en el backend la primera vez que hay información recolectada,
+// o la actualiza si hubo ediciones locales pendientes (uploaded = 0).
+// Devuelve el id remoto de la finca junto con la autorización de uso de muestras,
+// o null si aún no se puede obtener.
+export async function sincronizarFinca (): Promise<{ fincaId: number; autorizaUsoMuestras: boolean } | null> {
   let form = null;
   try {
     form = await FarmFormTable.getForm();
@@ -59,24 +68,47 @@ export async function sincronizarFinca (): Promise<number | null> {
   const hasResponse = !!(form && form.hectareas != null && form.departamento && form.municipio);
   if (!hasResponse || !form) return null;
 
-  if (form.remote_id != null) return form.remote_id;
+  // SQLite devuelve 0/1 (y NULL si nunca se preguntó): solo el Sí explícito autoriza.
+  const autorizaUsoMuestras = Boolean(form.autoriza_uso_muestras);
 
+  if (form.remote_id == null) {
+    try {
+      const finca = await crearFinca({
+        nombre_finca: form.nombre_finca ?? null,
+        hectareas: form.hectareas as number,
+        departamento: form.departamento as string,
+        municipio: form.municipio as string,
+        vereda: form.vereda ?? null,
+      });
+      await FarmFormTable.setRemoteId(finca.id);
+      await FarmFormTable.markUploaded();
+      console.log(`Finca "${finca.id}" creada en el backend`);
+      return { fincaId: finca.id, autorizaUsoMuestras };
+    } catch (err) {
+      console.log("No se pudo crear la finca en el backend (quedará pendiente)", err);
+      return null;
+    }
+  }
+
+  if (form.uploaded) return { fincaId: form.remote_id, autorizaUsoMuestras };
+
+  // Edición local pendiente: se actualiza la finca existente en el backend.
+  // Si falla, la finca queda pendiente para el próximo arranque, pero igual
+  // se retornan los datos para no bloquear la subida de muestras autorizadas.
   try {
-    const finca = await crearFinca({
+    await actualizarFinca(form.remote_id, {
       nombre_finca: form.nombre_finca ?? null,
       hectareas: form.hectareas as number,
       departamento: form.departamento as string,
       municipio: form.municipio as string,
       vereda: form.vereda ?? null,
     });
-    await FarmFormTable.setRemoteId(finca.id);
     await FarmFormTable.markUploaded();
-    console.log(`Finca "${finca.id}" creada en el backend`);
-    return finca.id;
+    console.log(`Finca "${form.remote_id}" actualizada en el backend`);
   } catch (err) {
-    console.log("No se pudo crear la finca en el backend (quedará pendiente)", err);
-    return null;
+    console.log("No se pudo actualizar la finca en el backend (quedará pendiente)", err);
   }
+  return { fincaId: form.remote_id, autorizaUsoMuestras };
 }
 
 // Sube al backend los monitoreos locales pendientes, cada uno con sus muestras

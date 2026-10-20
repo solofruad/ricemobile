@@ -1,9 +1,12 @@
-export const API_BASE_URL = "https://riceback-backend.onrender.com";
-
-// Código de alta compartido del backend (constante de compilación).
-// La identificación individual del dispositivo es el token generado en el registro.
-export const DEVICE_JOIN_CODE = "riceMovil-2026_010101";
-
-// El plan gratuito de Render duerme el servicio (~15 min): la primera petición
-// puede tardar 30-50s en responder.
-export const API_TIMEOUT_MS = 60_000;
+// Re-export por compatibilidad: la fuente única vive en @/constants/config.
+export {
+  API_BASE_URL,
+  DEVICE_JOIN_CODE,
+  API_TIMEOUT_MS,
+  DEVICE_TOKEN_KEY,
+  DEVICE_PLATFORM,
+  APP_VERSION,
+  DEVICE_REGISTER_PATH,
+  API_FINCAS_PATH,
+  API_MONITOREOS_PATH,
+} from '@/constants/config';

@@ -11,36 +11,36 @@ export function buildMonEditTourSteps(refs: ReferenciasTourMonEdit): TourStep[] 
   const { width, height } = refs.windowSize;
   return [
     {
-      id: 'monedit-conceptos',
+      id: 'monedit-lote',
       targetRegion: { x: 20, y: height * 0.25, width: width - 40, height: height * 0.4 },
-      title: 'Conceptos básicos del Editor de Monitoreo',
+      title: 'Rojo lote, verde camino',
       description:
-        'Aquí se dibuja un polígono cerrado que define el límite del área a monitorear y una ruta en W (línea roja) con el patrón de recorrido para el muestreo. Debe estar completamente dentro del área principal.',
+        'El borde rojo es tu lote y la línea verde en zigzag en W es el camino a recorrer. El camino debe quedar siempre dentro del lote, sin pegarse al borde de la parcela.',
       tooltipPosition: 'bottom',
       spotlightBorderRadius: 18,
     },
     {
-      id: 'monedit-mover-agregar',
+      id: 'monedit-puntos',
       targetRegion: { x: 60, y: height * 0.35, width: width - 120, height: height * 0.25 },
-      title: 'Mover o agregar puntos',
+      title: 'Mueve y agrega',
       description:
-        'Toca y arrastra cualquier punto (circulito) para moverlo; el sistema lo evitará con una vibración si el movimiento es inválido. Toca un espacio vacío sobre una línea para agregar un nuevo punto.',
+        'Toca un círculo y arrástralo para moverlo a su lugar. Toca sobre la línea vacía para agregar una esquina nueva. Si el celular vibra y vuelve, ese lugar no vale.',
       tooltipPosition: 'top',
     },
     {
       id: 'monedit-undo',
       targetRef: refs.resetUndoRef,
-      title: 'Reiniciar y deshacer',
+      title: 'Volver y deshacer',
       description:
-        'Con "restart" puedes reiniciar el trazado a su estado inicial y con "undo" revertir el último cambio realizado.',
+        'Abajo a la izquierda: el círculo reinicia el dibujo a como empezó y pide Aceptar antes de borrar. La curva deshace solo tu último cambio, paso a paso.',
       tooltipPosition: 'top',
     },
     {
-      id: 'monedit-modes',
+      id: 'monedit-modos',
       targetRef: refs.modesRef,
-      title: 'Modos de operación',
+      title: '4 botones abajo',
       description:
-        'Lápiz: mover/agregar puntos. Texture-box: visualizar el área de influencia (W) de cada punto. Basura: eliminar puntos. Check: empezar el monitoreo con el trazado actual (pendiente de confirmación, ya no se podrá editar).',
+        'Abajo a la derecha hay 4 botones. Lápiz mueve y agrega, cuadrito muestra la mancha de cada parada, basura borra esquinas y palomita empieza el monitoreo y ya bloquea la edición.',
       tooltipPosition: 'top',
     },
   ];

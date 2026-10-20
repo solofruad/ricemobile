@@ -1,20 +1,16 @@
 import { ObjectDetectionResult } from "./ObjectDetection";
 import { DetectionRecord } from "@/database/tables/DetectionsTable";
+import {
+  LLM_CANDIDATE_IPS,
+  LLM_CHAT_TIMEOUT_MS,
+  LLM_HANDSHAKE_TIMEOUT_PER_IP_MS,
+  LLM_PORT,
+} from "@/constants/config";
 
-export const LLM_PORT = 9000;
+// Re-export por compatibilidad: la fuente única vive en @/constants/config.
+export { LLM_PORT } from "@/constants/config";
 
-// Gateways típicos de dispositivos que comparten conexión por hotspot WiFi
-const CANDIDATE_IPS: Array<string> = [
-	"192.168.43.1", // Hotspot Android (clásico)
-	"192.168.150.1", // Hotspot Android (versions recientes)
-	"192.168.49.1", // Wi-Fi Direct / hotspot Android
-	"192.168.1.1",
-	"192.168.0.1",
-	"10.0.0.1",
-	"172.20.10.1", // Hotspot iPhone
-	"192.168.4.1",
-	"192.168.123.1",
-];
+const CANDIDATE_IPS: string[] = LLM_CANDIDATE_IPS;
 
 export class LlmServerConnectionError extends Error {
 	constructor(message: string) {
@@ -39,7 +35,7 @@ const fetchWithTimeout = (url: string, options: RequestInit = {}, timeoutMs: num
 export default class LlmServer {
 	baseUrl: string|null = null;
 
-	async handshake(timeoutPerIpMs: number = 1000): Promise<string> {
+	async handshake(timeoutPerIpMs: number = LLM_HANDSHAKE_TIMEOUT_PER_IP_MS): Promise<string> {
 		const results = await Promise.allSettled(
 			CANDIDATE_IPS.map(async (ip) => {
 				const response = await fetchWithTimeout(`http://${ip}:${LLM_PORT}/handshake`, {}, timeoutPerIpMs);
@@ -77,7 +73,7 @@ export default class LlmServer {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(body),
-			}, 60000);
+			}, LLM_CHAT_TIMEOUT_MS);
 		} catch (error) {
 			throw new LlmServerChatError(`Fallo la peticion al servidor de LLM: ${String(error)}`);
 		}

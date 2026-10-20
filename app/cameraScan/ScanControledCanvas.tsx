@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from "react";
-import { Text, View } from "react-native";
+import { Text, View, Dimensions } from "react-native";
 
 import AppButton from "@/components/ui/app-button";
 import HowItWorksButton from "@/components/ui/how-it-works-button";
@@ -62,6 +62,7 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
         headerRef,
         discardRef,
         saveRef,
+        windowSize: Dimensions.get('window'),
       }),
     );
   };
@@ -113,14 +114,10 @@ const ScanControledCanvas = (props: ScanCanvasProps) => {
       <View ref={headerRef} collapsable={false} style={{ alignSelf: "center" }}>
         <Text style={{
           color: MD3Colors.neutral30,
-          marginHorizontal: "auto",
+          textAlign: "center",
           fontSize: 24,
-          marginTop:15,
-          zIndex:10,
-          backgroundColor: "#fffef4",
-          paddingVertical:5,
-          paddingHorizontal:8,
-          borderRadius:5 }}>
+          marginTop:10,
+          paddingHorizontal:28}}>
             Resultados de Reconocimiento
           </Text>
       </View>

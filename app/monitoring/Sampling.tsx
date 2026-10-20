@@ -22,6 +22,7 @@ import { getDiseaseColorMap } from "./diseaseColors";
 import MonitoringsPanel, { MonitoringDetailData } from "./MonitoringsPanel";
 import MonitoringDetail from "./MonitoringDetail";
 import AppButton from "@/components/ui/app-button";
+import HowItWorksButton from "@/components/ui/how-it-works-button";
 import { useModuleTour } from "@/hooks/useModuleTour";
 import { TOUR_IDS } from "@/constants/tours/tourIds";
 import { buildSamplingTourSteps, ReferenciasTourSampling } from "@/constants/tours/sampling";
@@ -61,9 +62,10 @@ export default function Sampling(props: SamplingProps) {
 
   const handleStartTour = () => {
     const refs: ReferenciasTourSampling = {
-      samplesPanelRef,
+      samplesPanelRef: vertexIndex !== -1 ? samplesPanelRef : undefined,
       resetHistoryRef,
       processRef: allPointsComplete ? processSamplesRef : undefined,
+      samplesVisible: vertexIndex !== -1,
       windowSize: Dimensions.get("window"),
     };
     startModuleTour(TOUR_IDS.SAMPLING, () => buildSamplingTourSteps(refs));
@@ -331,9 +333,7 @@ export default function Sampling(props: SamplingProps) {
       </View>
 
       <View style={{ position: "absolute", right: 4, top: insets.top + 8 }}>
-        <EditorPanel>
-          <EditorActionButton icon="help" action={handleStartTour} />
-        </EditorPanel>
+        <HowItWorksButton onPress={handleStartTour} />
       </View>
 
       <Animated.View

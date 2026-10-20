@@ -7,7 +7,58 @@ export type FarmFormPayload = {
   departamento: string;
   municipio: string;
   vereda: string | null;
+  autoriza_uso_muestras: boolean;
 };
+
+export type FarmFormDraft = {
+  nombreFinca: string;
+  hectareas: string;
+  departamento: string | null;
+  municipio: string | null;
+  vereda: string;
+  autorizaUsoMuestras: boolean | null;
+};
+
+// Acepta coma o punto decimal. Retorna null si no es un número positivo.
+export function parseHectareas (raw: string): number | null {
+  const parsed = parseFloat(raw.replace(",", "."));
+  if (raw.trim() === "" || isNaN(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+// Validación compartida por el modal inicial y la pestaña Usuario.
+// Retorna el mensaje de error o null si el borrador es válido.
+export function validateFarmForm (draft: Pick<FarmFormDraft, "hectareas" | "departamento" | "municipio" | "autorizaUsoMuestras">): string | null {
+  if (parseHectareas(draft.hectareas) == null) {
+    return "Ingresa una extensión válida en hectáreas.";
+  }
+  if (!draft.departamento) {
+    return "Selecciona el departamento.";
+  }
+  if (!draft.municipio) {
+    return "Selecciona el municipio más cercano.";
+  }
+  if (draft.autorizaUsoMuestras == null) {
+    return "Debes indicar si autorizas el uso de las muestras de tus monitoreos.";
+  }
+  return null;
+}
+
+// Construye el payload listo para guardar. Retorna error si no es válido.
+export function buildFarmFormPayload (draft: FarmFormDraft): { payload: FarmFormPayload } | { error: string } {
+  const validationError = validateFarmForm(draft);
+  if (validationError) return { error: validationError };
+  return {
+    payload: {
+      nombre_finca: draft.nombreFinca.trim() || null,
+      hectareas: parseHectareas(draft.hectareas) as number,
+      departamento: draft.departamento as string,
+      municipio: draft.municipio as string,
+      vereda: draft.vereda.trim() || null,
+      autoriza_uso_muestras: draft.autorizaUsoMuestras as boolean,
+    },
+  };
+}
 
 // Decide qué hacer con el formulario de la finca en la fase posterior a la carga inicial.
 // - Si no se ha rellenado y ya transcurrió INTERVAL_DAYS_SHOW_FORM desde la última

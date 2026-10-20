@@ -14,9 +14,11 @@ import Vertex from "./path/Vertex";
 import MonitorDrawingsTable, { MonitorDrawingRecord } from "@/database/tables/MonitorDrawingsTable";
 import MonitoringsTable from "@/database/tables/MonitoringsTable";
 import AppButton from "@/components/ui/app-button";
+import HowItWorksButton from "@/components/ui/how-it-works-button";
 import { useModuleTour } from "@/hooks/useModuleTour";
 import { TOUR_IDS } from "@/constants/tours/tourIds";
 import { buildMonEditTourSteps } from "@/constants/tours/monEdit";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type MonitorDrawingData = {
   polygon: PolygonSharedValue;
@@ -71,6 +73,7 @@ type MonEditProps = {
 }
 
 export default function MonEdit(props: MonEditProps) {
+  const insets = useSafeAreaInsets();
   const dims = useRef<{ x: number; y: number }>({x:0,y:0});
   const [showEditEndModal, setShowEditEndModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
@@ -313,10 +316,8 @@ export default function MonEdit(props: MonEditProps) {
       </Text>
 
       {/* BOTÓN AYUDA: Lanza el tour interactivo del módulo */}
-      <View style={{ position: "absolute", right: 4, top: 35 }} ref={helpRef} collapsable={false}>
-        <EditorPanel>
-          <EditorActionButton icon="help" action={handleStartTour} />
-        </EditorPanel>
+      <View style={{ position: "absolute", right: 4, top: insets.top + 8 }} ref={helpRef} collapsable={false}>
+        <HowItWorksButton onPress={handleStartTour} />
       </View>
 
       {/* BOTÓN DESHACER (UNDO) */}

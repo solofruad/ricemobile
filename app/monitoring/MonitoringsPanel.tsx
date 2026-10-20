@@ -44,6 +44,7 @@ export default function MonitoringsPanel(props: MonitoringsPanelProps) {
         headerRef,
         listRef,
         windowSize: Dimensions.get("window"),
+        hasItems: items.length > 0,
       }),
     );
   };
@@ -104,16 +105,18 @@ export default function MonitoringsPanel(props: MonitoringsPanelProps) {
           zIndex: 46,
           transform: [{ translateX }],
           backgroundColor: "#fffbf0",
-          boxShadow: [
-            {
-              offsetX: -4,
-              offsetY: 0,
-              blurRadius: 8,
-              spreadDistance: 2,
-              color: "rgba(0,0,0,0.4)",
-              inset: false,
-            },
-          ],
+          boxShadow: props.visible
+            ? [
+                {
+                  offsetX: -4,
+                  offsetY: 0,
+                  blurRadius: 8,
+                  spreadDistance: 2,
+                  color: "rgba(0,0,0,0.4)",
+                  inset: false,
+                },
+              ]
+            : "none",
           paddingVertical: 10,
           paddingHorizontal: 12,
         }}
@@ -121,7 +124,7 @@ export default function MonitoringsPanel(props: MonitoringsPanelProps) {
         <View ref={headerRef} collapsable={false} style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
           <Text style={{ color: MD3Colors.neutral30, fontSize: 18, fontWeight: "bold" }}>MONITOREOS REALIZADOS</Text>
           <View style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <HowItWorksButton onPress={handleStartTour} />
+            
             <TouchableOpacity onPress={props.onClose}>
               <Icon source="close" size={28} color={MD3Colors.neutral30} />
             </TouchableOpacity>
@@ -185,6 +188,9 @@ export default function MonitoringsPanel(props: MonitoringsPanelProps) {
             ))}
           </ScrollView>
         )}
+        <View style={{position:"absolute", bottom:8, right:4}}>
+          <HowItWorksButton onPress={handleStartTour} />
+        </View>
       </Animated.View>
     </>
   );

@@ -13,6 +13,7 @@ import HowItWorksButton from "@/components/ui/how-it-works-button";
 import { useModuleTour } from "@/hooks/useModuleTour";
 import { TOUR_IDS } from "@/constants/tours/tourIds";
 import { buildAlbumTourSteps, buildAlbumFotoTourSteps } from "@/constants/tours/album";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function PhotoSliderViewer(items:Array<DetectionRecord>, selectedIndex:number, setViewing:(index:number)=>void){
   return <PagerView style={{width:"100%", height:"100%"}} initialPage={selectedIndex} onPageSelected={(e)=>setViewing(e.nativeEvent.position)}>
@@ -25,6 +26,7 @@ function PhotoSliderViewer(items:Array<DetectionRecord>, selectedIndex:number, s
 }
 
 export default function AlbumModule(){
+  const insets = useSafeAreaInsets();
   const [images, setImages] = useState<Array<File>>([]);
   const [databaseData, setDatabaseData] = useState<Array<DetectionRecord>>([]);
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
@@ -43,6 +45,7 @@ export default function AlbumModule(){
       buildAlbumTourSteps({
         galleryRef,
         windowSize: { width: windowSize.width, height: windowSize.height },
+        hasImages: images.length > 0,
       }),
     );
   };
@@ -134,7 +137,7 @@ export default function AlbumModule(){
 
   }
   return <View style={{width:"100%", height:"100%",backgroundColor:"#121222ff", paddingTop:30, position:"relative"}}>
-    <View style={{position:"absolute", top:16, right:10, zIndex: 20}}>
+    <View style={{position:"absolute", top:insets.top + 8, right:4}}>
       <HowItWorksButton onPress={handleStartGalleryTour} />
     </View>
     <FlatList ref={galleryRef}

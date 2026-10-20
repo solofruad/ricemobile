@@ -22,7 +22,8 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'message':'chat',
   'photo.stack':'photo-album',
-  'chart.pie':'timeline'
+  'chart.pie':'timeline',
+  'person.fill':'person'
 } as IconMapping;
 
 /**

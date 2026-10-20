@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Dimensions } from 'react-native';
 import { Camera, CameraController, useCameraDevice, useCameraPermission, usePhotoOutput } from 'react-native-vision-camera';
 
 import { writeAsync } from '@lodev09/react-native-exify';
@@ -51,6 +51,7 @@ export default function CamScan({ onResult, onClose, showTourButton = true }: Ca
       buildDeteccionTourSteps({
         shutterRef,
         focusRef: focusButtonRef,
+        windowSize: Dimensions.get('window'),
       }),
     );
   };
@@ -156,7 +157,7 @@ export default function CamScan({ onResult, onClose, showTourButton = true }: Ca
     <SafeAreaProvider>
       <View style={{ flex: 1, position: "relative", backgroundColor: "#091520" }}>
           {showTourButton && (
-            <View style={{ position: "absolute", top: insets.top + 12, right: 16, zIndex: 20 }}>
+            <View style={{ position: "absolute", top: insets.top + 8, right: 4, zIndex: 10 }}>
               <HowItWorksButton onPress={handleStartTour} />
             </View>
           )}
@@ -210,7 +211,8 @@ export default function CamScan({ onResult, onClose, showTourButton = true }: Ca
         {(isDetecting || isTakingPhoto) && (
           <View style={[styles.stageLayer, {
             top: insets.top,
-            backgroundColor: isTakingPhoto ? "rgba(255, 255, 255, 0.65)" : "#fffeef"
+            backgroundColor: isTakingPhoto ? "rgba(255, 255, 255, 0.65)" : "#fffeef", 
+            zIndex: 20 
           }]}>
             <Text style={styles.overlayText}>
               {isTakingPhoto ? "Tomando Fotografía..." : "Analizando Fotografía..."}
@@ -219,7 +221,7 @@ export default function CamScan({ onResult, onClose, showTourButton = true }: Ca
         )}
 
         {detection && photoUri && (
-          <View style={[styles.stageLayer, { top: insets.top,backgroundColor: "#fffeef" }]}>
+          <View style={[styles.stageLayer, { top: insets.top,backgroundColor: "#fffeef", zIndex: 20 }]}>
             <ScanControledCanvas 
               detection={detection} 
               photoUri={photoUri} 

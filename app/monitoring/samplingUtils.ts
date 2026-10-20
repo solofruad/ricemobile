@@ -1,6 +1,8 @@
 import { ObjectDetectionResult } from "@/src/ObjectDetection";
+import { DEFAULT_DETECTION_CONFIDENCE_THRESHOLD } from "@/constants/config";
 
-export const MIN_CONFIDENCE = 0.3;
+// Re-export por compatibilidad: la fuente única vive en @/constants/config.
+export const MIN_CONFIDENCE = DEFAULT_DETECTION_CONFIDENCE_THRESHOLD;
 
 export const filterDetectionsByConfidence = (
   detections: ObjectDetectionResult[],

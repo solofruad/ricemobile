@@ -11,14 +11,16 @@ import { TtsVoices } from '@/src/TtsVoices';
 import { useEffect, useState } from 'react';
 import * as vosk from 'react-native-vosk';
 import { ObjectDetection } from '@/src/ObjectDetection';
-
-const TTS_LANGUAGE = "es";
-const OBJECT_DETECTOR_MAX_RESULTS = 7;
-const OBJECT_DETECTOR_SCORE_THRESHOLD = 0.4;
+import {
+  OBJECT_DETECTOR_MAX_RESULTS,
+  OBJECT_DETECTOR_SCORE_THRESHOLD,
+  TTS_LANGUAGE_TAG,
+  VOSK_MODEL_NAME,
+} from '@/constants/config';
 
 function startTtsVoice(): Promise<void> {
   return new Promise(resolve => {
-    TtsVoices.init(TTS_LANGUAGE)
+    TtsVoices.init(TTS_LANGUAGE_TAG)
       .then(_ => {
         resolve();
         TtsVoices.speak("Bienvenido nuevamente.");
@@ -81,7 +83,7 @@ export function useAppInitialization() {
         ObjectDetection.initializeDetector(OBJECT_DETECTOR_MAX_RESULTS, OBJECT_DETECTOR_SCORE_THRESHOLD),
       );
       await runInitializationStep("VoskSTT", setLoadPhase, setErrorText, () =>
-        vosk.loadModel('model-es-es'),
+        vosk.loadModel(VOSK_MODEL_NAME),
       );
       // Fase adicional: formulario de información de la finca (mostrarlo o enviarlo si hay conexión)
       await runInitializationStep("FarmForm", setLoadPhase, setErrorText, async () => {

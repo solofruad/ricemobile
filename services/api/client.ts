@@ -1,7 +1,15 @@
 import * as SecureStore from 'expo-secure-store';
-import { API_BASE_URL, API_TIMEOUT_MS, DEVICE_JOIN_CODE } from './config';
+import {
+  API_BASE_URL,
+  API_TIMEOUT_MS,
+  APP_VERSION,
+  DEVICE_JOIN_CODE,
+  DEVICE_PLATFORM,
+  DEVICE_REGISTER_PATH,
+  DEVICE_TOKEN_KEY,
+} from '@/constants/config';
 
-const TOKEN_KEY = "device_token";
+const TOKEN_KEY = DEVICE_TOKEN_KEY;
 
 export type ApiUser = {
   id: number;
@@ -18,12 +26,12 @@ export type DeviceRegistration = {
 class DeviceNotRegisteredException extends Error {}
 
 async function registerDevice (): Promise<DeviceRegistration> {
-  const data = await apiRequest<DeviceRegistration>("/api/auth/devices/register/", {
+  const data = await apiRequest<DeviceRegistration>(DEVICE_REGISTER_PATH, {
     method: "POST",
     body: JSON.stringify({
       join_code: DEVICE_JOIN_CODE,
-      platform: "android",
-      app_version: "1.0.0",
+      platform: DEVICE_PLATFORM,
+      app_version: APP_VERSION,
     }),
     anonymous: true,
   });

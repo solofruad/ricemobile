@@ -15,6 +15,8 @@ export const appTourTheme = createTheme({
     primaryButtonColor: accentColor,
     secondaryButtonColor: '#b0bec5',
     skipButtonColor: '#90a4ae',
+    titleStyle: { fontSize: 18, lineHeight: 24, fontWeight: '700' },
+    descriptionStyle: { fontSize: 16, lineHeight: 22 },
   },
   spotlightStyles: {
     overlayColor,

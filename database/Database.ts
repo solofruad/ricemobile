@@ -1,6 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 import { Directory, Paths } from 'expo-file-system';
 import Utils from '@/utils/utils';
+import { DATABASE_NAME, SQLITE_DIR_NAME } from '@/constants/config';
 
 
 export function isObject(value:any) {
@@ -24,14 +25,14 @@ export default class Database {
   }
 
   private checkIfSQLiteDirExists(): void{
-    const sqliteDir = new Directory(Paths.document.uri + "SQLite");
+    const sqliteDir = new Directory(Paths.document.uri + SQLITE_DIR_NAME);
     if (!sqliteDir.exists) {
       sqliteDir.create();
     }
   }
 
   static deleteDatabaseDir(){
-    const sqliteDir = new Directory(Paths.document.uri + "SQLite");
+    const sqliteDir = new Directory(Paths.document.uri + SQLITE_DIR_NAME);
     if (sqliteDir.exists) {
       sqliteDir.delete();
     }
@@ -53,7 +54,7 @@ export default class Database {
   private initDatabase () {
     return new Promise<SQLite.SQLiteDatabase>((resolve, reject) => {
     this.checkIfSQLiteDirExists();
-    SQLite.openDatabaseAsync('detections.db', {}, Paths.document.uri + "SQLite")
+    SQLite.openDatabaseAsync(DATABASE_NAME, {}, Paths.document.uri + SQLITE_DIR_NAME)
       .then(database => {
         this.databaseInst = database;
         resolve(this.databaseInst as SQLite.SQLiteDatabase);

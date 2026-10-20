@@ -32,13 +32,15 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	const connectionRetryRef = useRef<View | null>(null);
 	const { startModuleTour } = useModuleTour();
 
-	const handleStartTour = () => {
+  const handleStartTour = () => {
 		startModuleTour(TOUR_IDS.CHATBOT, () =>
 			buildChatbotTourSteps({
 				inputRef: inputRef as unknown as React.RefObject<any>,
 				composerControlsRef,
 				connectionRetryRef,
 				connected: connectionState === "connected",
+				connectionState,
+				hasDetectionContext: props.detection !== undefined,
 				windowSize: { width: windowSize.width, height: windowSize.height },
 			}),
 		);
@@ -144,7 +146,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 
 	return (
 		<View style={{width:"100%", height:"100%"}}>
-			<View style={{position:"absolute", top: 10, right: 10, zIndex: 30}}>
+			<View style={{position:"absolute", top: 8, right: 4, zIndex: 30}}>
 				<HowItWorksButton onPress={handleStartTour} />
 			</View>
 			<View style={{position:"absolute", width:"100%", height:"100%"}}>

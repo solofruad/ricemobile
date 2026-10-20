@@ -52,6 +52,8 @@ export default function MonitoringDetail(props: MonitoringDetailProps) {
         samplesPanelRef,
         samplesVisible: vertexIndex !== -1,
         filterVisible: summary.diseases.length > 0,
+        hasTop: diseaseDistribution.length > 0,
+        photoOpen: selectedSample !== null,
         windowSize: Dimensions.get("window"),
       }),
     ]);

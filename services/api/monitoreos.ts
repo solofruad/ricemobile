@@ -1,4 +1,5 @@
 import { apiRequest } from './client';
+import { API_MONITOREOS_PATH } from '@/constants/config';
 
 export type MonitoreoPayloadMonitoreo = {
   id: number;
@@ -13,7 +14,7 @@ export type MuestraPayload = {
 
 // Crea el monitoreo en el backend (EN_PROGRESO admite muestras desde ya)
 export async function crearMonitoreo (fincaId: number): Promise<MonitoreoPayloadMonitoreo> {
-  return apiRequest<MonitoreoPayloadMonitoreo>("/api/monitoreos/", {
+  return apiRequest<MonitoreoPayloadMonitoreo>(API_MONITOREOS_PATH, {
     method: "POST",
     body: JSON.stringify({ finca_id: fincaId, estado: "EN_PROGRESO" }),
   });
@@ -21,7 +22,7 @@ export async function crearMonitoreo (fincaId: number): Promise<MonitoreoPayload
 
 // Cierra el monitoreo (transición única: EN_PROGRESO → FINALIZADO)
 export async function finalizarMonitoreo (monitoreoId: number): Promise<void> {
-  await apiRequest<MonitoreoPayloadMonitoreo>(`/api/monitoreos/${monitoreoId}/`, {
+  await apiRequest<MonitoreoPayloadMonitoreo>(`${API_MONITOREOS_PATH}${monitoreoId}/`, {
     method: "PATCH",
     body: JSON.stringify({ estado: "FINALIZADO" }),
   });
@@ -47,7 +48,7 @@ export async function subirMuestra (
   form.append("punto_indice", String(data.index_sampling_point));
   form.append("foto_indice", String(data.index_photo_in_sampling_point));
   form.append("detecciones", JSON.stringify(data.detection));
-  return apiRequest<MuestraPayload>(`/api/monitoreos/${monitoreoRemotoId}/muestras/`, {
+  return apiRequest<MuestraPayload>(`${API_MONITOREOS_PATH}${monitoreoRemotoId}/muestras/`, {
     method: "POST",
     body: form,
   });
