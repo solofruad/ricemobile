@@ -197,6 +197,8 @@ export default function Sampling(props: SamplingProps) {
         } catch {
           props.forcefullyGoToEditMode();
         }
+        // La subida al backend ocurre únicamente al arrancar la app
+        // (sincronizarAlArranque): lo procesado queda pendiente localmente.
       })
       .catch(error => console.error("Error al procesar el monitoreo", error));
   }, [monitoringId, props]);

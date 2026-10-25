@@ -159,6 +159,20 @@ export default class MonitoringsTable {
     });
   }
 
+  // Solo completos pendientes de envío: processed=1 y aún no UPLOADED.
+  // Es la query usada por la sincronización "solo completos".
+  static getProcessedPendingSync (): Promise<MonitoringsRecord[]> {
+    return new Promise<MonitoringsRecord[]>((resolve, reject) => {
+      Database.getDB()
+        .then(db => {
+          db.getAllAsync<MonitoringsRecord>(`SELECT * FROM monitorings WHERE processed = 1 AND (sync_state IS NULL OR sync_state != 'UPLOADED') ORDER BY id ASC`)
+            .then(rows => resolve(rows))
+            .catch(err => reject(err));
+        })
+        .catch(err => reject(err));
+    });
+  }
+
   static setRemoteId (id: number, remoteId: number): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       Database.getDB()

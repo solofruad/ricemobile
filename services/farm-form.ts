@@ -27,8 +27,15 @@ export function parseHectareas (raw: string): number | null {
 }
 
 // Validación compartida por el modal inicial y la pestaña Usuario.
+// El backend exige nombre no vacío (contrato 2026-10-22, sin fallback).
 // Retorna el mensaje de error o null si el borrador es válido.
-export function validateFarmForm (draft: Pick<FarmFormDraft, "hectareas" | "departamento" | "municipio" | "autorizaUsoMuestras">): string | null {
+export function validateFarmForm (draft: Pick<FarmFormDraft, "nombreFinca" | "hectareas" | "departamento" | "municipio" | "autorizaUsoMuestras">): string | null {
+  if (!draft.nombreFinca.trim()) {
+    return "Ingresa el nombre de la finca.";
+  }
+  if (draft.nombreFinca.trim().length > 200) {
+    return "El nombre de la finca no puede superar 200 caracteres.";
+  }
   if (parseHectareas(draft.hectareas) == null) {
     return "Ingresa una extensión válida en hectáreas.";
   }
@@ -50,7 +57,7 @@ export function buildFarmFormPayload (draft: FarmFormDraft): { payload: FarmForm
   if (validationError) return { error: validationError };
   return {
     payload: {
-      nombre_finca: draft.nombreFinca.trim() || null,
+      nombre_finca: draft.nombreFinca.trim(),
       hectareas: parseHectareas(draft.hectareas) as number,
       departamento: draft.departamento as string,
       municipio: draft.municipio as string,

@@ -1,10 +1,12 @@
 import { MonitorDrawingData } from '@/app/monitoring/MonEdit';
-import Table from '../Table';
+import Database from '../Database';
+import Table, { ensureColumn } from '../Table';
 
 export type MonitorDrawingRecord = {
   id: number;
   polygon: any; // El dibujo del monitor, almacenado como JSON
   samplingPath: any; // El dibujo del monitor, almacenado como JSON
+  remote_id?: number | null; // id del trazado en el backend (una vez creado)
   created_at: string; // Fecha de creación del registro
 };
 
@@ -27,7 +29,8 @@ export default class MonitorDrawingsTable {
   private static tableInstance = new Table<MonitorDrawingRecord>(MonitorDrawingsTable.queryingConfig);
 
   static initTable () {
-    return this.tableInstance.initTable();
+    return this.tableInstance.initTable()
+      .then(() => ensureColumn("monitorDrawings", "remote_id", "INTEGER"));
   }
 
   static insert ( data: MonitorDrawingData): Promise<number> {
@@ -44,6 +47,18 @@ export default class MonitorDrawingsTable {
 
   static getRecent () {
     return this.tableInstance.getRecent();
+  }
+
+  static setRemoteId (id: number, remoteId: number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      Database.getDB()
+        .then(db => {
+          db.runAsync(`UPDATE monitorDrawings SET remote_id = ? WHERE id = ?`, [remoteId, id])
+            .then(() => resolve())
+            .catch(err => reject(err));
+        })
+        .catch(err => reject(err));
+    });
   }
 
   static delete (id: number) {
