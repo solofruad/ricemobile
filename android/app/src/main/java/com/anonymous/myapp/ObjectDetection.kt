@@ -92,15 +92,15 @@ class ObjectDetection {
             results = (ObjectDetection.detector as MPObjectDetector).detect(image)
         }
 
-        return processResults(results)
+        return processResults(results, bitmap.width, bitmap.height)
     }
 
-    private fun processResults(result: Any): List<DetectionData> {
+    private fun processResults(result: Any, imageWidth: Int, imageHeight: Int): List<DetectionData> {
         val resultsList = (result as ObjectDetectorResult).detections()
 
         lateinit var box: RectF
         lateinit var labels: List<Label>
-        return resultsList.map { detection ->
+        return resultsList.mapNotNull { detection ->
             if(processingFramework == ProcessingFramework.MEDIAPIPE) {
                 val detection = detection as MPDetection
                 box = detection.boundingBox()
@@ -109,9 +109,20 @@ class ObjectDetection {
                 }
             }
 
+            // Recorta la caja a los limites de la imagen: el modelo puede
+            // devolver coordenadas ligeramente negativas o mayores al borde.
+            val left = box.left.coerceIn(0f, imageWidth.toFloat())
+            val top = box.top.coerceIn(0f, imageHeight.toFloat())
+            val right = box.right.coerceIn(0f, imageWidth.toFloat())
+            val bottom = box.bottom.coerceIn(0f, imageHeight.toFloat())
+            val width = (right - left).coerceAtLeast(0f)
+            val height = (bottom - top).coerceAtLeast(0f)
+            // Descarta cajas degeneradas (totalmente fuera de la imagen).
+            if (width < 1f || height < 1f) return@mapNotNull null
+
             val frame = Frame(
-                Point(box.left.toInt(), box.top.toInt()),
-                Point(box.width().toInt(), box.height().toInt())
+                Point(left.toInt(), top.toInt()),
+                Point(width.toInt(), height.toInt())
             )
 
             DetectionData(frame, labels)
