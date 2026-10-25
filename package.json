@@ -7,6 +7,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "lint": "expo lint",
+    "docs:backend": "node scripts/generate-backend-calls-pdf.mjs",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -28,6 +29,7 @@
     "expo-network": "~8.0.8",
     "expo-router": "~6.0.24",
     "expo-secure-store": "~15.0.8",
+    "expo-sharing": "~14.0.8",
     "expo-splash-screen": "~31.0.13",
     "expo-sqlite": "~16.0.10",
     "expo-status-bar": "~3.0.9",
@@ -53,7 +55,9 @@
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
+    "@types/pdfkit": "^0.17.7",
     "@types/react": "~19.1.10",
+    "pdfkit": "^0.20.2",
     "baseline-browser-mapping": "^2.10.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
