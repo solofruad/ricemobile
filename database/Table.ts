@@ -27,6 +27,9 @@ export type QueryingConfig = {
 
 
   const preprocessInputData = (data: any): any => {
+    // Solo los diccionarios se preprocesan; los escalares/arreglos (p. ej. un
+    // id para un `?` posicional) se devuelven tal cual.
+    if (!isObject(data) && !Array.isArray(data)) return data;
     const result = { ...data };
     const keys = Object.keys(result);
 
@@ -154,7 +157,9 @@ export default class Table<T> {
     return new Promise<T | null>((resolve, reject) => {
       Database.getDB()
       .then(db=>{
-        db.getFirstAsync<T | null>(this.queries.selectById, preprocessInputData(id))
+        // El id es escalar: se pasa como arreglo. No usar preprocessInputData
+        // aquí ({ ...id } sobre un número produce {} y el `?` queda sin valor).
+        db.getFirstAsync<T | null>(this.queries.selectById, [id])
         .then(row => {
           if (!row) {
             resolve(null);
@@ -202,7 +207,8 @@ export default class Table<T> {
     return new Promise<void>((resolve, reject) => {
       Database.getDB()
       .then(db=>{
-        db.runAsync(this.queries.delete, preprocessInputData(id))
+        // Idem getById: bind posicional como arreglo.
+        db.runAsync(this.queries.delete, [id])
         .then(() => {
           resolve();
         });
