@@ -1,4 +1,5 @@
 import Database from '@/database/Database';
+import ApiRequestLogsTable from '@/database/tables/ApiRequestLogsTable';
 import DetectionsTable from '@/database/tables/DetectionsTable';
 import FarmFormTable from '@/database/tables/FarmFormTable';
 import MonitorDrawingsTable from '@/database/tables/MonitorDrawingsTable';
@@ -77,6 +78,9 @@ export function useAppInitialization() {
       );
       await runInitializationStep("ToursTable", setLoadPhase, setErrorText, () =>
         ToursTable.initTable(),
+      );
+      await runInitializationStep("ApiRequestLogsTable", setLoadPhase, setErrorText, () =>
+        ApiRequestLogsTable.initTable(),
       );
       await runInitializationStep("TtsVoices", setLoadPhase, setErrorText, startTtsVoice);
       await runInitializationStep("ObjectDetection", setLoadPhase, setErrorText, () =>

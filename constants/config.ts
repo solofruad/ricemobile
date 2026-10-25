@@ -18,8 +18,11 @@ export const DEVICE_PLATFORM = "android";
 // Mantener sincronizado con app.json -> expo.version
 export const APP_VERSION = "1.0.0";
 export const DEVICE_REGISTER_PATH = "/api/auth/devices/register/";
+export const API_AUTH_ME_PATH = "/api/auth/me/";
 export const API_FINCAS_PATH = "/api/fincas/";
 export const API_MONITOREOS_PATH = "/api/monitoreos/";
+export const apiTrazadosListPath = (fincaId: number): string => `/api/fincas/${fincaId}/trazados/`;
+export const apiTrazadoDetailPath = (trazadoId: number): string => `/api/fincas/trazados/${trazadoId}/`;
 
 // --- Servidor LLM local (antes en src/LlmServer.ts) ---
 export const LLM_PORT = 9000;
@@ -55,3 +58,7 @@ export const DATABASE_NAME = "detections.db";
 
 // Intervalo de días entre peticiones del formulario de información de la finca
 export const INTERVAL_DAYS_SHOW_FORM = 0;
+
+// --- Logs de peticiones (Riceback + LLM local) ---
+export const API_LOGS_MAX_ENTRIES = 70;
+export const API_LOGS_BODY_MAX_CHARS = 5000;

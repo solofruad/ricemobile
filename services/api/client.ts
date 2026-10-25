@@ -8,6 +8,7 @@ import {
   DEVICE_REGISTER_PATH,
   DEVICE_TOKEN_KEY,
 } from '@/constants/config';
+import { logApiRequest, serializeRequestBody, serializeResponseBody } from '@/services/request-logger';
 
 const TOKEN_KEY = DEVICE_TOKEN_KEY;
 
@@ -62,6 +63,21 @@ type RequestOptions = RequestInit & { anonymous?: boolean };
 // re-registra + reintenta una vez si el token fue revocado (401).
 export async function apiRequest<T> (path: string, options: RequestOptions = {}): Promise<T> {
   const { anonymous, ...fetchOptions } = options;
+  const method = ((fetchOptions.method as string) ?? "GET").toUpperCase();
+  const fullUrl = `${API_BASE_URL}${path}`;
+  const loggedRequestBody = serializeRequestBody(fetchOptions.body);
+
+  const logFinal = (status: number | null, responseText: string | null, error: string | null) => {
+    logApiRequest({
+      source: 'riceback',
+      method,
+      url: fullUrl,
+      request_body: loggedRequestBody,
+      response_body: serializeResponseBody(responseText),
+      status_code: status,
+      error,
+    });
+  };
 
   const doFetch = async (token: string | null): Promise<Response> => {
     const controller = new AbortController();
@@ -96,6 +112,7 @@ export async function apiRequest<T> (path: string, options: RequestOptions = {})
     response = await doFetch(token);
   } catch (err) {
     console.log(`Error de red llamando ${path}`, err);
+    logFinal(null, null, `Error de red en ${path}: ${String(err)}`);
     throw new NetworkRequestException(path);
   }
 
@@ -113,21 +130,32 @@ export async function apiRequest<T> (path: string, options: RequestOptions = {})
       response = await doFetch(newToken);
     } catch (err) {
       console.log(`Error de red reintentando ${path}`, err);
+      logFinal(null, null, `Error de red en ${path}: ${String(err)}`);
       throw new NetworkRequestException(path);
     }
   }
 
   if (!response.ok) {
     const message = await response.text().catch(() => "");
+    logFinal(response.status, message, `HTTP ${response.status} en ${path}`);
     throw new ApiRequestException(path, response.status, message);
   }
 
-  if (response.status === 204) return undefined as T;
+  if (response.status === 204) {
+    logFinal(response.status, null, null);
+    return undefined as T;
+  }
   const text = await response.text();
-  if (!text) return undefined as T;
+  if (!text) {
+    logFinal(response.status, null, null);
+    return undefined as T;
+  }
   try {
-    return JSON.parse(text) as T;
+    const parsed = JSON.parse(text) as T;
+    logFinal(response.status, text, null);
+    return parsed;
   } catch {
+    logFinal(response.status, text, `Respuesta no JSON en ${path}`);
     throw new ApiRequestException(path, response.status, text);
   }
 }
