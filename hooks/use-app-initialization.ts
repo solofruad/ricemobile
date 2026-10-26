@@ -14,6 +14,7 @@ import * as vosk from 'react-native-vosk';
 import { ObjectDetection } from '@/src/ObjectDetection';
 import {
   OBJECT_DETECTOR_MAX_RESULTS,
+  OBJECT_DETECTOR_PRESET,
   OBJECT_DETECTOR_SCORE_THRESHOLD,
   TTS_LANGUAGE_TAG,
   VOSK_MODEL_NAME,
@@ -84,7 +85,7 @@ export function useAppInitialization() {
       );
       await runInitializationStep("TtsVoices", setLoadPhase, setErrorText, startTtsVoice);
       await runInitializationStep("ObjectDetection", setLoadPhase, setErrorText, () =>
-        ObjectDetection.initializeDetector(OBJECT_DETECTOR_MAX_RESULTS, OBJECT_DETECTOR_SCORE_THRESHOLD),
+        ObjectDetection.initializeDetector(OBJECT_DETECTOR_MAX_RESULTS, OBJECT_DETECTOR_SCORE_THRESHOLD, OBJECT_DETECTOR_PRESET),
       );
       await runInitializationStep("VoskSTT", setLoadPhase, setErrorText, () =>
         vosk.loadModel(VOSK_MODEL_NAME),

@@ -3,11 +3,11 @@ import { File } from "expo-file-system";
 import FarmFormTable from "@/database/tables/FarmFormTable";
 import MonitorDrawingsTable from "@/database/tables/MonitorDrawingsTable";
 import MonitoringsTable from "@/database/tables/MonitoringsTable";
-import SamplingsTable from "@/database/tables/SamplingsTable";
+import SamplingsTable, { SamplingRecord } from "@/database/tables/SamplingsTable";
 import { API_AUTH_ME_PATH } from "@/constants/config";
 import { apiRequest, getToken } from "@/services/api/client";
 import { actualizarFinca, crearFinca } from "@/services/api/fincas";
-import { crearMonitoreo, finalizarMonitoreo, subirMuestra, vincularTrazado } from "@/services/api/monitoreos";
+import { crearMonitoreo, esErrorMuestraDuplicada, finalizarMonitoreo, listarMuestras, subirMuestra, vincularTrazado } from "@/services/api/monitoreos";
 import { crearTrazado, validarGeometriaTrazado } from "@/services/api/trazados";
 
 // Comprueba si hay conexión a internet disponible
@@ -28,6 +28,69 @@ function fotoExiste (photoDir: string): boolean {
   } catch {
     return false;
   }
+}
+
+// MD5 (hex) de la foto local, calculado en nativo. Null si no se puede leer.
+function md5FotoLocal (photoDir: string): string | null {
+  try {
+    const md5 = new File(photoDir).md5;
+    return md5 ? md5.toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
+// Recupera una muestra rechazada con 400-duplicado (receta 5 + identidad por hash).
+// Devuelve true si la muestra quedó marcada como subida (misma captura probada
+// por foto_md5) y el sync puede continuar; false si hay que reintentar (throw).
+// Nunca marca, borra ni reasigna ante conflicto genuino o falta de evidencia.
+async function recuperarMuestraDuplicada (
+  monitoreoRemotoId: number,
+  sample: Pick<SamplingRecord, "id_monitoring" | "photo_dir" | "index_sampling_point" | "index_photo_in_sampling_point">,
+): Promise<boolean> {
+  let remoto;
+  try {
+    const muestras = await listarMuestras(monitoreoRemotoId);
+    remoto = muestras.find(m =>
+      m.punto_indice === sample.index_sampling_point &&
+      m.foto_indice === sample.index_photo_in_sampling_point,
+    );
+  } catch (err) {
+    console.log(`No se pudo listar muestras del monitoreo ${monitoreoRemotoId} para recuperar ${sample.photo_dir} (quedará pendiente)`, err);
+    return false;
+  }
+
+  if (!remoto) {
+    // El undefined del contrato no es éxito: la pareja no existe, reintentar.
+    console.log(`Muestra duplicada sin pareja remota en monitoreo ${monitoreoRemotoId} (punto ${sample.index_sampling_point}, foto ${sample.index_photo_in_sampling_point}): quedará pendiente`);
+    return false;
+  }
+
+  const hashRemoto = remoto.foto_md5?.toLowerCase() ?? null;
+  if (!hashRemoto) {
+    console.log(`Muestra (punto ${sample.index_sampling_point}, foto ${sample.index_photo_in_sampling_point}) ocupada pero sin foto_md5 verificable: quedará pendiente`);
+    return false;
+  }
+
+  const hashLocal = md5FotoLocal(sample.photo_dir);
+  if (!hashLocal) {
+    console.log(`No se pudo calcular el hash local de ${sample.photo_dir}: quedará pendiente`);
+    return false;
+  }
+
+  if (hashLocal !== hashRemoto) {
+    console.log(`Conflicto genuino en monitoreo ${monitoreoRemotoId} (punto ${sample.index_sampling_point}, foto ${sample.index_photo_in_sampling_point}): la foto remota ${remoto.id} es DISTINTA a la local. No se marca ni se reasigna; quedará pendiente`);
+    return false;
+  }
+
+  await SamplingsTable.markUploaded({
+    id_monitoring: sample.id_monitoring,
+    index_sampling_point: sample.index_sampling_point,
+    index_photo_in_sampling_point: sample.index_photo_in_sampling_point,
+    remote_id: remoto.id,
+  });
+  console.log(`Muestra ${sample.photo_dir} recuperada como subida (misma captura, remoto ${remoto.id})`);
+  return true;
 }
 
 // Sincroniza con el backend: finca (una sola vez) y monitoreos COMPLETOS
@@ -244,6 +307,13 @@ async function subirMuestrasDelMonitoreo (monitoreoRemotoId: number, monitoreoLo
       const respuesta = await subirMuestra(monitoreoRemotoId, { ...sample, detection });
       await SamplingsTable.markUploaded({ ...sample, remote_id: respuesta.id });
     } catch (err) {
+      // 400-duplicado: la pareja puede ser un reintento de la misma captura
+      // (respuesta perdida) o un conflicto genuino. Solo se recupera con
+      // identidad probada por hash; en cualquier otro caso se reintenta.
+      if (esErrorMuestraDuplicada(err)) {
+        const recuperada = await recuperarMuestraDuplicada(monitoreoRemotoId, sample);
+        if (recuperada) continue;
+      }
       console.log(`No se pudo subir la muestra ${sample.photo_dir} (quedará pendiente)`, err);
       throw err;
     }

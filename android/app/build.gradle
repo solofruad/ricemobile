@@ -213,4 +213,9 @@ dependencies {
     implementation 'androidx.camera:camera-core:1.5.3'
     //Librería de mediapipe
     implementation 'com.google.mediapipe:tasks-vision:1.0.0'
+    //Runtime para inferencia directa del modelo nuevo (rice2.tflite, YOLO [1,8,8400] + NMS manual).
+    //RiceAR usa com.google.ai.edge.litert:litert:2.2.0, pero ese artefacto está compilado con
+    //Kotlin 2.3.0 y rompe :app:compileDebugKotlin en este proyecto (toolchain Kotlin 2.1.20 de Expo).
+    //Se usa el runtime clásico equivalente (misma API org.tensorflow.lite.Interpreter, Java puro).
+    implementation 'org.tensorflow:tensorflow-lite:2.17.0'
 }

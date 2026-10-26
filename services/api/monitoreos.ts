@@ -1,4 +1,4 @@
-import { apiRequest } from './client';
+import { apiRequest, ApiRequestException } from './client';
 import { API_MONITOREOS_PATH } from '@/constants/config';
 
 export type MonitoreoPayloadMonitoreo = {
@@ -12,6 +12,30 @@ export type MuestraPayload = {
   id: number;
   monitoreo_id: number;
 };
+
+// Ítem de GET /api/monitoreos/<id>/muestras/ (solo los campos que usa el sync).
+export type MuestraListItem = {
+  id: number;
+  punto_indice: number;
+  foto_indice: number;
+  // Hash MD5 (hex) de la foto tal como quedó guardada. Null en filas viejas
+  // o si el backend aún no expone el campo: en ese caso NO es verificable.
+  foto_md5?: string | null;
+};
+
+export function esErrorMuestraDuplicada (err: unknown): boolean {
+  return err instanceof ApiRequestException &&
+    err.status === 400 &&
+    /Ya existe una muestra/.test(err.message);
+}
+
+// Lista las muestras del monitoreo (receta 5: verificar la pareja tras un 400).
+export async function listarMuestras (monitoreoRemotoId: number): Promise<MuestraListItem[]> {
+  const res = await apiRequest<{ muestras: MuestraListItem[] }>(`${API_MONITOREOS_PATH}${monitoreoRemotoId}/muestras/`, {
+    method: "GET",
+  });
+  return res.muestras ?? [];
+}
 
 // Crea el monitoreo en el backend (EN_PROGRESO admite muestras desde ya).
 // Si se pasa trazadoId, se vincula al trazado de la misma finca (§6).

@@ -83,7 +83,7 @@ const FarmFormModal = (props: FarmFormModalProps) => {
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
-            style={{ flexGrow: 0 }}
+            style={{ flex: 1, width: "100%" }}
           >
             <View style={styles.modalView}>
               <Text style={styles.title}>INFORMACIÓN DE TU FINCA</Text>
@@ -122,6 +122,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     flexGrow: 1,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
   },
   modalView: {
     backgroundColor: "white",
@@ -129,7 +131,8 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: "stretch",
     width: "85%",
-    maxHeight: "85%",
+    maxWidth: 480,
+    flexShrink: 1,
   },
   title: {
     fontSize: 22,

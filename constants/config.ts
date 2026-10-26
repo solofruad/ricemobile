@@ -47,6 +47,9 @@ export const LLM_CHAT_TIMEOUT_MS = 60_000;
 export const TTS_LANGUAGE_TAG = "es";
 export const OBJECT_DETECTOR_MAX_RESULTS = 7;
 export const OBJECT_DETECTOR_SCORE_THRESHOLD = 0.4;
+// Preset inicial para testear que MediaPipe+legacy siga funcionando tras portar LiteRT.
+// Cambiar a "litert" para probar el modelo nuevo (rice2.tflite + NMS manual).
+export const OBJECT_DETECTOR_PRESET = "mediapipe-legacy" as const; //"mediapipe-legacy" | "litert"
 export const VOSK_MODEL_NAME = "model-es-es";
 
 // --- Detección / sampling (antes MIN_CONFIDENCE en app/monitoring/samplingUtils.ts) ---

@@ -3,6 +3,7 @@ package com.anonymous.myapp
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Log
 import com.facebook.react.bridge.*
 import java.io.InputStream
 
@@ -12,17 +13,45 @@ class ObjectDetectionModule(reactContext: ReactApplicationContext) : ReactContex
     // Nombre del modulo en JS: NativeModules.ObjectDetectionModule
     override fun getName(): String = "ObjectDetectionModule"
 
+    private fun resolveFramework(preset: String?): ProcessingFramework {
+        if (preset.isNullOrBlank()) return ObjectDetection.defaultFramework()
+        return when (preset.trim().lowercase()) {
+            "mediapipe-legacy", "mediapipe", "legacy" -> ProcessingFramework.MEDIAPIPE
+            "litert", "litert-rice2", "rice2", "litert-nuevo", "nuevo" -> ProcessingFramework.LITERT
+            else -> ObjectDetection.defaultFramework()
+        }
+    }
+
     @ReactMethod
-    fun initializeDetector(maxResults: Int, scoreThreshold: Float, promise: Promise) {
+    fun initializeDetector(maxResults: Int, scoreThreshold: Float, preset: String?, modelPath: String?, promise: Promise) {
         try {
+            val framework = resolveFramework(preset)
+            val effectiveModelPath = modelPath ?: ""
+            Log.i("ObjectDetectionModule", "initializeDetector preset='$preset' framework=$framework model='$effectiveModelPath' maxResults=$maxResults score=$scoreThreshold")
             ObjectDetection().setupObjectDetector(
                 reactApplicationContext,
                 maxResults,
-                scoreThreshold
+                scoreThreshold,
+                framework,
+                effectiveModelPath
             )
+            if (ObjectDetection.detector == null) {
+                promise.reject("INITIALIZATION_ERROR", "No se pudo cargar el modelo para $framework.")
+                return
+            }
             promise.resolve(null) // Resolviendo sin datos, solo indicando éxito
         } catch (e: Exception) {
             promise.reject("INITIALIZATION_ERROR", e.message, e)
+        }
+    }
+
+    @ReactMethod
+    fun closeDetector(promise: Promise) {
+        try {
+            ObjectDetection.closeDetector()
+            promise.resolve(null)
+        } catch (e: Exception) {
+            promise.reject("CLOSE_ERROR", e.message, e)
         }
     }
 
