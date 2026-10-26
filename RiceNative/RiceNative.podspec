@@ -1,5 +1,8 @@
 # Pod local con los modulos nativos custom de RiceMobile para iOS:
-#   - ObjectDetectionModule  -> deteccion de objetos con MediaPipe Tasks Vision (model.tflite)
+#   - ObjectDetectionModule  -> deteccion de objetos, dual framework:
+#       * MediaPipe Tasks Vision + model.tflite (legacy, con NMS embebido)
+#       * TensorFlowLiteSwift + rice2.tflite (YOLO [1,8,8400] + NMS manual
+#         porteado de Android: mismos umbrales, clases y postproceso)
 #   - TtsVoicesModule        -> sintesis de voz con AVSpeechSynthesizer
 #   - CameraFocusInfoModule  -> distancia minima de enfoque con AVFoundation
 #
@@ -27,4 +30,9 @@ Pod::Spec.new do |s|
 
   # MediaPipe Tasks Vision: misma libreria usada en Android (com.google.mediapipe:tasks-vision)
   s.dependency 'MediaPipeTasksVision', '~> 0.10.9'
+
+  # Runtime CPU para el modelo nuevo (rice2.tflite, YOLO [1,8,8400] + NMS manual).
+  # Misma generacion que Android (org.tensorflow:tensorflow-lite:2.17.0).
+  # NOTA: veredicto de compatibilidad de linkado con MediaPipe en el build de CI.
+  s.dependency 'TensorFlowLiteSwift', '~> 2.17.0'
 end

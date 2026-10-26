@@ -18,9 +18,16 @@
 
 @interface RCT_EXTERN_MODULE(ObjectDetectionModule, NSObject)
 
+// Misma firma que Android: preset ("mediapipe-legacy" | "litert" + alias) y
+// modelPath opcional (nombre dentro del bundle; vacio/nil = default del framework).
 RCT_EXTERN_METHOD(initializeDetector:(NSInteger)maxResults
                   scoreThreshold:(float)scoreThreshold
+                  preset:(NSString *)preset
+                  modelPath:(NSString *)modelPath
                   resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(closeDetector:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(detectObjects:(NSString *)imageUri
