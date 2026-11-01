@@ -46,7 +46,7 @@ export const LLM_CHAT_TIMEOUT_MS = 60_000;
 // --- Inicialización de la app (antes en hooks/use-app-initialization.ts) ---
 export const TTS_LANGUAGE_TAG = "es";
 export const OBJECT_DETECTOR_MAX_RESULTS = 7;
-export const OBJECT_DETECTOR_SCORE_THRESHOLD = 0.4;
+export const OBJECT_DETECTOR_SCORE_THRESHOLD = 0.3;
 // Preset inicial para testear que MediaPipe+legacy siga funcionando tras portar LiteRT.
 // Cambiar a "litert" para probar el modelo nuevo (rice2.tflite + NMS manual).
 export const OBJECT_DETECTOR_PRESET = "mediapipe-legacy" as const; //"mediapipe-legacy" | "litert"
@@ -60,7 +60,7 @@ export const SQLITE_DIR_NAME = "SQLite";
 export const DATABASE_NAME = "detections.db";
 
 // Intervalo de días entre peticiones del formulario de información de la finca
-export const INTERVAL_DAYS_SHOW_FORM = 0;
+export const INTERVAL_DAYS_SHOW_FORM = 15;
 
 // --- Logs de peticiones (Riceback + LLM local) ---
 export const API_LOGS_MAX_ENTRIES = 70;
