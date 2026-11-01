@@ -46,7 +46,7 @@
           "models": [
             "assets/model-es-es"
           ],
-          "iOSMicrophonePermission": "Nous avons besoin d'accéder à votre microphone"
+          "iOSMicrophonePermission": "Se necesita acceso al micrófono para el reconocimiento de voz."
         }
       ],
       "expo-sqlite",
