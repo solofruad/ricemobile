@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dimensions, ScrollView, Text, ToastAndroid, TouchableOpacity, Vibration, View } from "react-native";
+import { showToast } from "@/utils/toast";
+import { Dimensions, ScrollView, Text, TouchableOpacity, Vibration, View } from "react-native";
 import { Icon, MD3Colors } from "react-native-paper";
 import Animated, { useSharedValue, withSpring } from "react-native-reanimated";
 import { Modal } from "react-native-reanimated-modal";
@@ -184,7 +185,7 @@ export default function Sampling(props: SamplingProps) {
     if (monitoringId === null) return;
     MonitoringsTable.markProcessed(monitoringId)
       .then(async () => {
-        ToastAndroid.show("Monitoreo procesado", ToastAndroid.SHORT);
+        showToast("Monitoreo procesado");
         try {
           const monitoring = await MonitoringsTable.getProcessedWithDrawingById(monitoringId);
           const records = await SamplingsTable.getByMonitoringId(monitoringId);
