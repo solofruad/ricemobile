@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, Platform } from 'react-native';
 import { Camera, CameraController, useCameraDevice, useCameraPermission, usePhotoOutput } from 'react-native-vision-camera';
 
 import { writeAsync } from '@lodev09/react-native-exify';
@@ -39,7 +39,8 @@ export default function CamScan({ onResult, onClose, showTourButton = true }: Ca
   const { hasPermission, requestPermission: askPermission } = useCameraPermission();
   
   const device = useCameraDevice('back');
-  const photoOutput = usePhotoOutput()
+  // JPEG explicito: en iOS 'native' es HEIC y el backend recibe image/jpeg.
+  const photoOutput = usePhotoOutput({ containerFormat: 'jpeg' })
   //@ts-ignore
   const camera = useRef<CameraRef>(null);
   const shutterRef = useRef<View>(null);
@@ -203,7 +204,11 @@ export default function CamScan({ onResult, onClose, showTourButton = true }: Ca
               }}
               minFocusDistance={minFocusDistance} 
               setFocusDepth={(n) => {
-                (camera.current?.controller as CameraController).setFocusLocked?.(n).catch((e:any) => console.log("Focus lock error:", e));
+                // Android (parche): dioptrias. iOS: lensPosition 0 (cerca) .. 1 (lejos).
+                const value = Platform.OS === 'ios'
+                  ? Math.min(Math.max(1 - n / minFocusDistance, 0), 1)
+                  : n;
+                (camera.current?.controller as CameraController).setFocusLocked?.(value).catch((e:any) => console.log("Focus lock error:", e));
               }}
             />
           </View>
