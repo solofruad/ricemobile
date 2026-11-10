@@ -1,0 +1,20 @@
+diff --git a/node_modules/@expo/cli/build/src/prebuild/resolveOptions.js b/node_modules/@expo/cli/build/src/prebuild/resolveOptions.js
+index 168805b..b32a860 100644
+--- a/node_modules/@expo/cli/build/src/prebuild/resolveOptions.js
++++ b/node_modules/@expo/cli/build/src/prebuild/resolveOptions.js
+@@ -206,11 +206,10 @@ function resolvePlatformOption(platform = 'all', { loose } = {}) {
+     }
+ }
+ function ensureValidPlatforms(platforms) {
+-    // Skip prebuild for iOS on Windows
+-    if (process.platform === 'win32' && platforms.includes('ios')) {
+-        _log.warn((0, _chalk().default)`⚠️  Skipping generating the iOS native project files. Run {bold npx expo prebuild} again from macOS or Linux to generate the iOS project.\n`);
+-        return platforms.filter((platform)=>platform !== 'ios');
+-    }
++    // [ricemobile patch] El prebuild de iOS es JS puro (render de plantillas y
++    // plugins); el unico paso que requiere macOS es `pod install`, que este
++    // proyecto ejecuta en CI con `--no-install` fuera del runner. Si se
++    // descartase ios aqui, `expo prebuild -p ios` fallaria en Windows/Linux.
+     return platforms;
+ }
+ function assertPlatforms(platforms) {

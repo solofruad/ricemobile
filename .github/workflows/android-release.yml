@@ -1,9 +1,11 @@
+# Se ejecuta solo con push a main (o manualmente desde la pestaña Actions).
+# Las ramas de trabajo (devlopment, iOS) no disparan builds.
 name: Android Release APK
 
 on:
   workflow_dispatch:
   push:
-    branches: [main, devlopment]
+    branches: [main]
 
 concurrency:
   group: android-release-${{ github.ref }}

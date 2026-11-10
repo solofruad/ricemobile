@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 // Fuente única de constantes de configuración técnica/ajustable del proyecto.
 // Los módulos de origen re-exportan desde aquí por compatibilidad; no duplicar valores.
 
@@ -14,7 +16,7 @@ export const API_TIMEOUT_MS = 60_000;
 
 // --- Dispositivo / Auth (antes literales en services/api/client.ts) ---
 export const DEVICE_TOKEN_KEY = "device_token";
-export const DEVICE_PLATFORM = "android";
+export const DEVICE_PLATFORM = Platform.OS;
 // Mantener sincronizado con app.json -> expo.version
 export const APP_VERSION = "1.0.0";
 export const DEVICE_REGISTER_PATH = "/api/auth/devices/register/";

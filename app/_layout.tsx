@@ -9,6 +9,7 @@ import {
 } from '@wrack/react-native-tour-guide';
 import LoadingScreen from '@/components/loading-screen';
 import FarmFormModal from '@/components/farm/FarmFormModal';
+import ToastHost from '@/components/ui/toast-host';
 import { useAppInitialization } from '@/hooks/use-app-initialization';
 
 export const unstable_settings = {
@@ -36,6 +37,7 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             </Stack>
             <FarmFormModal visible={showFarmForm} onClose={() => setShowFarmForm(false)} />
+            <ToastHost />
             <StatusBar style="auto" />
           </ThemeProvider>
         </PaperProvider>

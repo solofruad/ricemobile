@@ -18,13 +18,16 @@
 #   3. pod install
 #   4. xcodebuild archive sin firma (Release, incluye bundle JS + Hermes)
 #   5. Empaqueta el .app en un Payload/.ipa y lo sube como artifact
+#
+# Se ejecuta solo con push a main (o manualmente desde la pestaña Actions).
+# Las ramas de trabajo (devlopment, iOS) no disparan builds.
 
 name: Build iOS (unsigned IPA)
 
 on:
   workflow_dispatch:
   push:
-    branches: [iOS]
+    branches: [main]
 
 concurrency:
   group: build-ios-${{ github.ref_name }}
@@ -105,3 +108,4 @@ jobs:
           name: app-unsigned-ipa
           path: app-unsigned.ipa
           retention-days: 14
+

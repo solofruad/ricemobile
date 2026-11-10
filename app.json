@@ -10,7 +10,10 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.myapp"
+      "bundleIdentifier": "com.anonymous.myapp",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Se necesita acceso a la cámara para escanear y detectar objetos."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -43,13 +46,14 @@
           "models": [
             "assets/model-es-es"
           ],
-          "iOSMicrophonePermission": "Nous avons besoin d'accéder à votre microphone"
+          "iOSMicrophonePermission": "Se necesita acceso al micrófono para el reconocimiento de voz."
         }
       ],
       "expo-sqlite",
       "expo-font",
       "react-native-enriched-markdown",
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/with-ricenative.js"
     ],
     "experiments": {
       "typedRoutes": true,

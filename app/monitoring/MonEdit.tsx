@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, LayoutChangeEvent, Text, ToastAndroid, Vibration, View } from "react-native";
+import { showToast } from "@/utils/toast";
+import { Dimensions, LayoutChangeEvent, Text, Vibration, View } from "react-native";
 import { MD2Colors, MD3Colors } from "react-native-paper";
 import { useSharedValue } from "react-native-reanimated";
 import { Modal } from "react-native-reanimated-modal";
@@ -222,7 +223,7 @@ export default function MonEdit(props: MonEditProps) {
         
         //@ts-ignore
         if (!pathIsContained || result !== VERTEX_OPERATION.VERTEX_DELETED) {
-          ToastAndroid.show("No se puede eliminar ese vértice", ToastAndroid.SHORT);
+          showToast("No se puede eliminar ese vértice");
           Vibration.vibrate(50);
         } else {
           history.current.addElement({
@@ -270,7 +271,7 @@ export default function MonEdit(props: MonEditProps) {
   };
 
   const toggleWVertexInfluence = () => {
-    ToastAndroid.show(!showWVertexInfluence.value ? "Áreas de influencia activadas" : "Áreas de influencia desactivadas", ToastAndroid.SHORT);
+    showToast(!showWVertexInfluence.value ? "Áreas de influencia activadas" : "Áreas de influencia desactivadas");
     setShowWVertexInfluenceJS(!showWVertexInfluence.value);
     showWVertexInfluence.value = !showWVertexInfluence.value;
   };
