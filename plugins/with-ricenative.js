@@ -8,7 +8,8 @@
  *     nunca toca la raíz, así que los módulos nativos siempre sobreviven y
  *     este plugin vuelve a inyectarlos en el Podfile recién generado.
  *  2. Añade los modelos de assets/models/*.tflite (model.tflite legacy
- *     + rice2.tflite YOLO) como recursos del target de la app
+ *     + rice2.tflite YOLO) y las etiquetas del legacy (model_labels.txt)
+ *     como recursos del target de la app
  *     (mismo mecanismo que usa react-native-vosk para sus modelos).
  *
  * Al ser un config plugin, sobrevive a `expo prebuild`: cada sincronización
@@ -25,9 +26,15 @@ const { withDangerousMod, withXcodeProject, IOSConfig } = require('@expo/config-
 
 const POD_NAME = 'RiceNative';
 const POD_PODFILE_LINE = `  pod '${POD_NAME}', :path => '../${POD_NAME}' # injected by plugins/with-ricenative.js`;
-// Modelos .tflite de assets/models que se añaden como recurso del target de la app:
-// model.tflite = legacy MediaPipe (con NMS embebido), rice2.tflite = YOLO LiteRT + NMS manual.
-const MODEL_REL_PATHS = ['assets/models/model.tflite', 'assets/models/rice2.tflite'];
+// Archivos de assets/models que se añaden como recurso del target de la app:
+// model.tflite = legacy (SSD con NMS embebido), model_labels.txt = sus etiquetas
+// (el labelmap.txt incrustado en el .tflite, extraido para leerlo sin zip),
+// rice2.tflite = YOLO LiteRT + NMS manual. Los dos modelos corren con TFLite.
+const MODEL_REL_PATHS = [
+  'assets/models/model.tflite',
+  'assets/models/model_labels.txt',
+  'assets/models/rice2.tflite',
+];
 
 // 1) Pod local en el Podfile
 const withRiceNativePodfile = (config) =>

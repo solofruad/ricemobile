@@ -1,10 +1,15 @@
 import Foundation
-import MediaPipeTasksVision
 import React
 import TensorFlowLite
 import UIKit
 
-/// Equivalente iOS de ObjectDetection.kt (dual framework MEDIAPIPE | LITERT).
+/// Equivalente iOS de ObjectDetection.kt (dos modelos: LEGACY | LITERT).
+///
+/// En Android el modelo legacy corre con MediaPipe. En iOS ambos modelos corren
+/// con el Interpreter de TensorFlowLite: el pod de MediaPipe trae su propia
+/// copia del runtime de TFLite y no se puede enlazar junto a TensorFlowLiteC
+/// (simbolos _TfLite* duplicados). El modelo legacy lleva su NMS embebido
+/// (op TFLite_Detection_PostProcess), asi que el resultado es equivalente.
 ///
 /// Interfaz expuesta a JavaScript (identica a la de Android):
 ///   initializeDetector(maxResults, scoreThreshold, preset, modelPath) -> Promise<null>
@@ -25,6 +30,9 @@ final class ObjectDetectionModule: NSObject {
   // MARK: - Constantes (espejo de ObjectDetection.kt en Android)
 
   private static let legacyModelName = "model" // model.tflite
+  // labelmap.txt incrustado en model.tflite, extraido a assets/models/model_labels.txt
+  // (lo copia al bundle plugins/with-ricenative.js).
+  private static let legacyLabelsName = "model_labels" // model_labels.txt
   private static let litertModelName = "rice2" // rice2.tflite
 
   private static let litertInputSize = 640
@@ -43,7 +51,7 @@ final class ObjectDetectionModule: NSObject {
   ]
 
   private enum ProcessingFramework {
-    case mediapipe
+    case legacy
     case litert
   }
 
@@ -61,7 +69,10 @@ final class ObjectDetectionModule: NSObject {
     qos: .userInitiated
   )
   private static var framework: ProcessingFramework = .litert
-  private static var mpDetector: ObjectDetector?
+  private static var legacyInterpreter: Interpreter?
+  private static var legacyLabels: [String] = []
+  private static var legacyMaxResults = 25
+  private static var legacyScoreThreshold: Float = 0
   private static var litertInterpreter: Interpreter?
   private static var litertMaxResults = 25
   private static var litertConfThreshold: Float = litertDefaultConfThreshold
@@ -82,10 +93,10 @@ final class ObjectDetectionModule: NSObject {
     Self.framework = framework
     do {
       switch framework {
-      case .mediapipe:
-        try Self.setupMediapipe(maxResults: maxResults,
-                               scoreThreshold: scoreThreshold,
-                               modelPath: modelPath)
+      case .legacy:
+        try Self.setupLegacy(maxResults: maxResults,
+                             scoreThreshold: scoreThreshold,
+                             modelPath: modelPath)
       case .litert:
         try Self.setupLitert(maxResults: maxResults,
                              scoreThreshold: scoreThreshold,
@@ -111,7 +122,7 @@ final class ObjectDetectionModule: NSObject {
     }
     switch raw.lowercased() {
     case "mediapipe-legacy", "mediapipe", "legacy":
-      return .mediapipe
+      return .legacy
     case "litert", "litert-rice2", "rice2", "litert-nuevo", "nuevo":
       return .litert
     default:
@@ -132,19 +143,49 @@ final class ObjectDetectionModule: NSObject {
     return fullPath
   }
 
-  private static func setupMediapipe(maxResults: Int, scoreThreshold: Float, modelPath: String?) throws {
+  private static func setupLegacy(maxResults: Int, scoreThreshold: Float, modelPath: String?) throws {
+    legacyMaxResults = maxResults
+    legacyScoreThreshold = scoreThreshold
+
     let fullPath = try bundleModelPath(resourceDefault: legacyModelName, modelPath: modelPath)
+    var options = Interpreter.Options()
+    options.threadCount = litertNumThreads
+    let interpreter = try Interpreter(modelPath: fullPath, options: options)
+    try interpreter.allocateTensors()
+    legacyLabels = loadLegacyLabels()
 
-    let baseOptions = BaseOptions()
-    baseOptions.modelAssetPath = fullPath
+    // Log defensivo de entradas/salidas: la normalizacion y el orden de las
+    // salidas se deducen en tiempo de ejecucion (sin leer el metadata).
+    do {
+      let input = try interpreter.input(at: 0)
+      var outputs: [String] = []
+      for i in 0 ..< interpreter.outputTensorCount {
+        let t = try interpreter.output(at: i)
+        outputs.append("\(t.name) \(t.shape.dimensions) \(t.dataType)")
+      }
+      NSLog("[ObjectDetection] Legacy modelo '%@' input=%@ %@ outputs=%@ etiquetas=%ld",
+            (fullPath as NSString).lastPathComponent,
+            "\(input.shape.dimensions)", "\(input.dataType)",
+            outputs.joined(separator: " | "), legacyLabels.count)
+    } catch {
+      NSLog("[ObjectDetection] No se pudo inspeccionar tensores legacy: %@", "\(error)")
+    }
+    legacyInterpreter = interpreter
+  }
 
-    let options = ObjectDetectorOptions()
-    options.baseOptions = baseOptions
-    options.runningMode = .image
-    options.maxResults = maxResults
-    options.scoreThreshold = scoreThreshold
-
-    mpDetector = try ObjectDetector(options: options)
+  /// Lee model_labels.txt del bundle (una etiqueta por linea, indice = classId).
+  private static func loadLegacyLabels() -> [String] {
+    guard let path = Bundle.main.path(forResource: legacyLabelsName, ofType: "txt"),
+          let text = try? String(contentsOfFile: path, encoding: .utf8) else {
+      NSLog("[ObjectDetection] No se encontro %@.txt; las detecciones legacy iran sin etiqueta",
+            legacyLabelsName)
+      return []
+    }
+    var lines = text.replacingOccurrences(of: "\r\n", with: "\n")
+      .components(separatedBy: "\n")
+      .map { $0.trimmingCharacters(in: .whitespaces) }
+    if lines.last?.isEmpty == true { lines.removeLast() }
+    return lines
   }
 
   private static func setupLitert(maxResults: Int, scoreThreshold: Float, modelPath: String?) throws {
@@ -173,7 +214,7 @@ final class ObjectDetectionModule: NSObject {
   }
 
   private static func closeDetectors() {
-    mpDetector = nil
+    legacyInterpreter = nil
     litertInterpreter = nil
   }
 
@@ -186,7 +227,7 @@ final class ObjectDetectionModule: NSObject {
     let framework = Self.framework
     let hasDetector: Bool = {
       switch framework {
-      case .mediapipe: return Self.mpDetector != nil
+      case .legacy: return Self.legacyInterpreter != nil
       case .litert: return Self.litertInterpreter != nil
       }
     }()
@@ -204,15 +245,11 @@ final class ObjectDetectionModule: NSObject {
         let uiImage = try Self.loadImageIgnoringExif(from: imageUri)
         let payload: [[String: Any]]
         switch framework {
-        case .mediapipe:
-          guard let detector = Self.mpDetector else {
+        case .legacy:
+          guard let interpreter = Self.legacyInterpreter else {
             throw Self.riceError(2, "El detector se libero durante la deteccion")
           }
-          let mpImage = try MPImage(uiImage: uiImage)
-          let result = try detector.detect(image: mpImage)
-          payload = Self.toJsPayload(result,
-                                     imageWidth: uiImage.cgImage?.width ?? 0,
-                                     imageHeight: uiImage.cgImage?.height ?? 0)
+          payload = try Self.runLegacyDetection(interpreter: interpreter, image: uiImage)
         case .litert:
           guard let interpreter = Self.litertInterpreter else {
             throw Self.riceError(2, "El detector se libero durante la deteccion")
@@ -226,10 +263,10 @@ final class ObjectDetectionModule: NSObject {
     }
   }
 
-  // MARK: - Camino MediaPipe
+  // MARK: - Carga de imagen (comun a ambos modelos)
 
   /// Carga la imagen desde una ruta o URI file:// y la redibuja en un contexto
-  /// RGBA (MediaPipe exige RGB con canal alpha), descartando la rotacion EXIF.
+  /// RGBA, descartando la rotacion EXIF.
   /// Esto replica el comportamiento de BitmapFactory.decodeStream en Android:
   /// las detecciones quedan en coordenadas de pixeles crudos de la imagen.
   private static func loadImageIgnoringExif(from imageUri: String) throws -> UIImage {
@@ -270,39 +307,159 @@ final class ObjectDetectionModule: NSObject {
     return UIImage(cgImage: rgbaImage)
   }
 
-  /// Convierte ObjectDetectorResult al mismo formato JS que produce Android:
-  /// frame.origin = esquina superior izquierda, frame.size = ancho/alto del box.
-  /// Incluye el clamping a bordes + descarte de cajas degeneradas de Android
-  /// (processResults), ausente en la primera version iOS.
-  private static func toJsPayload(_ result: ObjectDetectorResult,
-                                 imageWidth: Int,
-                                 imageHeight: Int) -> [[String: Any]] {
-    var payload: [[String: Any]] = []
-    payload.reserveCapacity(result.detections.count)
-    for detection in result.detections {
-      let box = detection.boundingBox
-      let left = min(max(box.minX, 0), CGFloat(imageWidth))
-      let top = min(max(box.minY, 0), CGFloat(imageHeight))
-      let right = min(max(box.maxX, 0), CGFloat(imageWidth))
-      let bottom = min(max(box.maxY, 0), CGFloat(imageHeight))
-      let width = right - left
-      let height = bottom - top
-      if width < 1 || height < 1 { continue }
+  // MARK: - Camino legacy (SSD + TFLite_Detection_PostProcess, antes MediaPipe)
 
-      let frame: [String: Any] = [
-        "origin": ["x": Int(left), "y": Int(top)],
-        "size": ["x": Int(width), "y": Int(height)]
-      ]
-      var labels: [[String: Any]] = []
-      for category in detection.categories {
-        labels.append([
-          "text": category.categoryName ?? "",
-          "confidence": Double(category.score)
-        ])
-      }
-      payload.append(["frame": frame, "labels": labels])
+  /// Ejecuta model.tflite con el Interpreter y produce el mismo formato JS que
+  /// el ObjectDetector de MediaPipe en Android:
+  /// frame.origin = esquina superior izquierda, frame.size = ancho/alto del box,
+  /// con clamping a bordes + descarte de cajas degeneradas (processResults).
+  private static func runLegacyDetection(interpreter: Interpreter,
+                                        image: UIImage) throws -> [[String: Any]] {
+    guard let cgImage = image.cgImage else {
+      throw riceError(7, "La imagen no tiene representacion CGImage")
     }
-    return payload
+    let origW = cgImage.width
+    let origH = cgImage.height
+    guard origW > 0, origH > 0 else {
+      throw riceError(4, "La imagen tiene dimensiones invalidas: \(origW)x\(origH)")
+    }
+
+    // Entrada [1,H,W,3]: resize estirado (como MediaPipe por defecto).
+    let input = try interpreter.input(at: 0)
+    let dims = input.shape.dimensions
+    guard dims.count == 4, dims[0] == 1, dims[3] == 3, dims[1] > 0, dims[2] > 0 else {
+      throw riceError(8, "Entrada legacy no soportada: \(dims)")
+    }
+    let inH = dims[1]
+    let inW = dims[2]
+    let rgb = try resizedRGBBytes(from: cgImage, width: inW, height: inH)
+
+    let inputData: Data
+    switch input.dataType {
+    case .uInt8:
+      inputData = Data(rgb)
+    case .float32:
+      // Normalizacion estandar de los SSD/EfficientDet de TFLite: [-1, 1].
+      let floats = rgb.map { (Float($0) - 127.5) / 127.5 }
+      inputData = floats.withUnsafeBufferPointer { Data(buffer: $0) }
+    default:
+      throw riceError(8, "Tipo de entrada legacy no soportado: \(input.dataType)")
+    }
+
+    try interpreter.copy(inputData, toInputAt: 0)
+    try interpreter.invoke()
+
+    // Salidas de TFLite_Detection_PostProcess, identificadas por forma:
+    // boxes [1,N,4], count [1] y dos [1,N] (classes y scores).
+    var boxes: [Float]?
+    var count: Int?
+    var vectors: [[Float]] = []
+    for i in 0 ..< interpreter.outputTensorCount {
+      let t = try interpreter.output(at: i)
+      guard t.dataType == .float32 else {
+        throw riceError(8, "Tipo de salida legacy no soportado: \(t.dataType)")
+      }
+      let values: [Float] = t.data.withUnsafeBytes { Array($0.bindMemory(to: Float.self)) }
+      let shape = t.shape.dimensions
+      if shape.count == 3 && shape.last == 4 {
+        boxes = values
+      } else if values.count == 1 {
+        count = Int(values[0])
+      } else {
+        vectors.append(values)
+      }
+    }
+    guard let boxValues = boxes, let detected = count, vectors.count == 2 else {
+      throw riceError(8, "Salidas legacy no reconocidas (\(interpreter.outputTensorCount) tensores)")
+    }
+
+    // scores = valores en [0,1] con decimales; classes = enteros (ids).
+    // Si no se puede distinguir, se usa el orden del op: classes y luego scores.
+    func looksLikeScores(_ v: [Float]) -> Bool {
+      v.allSatisfy { $0 >= 0 && $0 <= 1 } && v.contains { $0 != $0.rounded() }
+    }
+    let classes: [Float]
+    let scores: [Float]
+    if looksLikeScores(vectors[0]) && !looksLikeScores(vectors[1]) {
+      scores = vectors[0]
+      classes = vectors[1]
+    } else {
+      classes = vectors[0]
+      scores = vectors[1]
+    }
+
+    let n = min(max(detected, 0), scores.count, classes.count, boxValues.count / 4)
+    // Coordenadas normalizadas 0..1 (tolerancia: si vienen en pixeles de entrada).
+    let pixelCoords = boxValues.prefix(n * 4).contains { $0 > 1.5 }
+    let normX: Float = pixelCoords ? Float(inW) : 1
+    let normY: Float = pixelCoords ? Float(inH) : 1
+
+    var candidates: [RawCandidate] = []
+    for i in 0 ..< n {
+      let score = scores[i]
+      if score < legacyScoreThreshold { continue }
+      let ymin = boxValues[i * 4] / normY
+      let xmin = boxValues[i * 4 + 1] / normX
+      let ymax = boxValues[i * 4 + 2] / normY
+      let xmax = boxValues[i * 4 + 3] / normX
+      let left = min(max(xmin * Float(origW), 0), Float(origW))
+      let top = min(max(ymin * Float(origH), 0), Float(origH))
+      let right = min(max(xmax * Float(origW), 0), Float(origW))
+      let bottom = min(max(ymax * Float(origH), 0), Float(origH))
+      if right - left < 1 || bottom - top < 1 { continue }
+      candidates.append(RawCandidate(minX: left, minY: top, maxX: right, maxY: bottom,
+                                     classId: Int(classes[i]), score: score))
+    }
+
+    var ranked = candidates.sorted { $0.score > $1.score }
+    if legacyMaxResults > 0 && ranked.count > legacyMaxResults {
+      ranked = Array(ranked.prefix(legacyMaxResults))
+    }
+
+    return ranked.map { c -> [String: Any] in
+      let labelName = (c.classId >= 0 && c.classId < legacyLabels.count)
+        ? legacyLabels[c.classId]
+        : ""
+      return [
+        "frame": [
+          "origin": ["x": Int(c.minX), "y": Int(c.minY)],
+          "size": ["x": Int(c.maxX - c.minX), "y": Int(c.maxY - c.minY)],
+        ],
+        "labels": [
+          ["text": labelName, "confidence": Double(c.score)],
+        ],
+      ]
+    }
+  }
+
+  /// Resize estirado a width x height y devuelve los bytes RGB (sin alpha),
+  /// en orden NHWC.
+  private static func resizedRGBBytes(from cgImage: CGImage, width: Int, height: Int) throws -> [UInt8] {
+    guard let context = CGContext(
+      data: nil,
+      width: width,
+      height: height,
+      bitsPerComponent: 8,
+      bytesPerRow: width * 4,
+      space: CGColorSpaceCreateDeviceRGB(),
+      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+    ) else {
+      throw riceError(5, "No se pudo crear el contexto RGB para el resize \(width)x\(height)")
+    }
+    context.interpolationQuality = .default
+    context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+    guard let data = context.data else {
+      throw riceError(6, "No se pudieron leer los pixeles reescalados")
+    }
+    let pixels = width * height
+    let bytes = data.bindMemory(to: UInt8.self, capacity: pixels * 4)
+    var rgb = [UInt8](repeating: 0, count: pixels * 3)
+    for i in 0 ..< pixels {
+      rgb[i * 3] = bytes[i * 4]
+      rgb[i * 3 + 1] = bytes[i * 4 + 1]
+      rgb[i * 3 + 2] = bytes[i * 4 + 2]
+    }
+    return rgb
   }
 
   // MARK: - Camino LiteRT (YOLO [1,8,8400] + NMS manual, espejo de Android)
