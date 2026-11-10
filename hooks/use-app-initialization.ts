@@ -1,0 +1,118 @@
+import Database from '@/database/Database';
+import ApiRequestLogsTable from '@/database/tables/ApiRequestLogsTable';
+import DetectionsTable from '@/database/tables/DetectionsTable';
+import FarmFormTable from '@/database/tables/FarmFormTable';
+import MonitorDrawingsTable from '@/database/tables/MonitorDrawingsTable';
+import MonitoringsTable from '@/database/tables/MonitoringsTable';
+import SamplingsTable from '@/database/tables/SamplingsTable';
+import ToursTable from '@/database/tables/ToursTable';
+import { processFarmForm } from '@/services/farm-form';
+import { sincronizarAlArranque } from '@/services/sync';
+import { TtsVoices } from '@/src/TtsVoices';
+import { useEffect, useState } from 'react';
+import * as vosk from 'react-native-vosk';
+import { ObjectDetection } from '@/src/ObjectDetection';
+import {
+  OBJECT_DETECTOR_MAX_RESULTS,
+  OBJECT_DETECTOR_PRESET,
+  OBJECT_DETECTOR_SCORE_THRESHOLD,
+  TTS_LANGUAGE_TAG,
+  VOSK_MODEL_NAME,
+} from '@/constants/config';
+
+function startTtsVoice(): Promise<void> {
+  return new Promise(resolve => {
+    TtsVoices.init(TTS_LANGUAGE_TAG)
+      .then(_ => {
+        resolve();
+        TtsVoices.speak("Bienvenido nuevamente.");
+      })
+      .catch(err => {
+        console.error(err)
+        TtsVoices.openVoicesInstaller()
+        resolve();
+      })
+  });
+}
+
+async function runInitializationStep(
+  name: string,
+  setLoadPhase: (phase: string) => void,
+  setErrorText: (errorText: string) => void,
+  task: () => Promise<void>,
+) {
+  setLoadPhase(name);
+  try {
+    await task();
+  } catch (err) {
+    console.log(`Error initializing ${name}`, err);
+    setErrorText(`Error inicializando la dependencia ${name}`)
+    throw err;
+  }
+}
+
+export function useAppInitialization() {
+  const [loadPhase, setLoadPhase] = useState("");
+  const [error, setErrorText] = useState<string|null>(null);
+  const [ready, setReady] = useState(false);
+  const [showFarmForm, setShowFarmForm] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const initialize = async () => {
+      new Database();
+      await runInitializationStep("DetectionsTable", setLoadPhase, setErrorText, () =>
+        DetectionsTable.initTable(),
+      );
+      await runInitializationStep("MonitorDrawingsTable", setLoadPhase, setErrorText, () =>
+        MonitorDrawingsTable.initTable(),
+      );
+      await runInitializationStep("MonitoringsTable", setLoadPhase, setErrorText, () =>
+        MonitoringsTable.initTable(),
+      );
+      await runInitializationStep("SamplingsTable", setLoadPhase, setErrorText, () =>
+        SamplingsTable.initTable(),
+      );
+      await runInitializationStep("FarmFormTable", setLoadPhase, setErrorText, () =>
+        FarmFormTable.initTable(),
+      );
+      await runInitializationStep("ToursTable", setLoadPhase, setErrorText, () =>
+        ToursTable.initTable(),
+      );
+      await runInitializationStep("ApiRequestLogsTable", setLoadPhase, setErrorText, () =>
+        ApiRequestLogsTable.initTable(),
+      );
+      await runInitializationStep("TtsVoices", setLoadPhase, setErrorText, startTtsVoice);
+      await runInitializationStep("ObjectDetection", setLoadPhase, setErrorText, () =>
+        ObjectDetection.initializeDetector(OBJECT_DETECTOR_MAX_RESULTS, OBJECT_DETECTOR_SCORE_THRESHOLD, OBJECT_DETECTOR_PRESET),
+      );
+      await runInitializationStep("VoskSTT", setLoadPhase, setErrorText, () =>
+        vosk.loadModel(VOSK_MODEL_NAME),
+      );
+      // Fase adicional: formulario de información de la finca (mostrarlo o enviarlo si hay conexión)
+      await runInitializationStep("FarmForm", setLoadPhase, setErrorText, async () => {
+        const { shouldShowForm } = await processFarmForm();
+        if (mounted && shouldShowForm) {
+          await FarmFormTable.markRequested();
+          setShowFarmForm(true);
+        }
+      });
+      if (mounted) setReady(true);
+
+      // Fase final, no bloqueante: sincroniza con el backend (finca una vez,
+      // monitoreos pendientes con sus muestras) sólo si hay conexión.
+      sincronizarAlArranque().catch(err =>
+        console.log("El intento de sincronización al arranque falló", err),
+      );
+    };
+
+    initialize();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  return { loadPhase, error, ready, showFarmForm, setShowFarmForm };
+}
