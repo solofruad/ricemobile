@@ -4,7 +4,7 @@ import { Platform } from "react-native";
 // Los módulos de origen re-exportan desde aquí por compatibilidad; no duplicar valores.
 
 // --- Backend API (antes en services/api/config.ts) ---
-export const API_BASE_URL = "https://riceback-backend.onrender.com";
+export const API_BASE_URL = "https://pruebasicaoc2.unillanos.edu.co/";
 
 // Código de alta compartido del backend (constante de compilación).
 // La identificación individual del dispositivo es el token generado en el registro.
