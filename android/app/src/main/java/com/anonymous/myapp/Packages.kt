@@ -7,7 +7,7 @@ import com.facebook.react.uimanager.ViewManager
 
 class Packages : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-        return listOf(ObjectDetectionModule(reactContext), TtsVoicesModule(reactContext))
+        return listOf(ObjectDetectionModule(reactContext), TtsVoicesModule(reactContext), WifiBinderModule(reactContext))
     }
 
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {

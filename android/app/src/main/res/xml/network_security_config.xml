@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <!--
+    Con networkSecurityConfig presente, Android 7+ ignora android:usesCleartextTraffic.
+    base-config conserva el comportamiento previo (HTTP permitido, p. ej. Metro en debug).
+  -->
+  <base-config cleartextTrafficPermitted="true" />
+  <!-- Asistente agrónomo local (Wi-Fi RKLLM-AP): HTTP sin TLS en 10.42.0.1:8080 -->
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">10.42.0.1</domain>
+  </domain-config>
+</network-security-config>
