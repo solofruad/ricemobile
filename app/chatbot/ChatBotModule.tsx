@@ -9,8 +9,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { File } from "expo-file-system";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from "react-native";
-import { GiftedChat, IMessage,  MessageText, Send } from "react-native-gifted-chat";
+import { ActivityIndicator, Image, StyleSheet, Text, TextInput, View } from "react-native";
+import { GiftedChat, IMessage, MessageImage, MessageText, Send } from "react-native-gifted-chat";
 import { EnrichedMarkdownText, MarkdownStyle } from "react-native-enriched-markdown";
 import { Button, IconButton, MD3Colors } from "react-native-paper";
 import { useWindowDimensions } from "react-native";
@@ -25,7 +25,34 @@ type ChatBotModuleProps = {
 
 type ConnectionState = "scanning" | "loading" | "connected" | "failed"
 
+const USER = { _id: 1, name: "User" };
 const BOT_USER = { _id: 2, name: "Chatbot" };
+
+// Miniatura de la foto adjunta: se respeta la proporción real para que no se recorte
+// (el visor ampliado de GiftedChat calcula su tamaño a partir de la miniatura).
+const PHOTO_MAX_WIDTH = 220;
+const PHOTO_MAX_HEIGHT = 300;
+const DEFAULT_PHOTO_ASPECT = 3 / 4;
+
+const photoThumbnailSize = (aspect: number) => {
+	let width = PHOTO_MAX_WIDTH;
+	let height = width / aspect;
+	if (height > PHOTO_MAX_HEIGHT) {
+		height = PHOTO_MAX_HEIGHT;
+		width = height * aspect;
+	}
+	return { width, height };
+};
+
+const photoExists = (uri?: string): boolean => {
+	if (!uri) return false;
+	try {
+		return new File(uri).exists;
+	} catch (error) {
+		console.warn("No se pudo leer la foto de la detección:", error);
+		return false;
+	}
+};
 
 const WELCOME_TEXT =
 	"Bienvenido. ¿En qué puedo ayudarte?\n\n" +
@@ -39,14 +66,36 @@ const BOT_MARKDOWN_STYLE: MarkdownStyle = {
 	strong: { color: "#000000" },
 };
 
-const initialMessages = (): IMessage[] => [
-	{
-		_id: "welcome",
-		text: WELCOME_TEXT,
-		createdAt: new Date(),
-		user: BOT_USER,
-	},
-];
+// GiftedChat ordena los mensajes del más nuevo al más viejo.
+const initialMessages = (detection?: DetectionRecord): IMessage[] => {
+	const messages: IMessage[] = [
+		{
+			_id: "welcome",
+			text: WELCOME_TEXT,
+			createdAt: new Date(),
+			user: BOT_USER,
+		},
+	];
+	if (!detection) return messages;
+	if (photoExists(detection.photo_dir)) {
+		// Solo visual: la foto se envía al asistente junto con la primera pregunta (/new_chat).
+		messages.unshift({
+			_id: `photo-${detection.id}`,
+			text: "Foto adjunta del Álbum. Escriba su pregunta para enviarla al asistente.",
+			image: detection.photo_dir,
+			createdAt: new Date(),
+			user: USER,
+		});
+	} else {
+		messages.unshift({
+			_id: `photo-missing-${detection.id}`,
+			text: "La foto de esta detección ya no está en el teléfono; usaré los resultados guardados de la detección.",
+			createdAt: new Date(),
+			user: BOT_USER,
+		});
+	}
+	return messages;
+};
 
 export default function ChatBotModule (props: ChatBotModuleProps) {
 	const llmServer = useMemo(() => new LlmServer(), []);
@@ -63,7 +112,9 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	const [connectionState, setConnectionState] = useState<ConnectionState>("scanning");
 	const [connectionError, setConnectionError] = useState<string>("");
 	const [streaming, setStreaming] = useState(false);
-	const [messages, setMessages] = useState<IMessage[]>(initialMessages);
+	const [messages, setMessages] = useState<IMessage[]>(() => initialMessages(props.detection));
+	const [photoAspect, setPhotoAspect] = useState(DEFAULT_PHOTO_ASPECT);
+	const photoImageStyle = useMemo(() => ({ ...photoThumbnailSize(photoAspect), borderRadius: 13, margin: 3 }), [photoAspect]);
 
 	// chat_id de la conversación actual en el servidor (null => el próximo mensaje crea una con /new_chat)
 	const chatIdRef = useRef<string | null>(null);
@@ -145,13 +196,25 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 		};
 	}, [handshake]));
 
-	// Nueva detección desde el Álbum => nueva conversación
+	// Nueva detección desde el Álbum => nueva conversación, mostrando la foto adjunta
 	const detectionKey = props.detection?.id;
 	useEffect(()=>{
 		activeRequestRef.current?.abort();
 		chatIdRef.current = null;
 		skipImageRef.current = false;
-		setMessages(initialMessages());
+		setMessages(initialMessages(props.detection));
+		setPhotoAspect(DEFAULT_PHOTO_ASPECT);
+		const photoUri = props.detection?.photo_dir;
+		if (photoUri && photoExists(photoUri)) {
+			Image.getSize(
+				photoUri,
+				(width, height) => { if (width > 0 && height > 0) setPhotoAspect(width / height); },
+				(error) => console.warn("No se pudo obtener el tamaño de la foto:", error),
+			);
+		}
+	// Solo detectionKey: app/(tabs)/chatbot.tsx crea props.detection con JSON.parse en cada render,
+	// así que depender del objeto reiniciaría la conversación constantemente.
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	},[detectionKey]);
 
 	useEffect(()=>{
@@ -171,14 +234,8 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	const buildNewChatContext = (): NewChatContext => {
 		const detection = props.detection;
 		if (!detection) return {};
-		if (!skipImageRef.current && detection.photo_dir) {
-			try {
-				if (new File(detection.photo_dir).exists) {
-					return { imageUri: detection.photo_dir };
-				}
-			} catch (error) {
-				console.warn("No se pudo leer la foto de la detección:", error);
-			}
+		if (!skipImageRef.current && photoExists(detection.photo_dir)) {
+			return { imageUri: detection.photo_dir };
 		}
 		const summary = summarizeDetections(detection.detection);
 		return { detectionData: summary.length > 0 ? summary : "Sin detecciones en la foto." };
@@ -343,8 +400,11 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 					}
 					return <MessageText {...textProps} textStyle={{left:{fontSize:16}, right:{fontSize:16}}}/>;
 				}}
+				renderMessageImage={(imageProps)=>(
+					<MessageImage {...imageProps} imageStyle={photoImageStyle}/>
+				)}
 				onSend={handleSend}
-				user={{ _id: 1, name: "User" }}
+				user={USER}
 				textInputProps={{
 					style:{fontSize:17, color:"black", marginBottom:4},
 					maxLength: LLM_MAX_MESSAGE_CHARS,
