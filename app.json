@@ -12,7 +12,11 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.myapp",
       "infoPlist": {
-        "NSCameraUsageDescription": "Se necesita acceso a la cámara para escanear y detectar objetos."
+        "NSCameraUsageDescription": "Se necesita acceso a la cámara para escanear y detectar objetos.",
+        "NSLocalNetworkUsageDescription": "Se necesita acceso a la red local para comunicarse con el asistente agrónomo del dispositivo.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
       }
     },
     "android": {

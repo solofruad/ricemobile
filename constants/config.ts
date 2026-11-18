@@ -26,24 +26,23 @@ export const API_MONITOREOS_PATH = "/api/monitoreos/";
 export const apiTrazadosListPath = (fincaId: number): string => `/api/fincas/${fincaId}/trazados/`;
 export const apiTrazadoDetailPath = (trazadoId: number): string => `/api/fincas/trazados/${trazadoId}/`;
 
-// --- Servidor LLM local (antes en src/LlmServer.ts) ---
-export const LLM_PORT = 9000;
+// --- Asistente agrónomo local (LLM + YOLO en Radxa ROCK 5C) — API v1.1.0 ---
+// El equipo crea el hotspot Wi-Fi "RKLLM-AP" (sin internet) y siempre está en 10.42.0.1:8080.
+export const LLM_SSID = "RKLLM-AP";
+export const LLM_BASE_URL = "http://10.42.0.1:8080";
+// Valores que /handshake debe devolver para confirmar que hablamos con el equipo correcto.
+export const LLM_SERVICE = "llm-agro-server";
+export const LLM_SERVICE_ID = "rk3588-agro";
 
-// Gateways típicos de dispositivos que comparten conexión por hotspot WiFi
-export const LLM_CANDIDATE_IPS: string[] = [
-  "192.168.43.1", // Hotspot Android (clásico)
-  "192.168.150.1", // Hotspot Android (versions recientes)
-  "192.168.49.1", // Wi-Fi Direct / hotspot Android
-  "192.168.1.1",
-  "192.168.0.1",
-  "10.0.0.1",
-  "172.20.10.1", // Hotspot iPhone
-  "192.168.4.1",
-  "192.168.123.1",
-];
-
-export const LLM_HANDSHAKE_TIMEOUT_PER_IP_MS = 1000;
-export const LLM_CHAT_TIMEOUT_MS = 60_000;
+// /handshake: timeout corto; mientras status == "loading" se repite cada 2-3 s.
+export const LLM_HANDSHAKE_TIMEOUT_MS = 3000;
+export const LLM_HANDSHAKE_POLL_MS = 2500;
+// Tiempo máximo sin recibir fragmentos del stream SSE (/new_chat, /chat).
+export const LLM_STREAM_IDLE_TIMEOUT_MS = 120_000;
+// /stop_response espera a que el motor se detenga (normalmente < 1 s).
+export const LLM_STOP_TIMEOUT_MS = 10_000;
+export const LLM_MAX_MESSAGE_CHARS = 2000;
+export const LLM_MAX_DETECTION_DATA_CHARS = 4000;
 
 // --- Inicialización de la app (antes en hooks/use-app-initialization.ts) ---
 export const TTS_LANGUAGE_TAG = "es";

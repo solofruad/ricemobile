@@ -6,8 +6,8 @@ export type ReferenciasTourChatbot = {
   connectionRetryRef?: React.RefObject<any>;
   /** true si hay conexión con el servidor. */
   connected: boolean;
-  /** Estado detallado: scanning (buscando), connected, failed (con Reintentar). */
-  connectionState?: 'scanning' | 'connected' | 'failed';
+  /** Estado detallado: scanning (buscando), loading (cargando modelos), connected, failed (con Reintentar). */
+  connectionState?: 'scanning' | 'loading' | 'connected' | 'failed';
   /** true si se llegó desde el Álbum con una foto (contexto). */
   hasDetectionContext?: boolean;
   /** Dimensiones de la ventana: { width, height } */
@@ -20,14 +20,14 @@ export function buildChatbotTourSteps(refs: ReferenciasTourChatbot): TourStep[] 
   const steps: TourStep[] = [];
 
   // Sin conexión: solo el paso que sí se ve. Nada de chat/input/controles tapados.
-  if (state === 'scanning') {
+  if (state === 'scanning' || state === 'loading') {
     return [
       {
         id: 'chatbot-buscando',
         targetRegion: { x: 20, y: height * 0.35, width: width - 40, height: height * 0.25 },
         title: 'Buscando servidor',
         description:
-          'Espera a que el servidor conecte: verás Buscando en pantalla. Sin conexión no puedo responder, así que no escribas aún y revisa el hotspot del equipo.',
+          'Espera a que el asistente conecte: verás Buscando o Cargando modelos en pantalla. Sin conexión no puedo responder, así que no escribas aún y revisa que estés en el Wi-Fi RKLLM-AP del equipo.',
         tooltipPosition: 'bottom',
         spotlightBorderRadius: 14,
       },
@@ -41,7 +41,7 @@ export function buildChatbotTourSteps(refs: ReferenciasTourChatbot): TourStep[] 
         targetRef: refs.connectionRetryRef,
         title: 'Sin conexión',
         description:
-          'No encontré el servidor. Conéctate al hotspot o wifi del equipo y presiona Reintentar. Si sigue fallando, apaga y prende el hotspot y vuelve a intentar.',
+          'No encontré el asistente. Conéctate al Wi-Fi RKLLM-AP del equipo y presiona Reintentar. Si sigue fallando, revisa que el equipo esté encendido y vuelve a intentar.',
         tooltipPosition: 'bottom',
       },
     ];
@@ -52,7 +52,7 @@ export function buildChatbotTourSteps(refs: ReferenciasTourChatbot): TourStep[] 
     targetRegion: { x: 12, y: 200, width: width - 24, height: height - 420 },
     title: 'Aquí hablamos',
     description:
-      'Aquí hablamos de males del arroz: síntomas, tratamiento y dudas del cultivo. Mientras pienso mi respuesta el botón Enviar se esconde un momento: espera.',
+      'Aquí hablamos de males del arroz: síntomas, tratamiento y dudas del cultivo. Mi respuesta aparece mientras la escribo; el botón Enviar se esconde hasta que termine.',
     tooltipPosition: 'bottom',
     spotlightBorderRadius: 18,
   });
@@ -62,16 +62,16 @@ export function buildChatbotTourSteps(refs: ReferenciasTourChatbot): TourStep[] 
     title: refs.hasDetectionContext ? 'Ya traje tu foto' : 'Escribe aquí',
     description:
       refs.hasDetectionContext
-        ? 'Ya traje tu foto del Álbum y sé qué salió. Escribe tu primera pregunta, ej. cómo la trato, para activar ese resultado.'
+        ? 'Ya traje tu foto del Álbum. Con tu primera pregunta, ej. cómo la trato, la envío al equipo para analizarla.'
         : 'Escribe con tus palabras, ej. manchas amarillas en la hoja, ¿qué es? Pregunta por síntomas o tratamiento.',
     tooltipPosition: 'top',
   });
   steps.push({
     id: 'chatbot-controles',
     targetRef: refs.composerControlsRef,
-    title: 'Avión, micro y rojo',
+    title: 'Avión, micro y detener',
     description:
-      'A la derecha verás el avión azul para enviar si escribiste, o el micro para dictar si no hay texto. El micro en rojo está grabando. Mi respuesta solo se lee en pantalla.',
+      'A la derecha verás el avión azul para enviar si escribiste, o el micro para dictar si no hay texto. El micro en rojo está grabando. Mientras respondo aparece el botón rojo de detener para cortar la respuesta.',
     tooltipPosition: 'top',
   });
 
