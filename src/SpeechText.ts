@@ -20,7 +20,9 @@ export default class SpeechText{
   }
 
   record(){
-     vosk.start()
+    // Cada grabación empieza vacía: si no, stop() devolvería el texto del dictado anterior.
+    this.result = "";
+    vosk.start()
   }
 
   stop(){

@@ -1,6 +1,7 @@
 import {DetectionRecord} from "@/database/tables/DetectionsTable"
 import SpeechText from "@/src/SpeechText";
 import { TtsVoices } from "@/src/TtsVoices";
+import { markdownToSpeech } from "@/src/markdownToSpeech";
 import LlmServer, { LlmApiError, LlmStreamRequest, NewChatContext, summarizeDetections } from "@/src/LlmServer";
 import { WifiBinder } from "@/src/WifiBinder";
 import { LLM_HANDSHAKE_POLL_MS, LLM_MAX_MESSAGE_CHARS, LLM_SSID } from "@/constants/config";
@@ -100,9 +101,15 @@ const initialMessages = (detection?: DetectionRecord): IMessage[] => {
 export default function ChatBotModule (props: ChatBotModuleProps) {
 	const llmServer = useMemo(() => new LlmServer(), []);
 	const inputRef = useRef<TextInput>(null);
-	const [speechDetect, setSpeechDetect] = useState<SpeechText|null>(null);
+	const speechRef = useRef<SpeechText | null>(null);
 	const [recording, setRecording] = useState(false);
-	const [inputHasContent, setInputHasContent] = useState(false);
+	const isRecordingRef = useRef(false);
+	// Texto del input controlado (GiftedChat `text`): el dictado lo escribe y GiftedChat lo limpia al enviar.
+	const [composerText, setComposerText] = useState("");
+	const inputHasContent = composerText.length > 0;
+	// Evita enviar dos veces el mismo dictado (fin por silencio de Vosk y por el botón de micrófono).
+	const dictationHandledRef = useRef(true);
+	const sendDictationRef = useRef<(text: string) => void>(() => {});
 	const headerHeight = useHeaderHeight();
 	const windowSize = useWindowDimensions();
 	const composerControlsRef = useRef<View | null>(null);
@@ -192,6 +199,14 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 			handshakeSeqRef.current++;
 			clearPoll();
 			activeRequestRef.current?.abort();
+			TtsVoices.stop();
+			// Si se sale grabando, se descarta el dictado (no se envía fuera de la pantalla).
+			if (isRecordingRef.current) {
+				dictationHandledRef.current = true;
+				isRecordingRef.current = false;
+				speechRef.current?.stop();
+				setRecording(false);
+			}
 			WifiBinder.unbind();
 		};
 	}, [handshake]));
@@ -200,6 +215,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	const detectionKey = props.detection?.id;
 	useEffect(()=>{
 		activeRequestRef.current?.abort();
+		TtsVoices.stop();
 		chatIdRef.current = null;
 		skipImageRef.current = false;
 		setMessages(initialMessages(props.detection));
@@ -217,17 +233,17 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	},[detectionKey]);
 
+	// Dictado (Vosk): los parciales se ven en el input; al terminar (el usuario deja de hablar) se envía solo.
+	// SpeechText se crea una vez, por eso el envío pasa por una ref con el estado actual.
 	useEffect(()=>{
-		setSpeechDetect(
-			new SpeechText((text)=>{
-				inputRef.current?.setNativeProps({ text });
-			}, (text)=>{
-				if (!inputRef.current) { return }
-				setRecording(false);
-				inputRef.current.setNativeProps({ text });
-				TtsVoices.speak(text);
-			})
-		);
+		speechRef.current = new SpeechText((text)=>{
+			if (dictationHandledRef.current) { return }
+			setComposerText(text);
+		}, (text)=>{
+			isRecordingRef.current = false;
+			setRecording(false);
+			sendDictationRef.current(text);
+		});
 	},[]);
 
 	// Contexto del primer mensaje: foto (YOLO en el servidor) > detección local > nada.
@@ -267,9 +283,11 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 		}
 	};
 
-	const handleSend = async (newMessages:Array<IMessage> = []) => {
+	// spoken: la pregunta se hizo por voz => la respuesta se lee en voz alta al terminar.
+	const handleSend = async (newMessages: IMessage[] = [], { spoken = false }: { spoken?: boolean } = {}) => {
 		const userMessage = newMessages[0]?.text?.trim() ?? "";
 		if (streaming || connectionState !== "connected" || !userMessage) { return }
+		TtsVoices.stop();
 
 		const botMessageId = `bot-${Date.now()}`;
 		const updateBotMessage = (text: string, pending = false) => {
@@ -316,6 +334,12 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 				updateBotMessage(`${received ? `${received}\n\n` : ""}**Error:** ${reason} Puede intentar de nuevo.`);
 			} else {
 				updateBotMessage(received || "_(respuesta vacía)_");
+				if (spoken) {
+					const speech = markdownToSpeech(received);
+					if (speech) {
+						TtsVoices.speak(speech);
+					}
+				}
 			}
 		} catch (error) {
 			console.error("Error al conversar con el asistente:", error);
@@ -329,6 +353,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 
 	// POST /stop_response; si aún no hay chat_id (primer evento no llegó), cerrar la conexión.
 	const handleStop = async () => {
+		TtsVoices.stop();
 		const request = activeRequestRef.current;
 		if (!request) { return }
 		const chatId = chatIdRef.current;
@@ -344,21 +369,42 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 		}
 	};
 
-	const microphoneButtonLogic = ()=>{
-		if (inputRef.current) {
-			if(!recording){
-				inputRef.current.setNativeProps({ text:"" });
-				speechDetect?.record();
-			}else{
-				const text = speechDetect?.stop() ?? "";
-				if(!text){
-					setInputHasContent(false);
-				}
-				inputRef.current.setNativeProps({ text });
-				TtsVoices.speak(text);
-			}
+	// Fin del dictado: se envía solo si se puede; si hay una respuesta en curso o no hay conexión,
+	// el texto queda en el input para enviarlo a mano.
+	const sendDictation = (rawText: string) => {
+		if (dictationHandledRef.current) { return }
+		dictationHandledRef.current = true;
+		const text = rawText.trim();
+		if (!text) {
+			setComposerText("");
+			return;
 		}
-		setRecording(!recording);
+		if (streaming || connectionState !== "connected") {
+			setComposerText(text);
+			return;
+		}
+		setComposerText("");
+		handleSend([{ _id: `dictation-${Date.now()}`, text, createdAt: new Date(), user: USER }], { spoken: true });
+	};
+	useEffect(()=>{
+		sendDictationRef.current = sendDictation;
+	});
+
+	const microphoneButtonLogic = ()=>{
+		if(!recording){
+			// Cortar la voz para que el micrófono no la capte
+			TtsVoices.stop();
+			dictationHandledRef.current = false;
+			setComposerText("");
+			isRecordingRef.current = true;
+			setRecording(true);
+			speechRef.current?.record();
+		}else{
+			const text = speechRef.current?.stop() ?? "";
+			isRecordingRef.current = false;
+			setRecording(false);
+			sendDictation(text);
+		}
 	}
 
 	return (
@@ -403,14 +449,13 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 				renderMessageImage={(imageProps)=>(
 					<MessageImage {...imageProps} imageStyle={photoImageStyle}/>
 				)}
-				onSend={handleSend}
+				onSend={(newMessages)=>handleSend(newMessages)}
 				user={USER}
+				text={composerText}
 				textInputProps={{
 					style:{fontSize:17, color:"black", marginBottom:4},
 					maxLength: LLM_MAX_MESSAGE_CHARS,
-					onChangeText:((inputText)=>{
-						setInputHasContent(inputText.length != 0)
-					}),
+					onChangeText:setComposerText,
 					placeholder:"Escriba su mensaje aquí..."
 				}}
 

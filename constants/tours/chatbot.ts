@@ -71,7 +71,7 @@ export function buildChatbotTourSteps(refs: ReferenciasTourChatbot): TourStep[] 
     targetRef: refs.composerControlsRef,
     title: 'Avión, micro y detener',
     description:
-      'A la derecha verás el avión azul para enviar si escribiste, o el micro para dictar si no hay texto. El micro en rojo está grabando. Mientras respondo aparece el botón rojo de detener para cortar la respuesta.',
+      'A la derecha verás el avión azul para enviar si escribiste, o el micro para dictar si no hay texto. El micro en rojo está grabando: cuando dejes de hablar, tu pregunta se envía sola y te leo la respuesta en voz alta. Mientras respondo aparece el botón rojo de detener para cortar la respuesta.',
     tooltipPosition: 'top',
   });
 
