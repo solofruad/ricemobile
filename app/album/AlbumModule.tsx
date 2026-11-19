@@ -112,7 +112,8 @@ export default function AlbumModule(){
                 <Button icon="layers" mode="contained-tonal" theme={MD3DarkTheme} onPress={()=>{
                   router.push({
                     pathname: '/(tabs)/chatbot',
-                    params: {detection: JSON.stringify(databaseData[viewing])}
+                    // attachedAt: cada pulsación inicia una conversación nueva en el chat (/new_chat)
+                    params: {detection: JSON.stringify(databaseData[viewing]), attachedAt: String(Date.now())}
                   });
 
                   }}>

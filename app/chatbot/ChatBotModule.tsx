@@ -23,6 +23,8 @@ import { buildChatbotTourSteps } from "@/constants/tours/chatbot";
 
 type ChatBotModuleProps = {
 	detection?: DetectionRecord
+	// Cambia con cada "Chatbot" pulsado en el Álbum (aunque sea la misma foto) para iniciar una conversación nueva
+	attachKey?: string
 }
 
 type ConnectionState = "scanning" | "loading" | "connected" | "failed"
@@ -223,8 +225,8 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 		};
 	}, [handshake]));
 
-	// Nueva detección desde el Álbum => nueva conversación, mostrando la foto adjunta
-	const detectionKey = props.detection?.id;
+	// Cada adjunto desde el Álbum => nueva conversación (/new_chat), mostrando la foto adjunta
+	const resetKey = props.attachKey ?? (props.detection ? String(props.detection.id) : "");
 	useEffect(()=>{
 		activeRequestRef.current?.abort();
 		stopVoice();
@@ -240,10 +242,10 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 				(error) => console.warn("No se pudo obtener el tamaño de la foto:", error),
 			);
 		}
-	// Solo detectionKey: app/(tabs)/chatbot.tsx crea props.detection con JSON.parse en cada render,
+	// Solo resetKey: app/(tabs)/chatbot.tsx crea props.detection con JSON.parse en cada render,
 	// así que depender del objeto reiniciaría la conversación constantemente.
 	// eslint-disable-next-line react-hooks/exhaustive-deps
-	},[detectionKey]);
+	},[resetKey]);
 
 	// Dictado (Vosk): los parciales se ven en el input; al terminar (el usuario deja de hablar) se envía solo.
 	// SpeechText se crea una vez, por eso el envío pasa por una ref con el estado actual.
