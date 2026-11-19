@@ -28,7 +28,7 @@ export function markdownToSpeech(markdown: string): string {
 		.filter((line) => line.length > 0);
 
 	// Cada línea es una pausa: se termina con punto si no trae puntuación final.
-	let text = lines.map((line) => (/[.!?:;,]$/.test(line) ? line : `${line}.`)).join(" ");
+	let text = lines.map((line) => (/[.!?:;,…]$/.test(line) ? line : `${line}.`)).join(" ");
 	text = text.replace(/\s{2,}/g, " ").trim();
 
 	if (text.length > MAX_SPEECH_CHARS) {

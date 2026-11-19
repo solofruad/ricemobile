@@ -15,8 +15,9 @@ import UIKit
 /// Interfaz expuesta a JavaScript (identica a la de Android):
 ///   init(expectedLanguageTag) -> Promise<boolean>
 ///   openVoicesInstaller()     -> void
-///   speak(text)               -> Promise<boolean>
-///   stop()                    -> void
+///   speak(text)               -> Promise<boolean>   (corta lo que se esté diciendo)
+///   enqueue(text)             -> Promise<boolean>   (lo encola detrás)
+///   stop()                    -> void               (corta y vacía la cola)
 ///
 /// NOTA: "init" es un nombre reservado para los inicializadores de ObjC/Swift,
 /// por eso el metodo Swift se llama initTts y el bridge (RiceNativeBridge.m)
@@ -85,6 +86,21 @@ final class TtsVoicesModule: NSObject {
       utterance.rate = AVSpeechUtteranceDefaultSpeechRate
       // QUEUE_FLUSH en Android: corta lo que se este diciendo y habla de inmediato.
       TtsVoicesModule.synthesizer.stopSpeaking(at: .immediate)
+      TtsVoicesModule.synthesizer.speak(utterance)
+      resolve(true)
+    }
+  }
+
+  /// Encola el texto detrás de lo que se esté diciendo (QUEUE_ADD en Android).
+  /// AVSpeechSynthesizer encola los utterances solo; basta con no llamar a stopSpeaking.
+  @objc(enqueue:resolver:rejecter:)
+  func enqueue(_ text: String,
+               resolver resolve: @escaping RCTPromiseResolveBlock,
+               rejecter reject: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.main.async {
+      let utterance = AVSpeechUtterance(string: text)
+      utterance.voice = TtsVoicesModule.selectedVoice
+      utterance.rate = AVSpeechUtteranceDefaultSpeechRate
       TtsVoicesModule.synthesizer.speak(utterance)
       resolve(true)
     }

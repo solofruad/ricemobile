@@ -2,6 +2,7 @@ import {DetectionRecord} from "@/database/tables/DetectionsTable"
 import SpeechText from "@/src/SpeechText";
 import { TtsVoices } from "@/src/TtsVoices";
 import { markdownToSpeech } from "@/src/markdownToSpeech";
+import { SpeechStreamer } from "@/src/SpeechStreamer";
 import LlmServer, { LlmApiError, LlmStreamRequest, NewChatContext, summarizeDetections } from "@/src/LlmServer";
 import { WifiBinder } from "@/src/WifiBinder";
 import { LLM_HANDSHAKE_POLL_MS, LLM_MAX_MESSAGE_CHARS, LLM_SSID } from "@/constants/config";
@@ -132,6 +133,15 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	// Invalida handshakes/polling anteriores (reintentos, cambio de foco)
 	const handshakeSeqRef = useRef(0);
 	const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	// Lectura en voz alta por oraciones de la respuesta en curso (preguntas dictadas)
+	const speechStreamerRef = useRef<SpeechStreamer | null>(null);
+
+	// Calla el TTS y evita que se encolen más oraciones de la respuesta que sigue llegando.
+	const stopVoice = () => {
+		speechStreamerRef.current?.cancel();
+		speechStreamerRef.current = null;
+		TtsVoices.stop();
+	};
 
   const handleStartTour = () => {
 		startModuleTour(TOUR_IDS.CHATBOT, () =>
@@ -199,7 +209,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 			handshakeSeqRef.current++;
 			clearPoll();
 			activeRequestRef.current?.abort();
-			TtsVoices.stop();
+			stopVoice();
 			// Si se sale grabando, se descarta el dictado (no se envía fuera de la pantalla).
 			if (isRecordingRef.current) {
 				dictationHandledRef.current = true;
@@ -215,7 +225,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	const detectionKey = props.detection?.id;
 	useEffect(()=>{
 		activeRequestRef.current?.abort();
-		TtsVoices.stop();
+		stopVoice();
 		chatIdRef.current = null;
 		skipImageRef.current = false;
 		setMessages(initialMessages(props.detection));
@@ -283,11 +293,11 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 		}
 	};
 
-	// spoken: la pregunta se hizo por voz => la respuesta se lee en voz alta al terminar.
+	// spoken: la pregunta se hizo por voz => la respuesta se lee en voz alta oración por oración mientras llega.
 	const handleSend = async (newMessages: IMessage[] = [], { spoken = false }: { spoken?: boolean } = {}) => {
 		const userMessage = newMessages[0]?.text?.trim() ?? "";
 		if (streaming || connectionState !== "connected" || !userMessage) { return }
-		TtsVoices.stop();
+		stopVoice();
 
 		const botMessageId = `bot-${Date.now()}`;
 		const updateBotMessage = (text: string, pending = false) => {
@@ -311,11 +321,15 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 
 		setStreaming(true);
 		let received = "";
+		// Con una build nativa sin enqueue se conserva la lectura completa al final.
+		const streamer = spoken && TtsVoices.canEnqueue() ? new SpeechStreamer() : null;
+		speechStreamerRef.current = streamer;
 		const handlers = {
 			onChatId: (chatId: string) => { chatIdRef.current = chatId; },
 			onToken: (text: string) => {
 				received += text;
 				updateBotMessage(received);
+				streamer?.push(text);
 			},
 		};
 
@@ -328,13 +342,17 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 			if (result.chatId) chatIdRef.current = result.chatId;
 
 			if (result.finishReason === "cancelled") {
+				streamer?.cancel();
 				updateBotMessage(received ? `${received}\n\n_(respuesta detenida)_` : "_(respuesta detenida)_");
 			} else if (result.finishReason === "error") {
+				streamer?.cancel();
 				const reason = result.error?.message ?? "Falló el asistente al generar la respuesta.";
 				updateBotMessage(`${received ? `${received}\n\n` : ""}**Error:** ${reason} Puede intentar de nuevo.`);
 			} else {
 				updateBotMessage(received || "_(respuesta vacía)_");
-				if (spoken) {
+				if (streamer) {
+					streamer.finish();
+				} else if (spoken) {
 					const speech = markdownToSpeech(received);
 					if (speech) {
 						TtsVoices.speak(speech);
@@ -343,17 +361,21 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 			}
 		} catch (error) {
 			console.error("Error al conversar con el asistente:", error);
+			streamer?.cancel();
 			const reason = describeError(error);
 			updateBotMessage(`${received ? `${received}\n\n` : ""}**Error:** ${reason}`);
 		} finally {
 			activeRequestRef.current = null;
+			if (speechStreamerRef.current === streamer) {
+				speechStreamerRef.current = null;
+			}
 			setStreaming(false);
 		}
 	};
 
 	// POST /stop_response; si aún no hay chat_id (primer evento no llegó), cerrar la conexión.
 	const handleStop = async () => {
-		TtsVoices.stop();
+		stopVoice();
 		const request = activeRequestRef.current;
 		if (!request) { return }
 		const chatId = chatIdRef.current;
@@ -393,7 +415,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	const microphoneButtonLogic = ()=>{
 		if(!recording){
 			// Cortar la voz para que el micrófono no la capte
-			TtsVoices.stop();
+			stopVoice();
 			dictationHandledRef.current = false;
 			setComposerText("");
 			isRecordingRef.current = true;

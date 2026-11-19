@@ -45,6 +45,11 @@ class TtsVoicesModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     }
 
     @ReactMethod
+    fun enqueue(text: String, promise: Promise){
+        promise.resolve( ttsManager.enqueue(text) )
+    }
+
+    @ReactMethod
     fun stop(){
         ttsManager.stop()
     }
