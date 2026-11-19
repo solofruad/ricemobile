@@ -61,6 +61,8 @@ const WELCOME_TEXT =
 	"_Diagnóstico orientativo generado por IA. Confirme con un agrónomo antes de aplicar tratamientos._";
 
 const TYPING_TEXT = "Escribiendo…";
+const MIC_PERMISSION_TEXT = "Para dictar, permita el acceso al micrófono cuando la app lo pida (o en Ajustes > Aplicaciones > permisos).";
+const MIC_ERROR_TEXT = "No se pudo iniciar el dictado. Intente de nuevo.";
 
 const BOT_MARKDOWN_STYLE: MarkdownStyle = {
 	paragraph: { fontSize: 16, color: "#000000", marginTop: 0, marginBottom: 6 },
@@ -293,8 +295,8 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 		}
 	};
 
-	// spoken: la pregunta se hizo por voz => la respuesta se lee en voz alta oración por oración mientras llega.
-	const handleSend = async (newMessages: IMessage[] = [], { spoken = false }: { spoken?: boolean } = {}) => {
+	// La respuesta se lee en voz alta oración por oración mientras llega (preguntas escritas o dictadas).
+	const handleSend = async (newMessages: IMessage[] = []) => {
 		const userMessage = newMessages[0]?.text?.trim() ?? "";
 		if (streaming || connectionState !== "connected" || !userMessage) { return }
 		stopVoice();
@@ -322,7 +324,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 		setStreaming(true);
 		let received = "";
 		// Con una build nativa sin enqueue se conserva la lectura completa al final.
-		const streamer = spoken && TtsVoices.canEnqueue() ? new SpeechStreamer() : null;
+		const streamer = TtsVoices.canEnqueue() ? new SpeechStreamer() : null;
 		speechStreamerRef.current = streamer;
 		const handlers = {
 			onChatId: (chatId: string) => { chatIdRef.current = chatId; },
@@ -352,7 +354,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 				updateBotMessage(received || "_(respuesta vacía)_");
 				if (streamer) {
 					streamer.finish();
-				} else if (spoken) {
+				} else {
 					const speech = markdownToSpeech(received);
 					if (speech) {
 						TtsVoices.speak(speech);
@@ -406,7 +408,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 			return;
 		}
 		setComposerText("");
-		handleSend([{ _id: `dictation-${Date.now()}`, text, createdAt: new Date(), user: USER }], { spoken: true });
+		handleSend([{ _id: `dictation-${Date.now()}`, text, createdAt: new Date(), user: USER }]);
 	};
 	useEffect(()=>{
 		sendDictationRef.current = sendDictation;
@@ -420,7 +422,19 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 			setComposerText("");
 			isRecordingRef.current = true;
 			setRecording(true);
-			speechRef.current?.record();
+			speechRef.current?.record().catch((error) => {
+				// Permiso de micrófono negado (o Vosk no pudo arrancar): volver al estado normal y avisar.
+				console.warn("No se pudo iniciar el dictado:", error);
+				dictationHandledRef.current = true;
+				isRecordingRef.current = false;
+				setRecording(false);
+				setMessages((previousMessages) => GiftedChat.append(previousMessages, [{
+					_id: `mic-error-${Date.now()}`,
+					text: String(error).toLowerCase().includes("permission") ? MIC_PERMISSION_TEXT : MIC_ERROR_TEXT,
+					createdAt: new Date(),
+					user: BOT_USER,
+				}]));
+			});
 		}else{
 			const text = speechRef.current?.stop() ?? "";
 			isRecordingRef.current = false;
