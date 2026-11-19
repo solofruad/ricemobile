@@ -6,7 +6,6 @@ import { SpeechStreamer } from "@/src/SpeechStreamer";
 import LlmServer, { LlmApiError, LlmStreamRequest, NewChatContext, summarizeDetections } from "@/src/LlmServer";
 import { WifiBinder } from "@/src/WifiBinder";
 import { LLM_HANDSHAKE_POLL_MS, LLM_MAX_MESSAGE_CHARS, LLM_SSID } from "@/constants/config";
-import { useHeaderHeight } from "@react-navigation/elements";
 import { LinearGradient } from "expo-linear-gradient";
 import { File } from "expo-file-system";
 import { useFocusEffect } from "expo-router";
@@ -115,7 +114,6 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	// Evita enviar dos veces el mismo dictado (fin por silencio de Vosk y por el botón de micrófono).
 	const dictationHandledRef = useRef(true);
 	const sendDictationRef = useRef<(text: string) => void>(() => {});
-	const headerHeight = useHeaderHeight();
 	const windowSize = useWindowDimensions();
 	const composerControlsRef = useRef<View | null>(null);
 	const connectionRetryRef = useRef<View | null>(null);
@@ -461,8 +459,9 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
       </View>
 			<GiftedChat
 				textInputRef={inputRef as React.RefObject<TextInput>}
-				// Evita que el teclado cubra el input, ajustando su posición según la altura del header de navegación
-				keyboardAvoidingViewProps={{ keyboardVerticalOffset: headerHeight }}
+				// Mide la posición real del chat en pantalla (barra de estado, SafeAreaView) para que el teclado no tape la caja;
+				// la pestaña no tiene header, así que un offset fijo (antes useHeaderHeight = 0) quedaba corto.
+				keyboardAvoidingViewProps={{ automaticOffset: true }}
 				colorScheme="light"
 				messages={messages}
 				renderMessageText={(textProps)=>{
