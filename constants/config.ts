@@ -46,6 +46,9 @@ export const LLM_MAX_DETECTION_DATA_CHARS = 4000;
 
 // --- Inicialización de la app (antes en hooks/use-app-initialization.ts) ---
 export const TTS_LANGUAGE_TAG = "es";
+// Intervalo entre consultas a TtsVoices.isSpeaking() mientras se lee una respuesta en el chat
+// (mantiene visible el botón de detener hasta que la voz termina).
+export const TTS_SPEAKING_POLL_MS = 800;
 export const OBJECT_DETECTOR_MAX_RESULTS = 7;
 export const OBJECT_DETECTOR_SCORE_THRESHOLD = 0.3;
 // Preset inicial para testear que MediaPipe+legacy siga funcionando tras portar LiteRT.

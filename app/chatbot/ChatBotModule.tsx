@@ -5,7 +5,7 @@ import { markdownToSpeech } from "@/src/markdownToSpeech";
 import { SpeechStreamer } from "@/src/SpeechStreamer";
 import LlmServer, { LlmApiError, LlmStreamRequest, NewChatContext, summarizeDetections } from "@/src/LlmServer";
 import { WifiBinder } from "@/src/WifiBinder";
-import { LLM_HANDSHAKE_POLL_MS, LLM_MAX_MESSAGE_CHARS, LLM_SSID } from "@/constants/config";
+import { LLM_HANDSHAKE_POLL_MS, LLM_MAX_MESSAGE_CHARS, LLM_SSID, TTS_SPEAKING_POLL_MS } from "@/constants/config";
 import { LinearGradient } from "expo-linear-gradient";
 import { File } from "expo-file-system";
 import { useFocusEffect } from "expo-router";
@@ -173,7 +173,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 					setSpeaking(false);
 				}
 			});
-		}, 400);
+		}, TTS_SPEAKING_POLL_MS);
 		return () => clearInterval(timer);
 	},[speaking]);
 
