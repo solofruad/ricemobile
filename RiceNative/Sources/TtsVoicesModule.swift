@@ -17,6 +17,7 @@ import UIKit
 ///   openVoicesInstaller()     -> void
 ///   speak(text)               -> Promise<boolean>   (corta lo que se esté diciendo)
 ///   enqueue(text)             -> Promise<boolean>   (lo encola detrás)
+///   isSpeaking()              -> Promise<boolean>   (hablando o con cola pendiente)
 ///   stop()                    -> void               (corta y vacía la cola)
 ///
 /// NOTA: "init" es un nombre reservado para los inicializadores de ObjC/Swift,
@@ -103,6 +104,15 @@ final class TtsVoicesModule: NSObject {
       utterance.rate = AVSpeechUtteranceDefaultSpeechRate
       TtsVoicesModule.synthesizer.speak(utterance)
       resolve(true)
+    }
+  }
+
+  /// True mientras el sintetizador está hablando o tiene utterances en cola.
+  @objc(isSpeaking:rejecter:)
+  func isSpeaking(_ resolve: @escaping RCTPromiseResolveBlock,
+                  rejecter reject: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.main.async {
+      resolve(TtsVoicesModule.synthesizer.isSpeaking)
     }
   }
 

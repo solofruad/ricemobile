@@ -138,12 +138,44 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	// Lectura en voz alta por oraciones de la respuesta en curso (preguntas dictadas)
 	const speechStreamerRef = useRef<SpeechStreamer | null>(null);
 
+	// true mientras la voz lee (aunque la respuesta ya haya terminado de llegar): mantiene visible el botón de detener
+	const [speaking, setSpeaking] = useState(false);
+	const lastSpeechAtRef = useRef(0);
+
 	// Calla el TTS y evita que se encolen más oraciones de la respuesta que sigue llegando.
 	const stopVoice = () => {
 		speechStreamerRef.current?.cancel();
 		speechStreamerRef.current = null;
 		TtsVoices.stop();
+		setSpeaking(false);
 	};
+
+	// Se llama al encolar texto en el TTS. Sin isSpeaking nativo (build vieja) no se puede saber cuándo termina.
+	const markSpeaking = () => {
+		if (!TtsVoices.canReportSpeaking()) { return }
+		lastSpeechAtRef.current = Date.now();
+		setSpeaking(true);
+	};
+
+	// Mientras se lee, se consulta al TTS si sigue hablando. Se exige 2 lecturas seguidas en false y 1 s desde
+	// la última oración encolada para que el botón no parpadee entre oraciones.
+	useEffect(()=>{
+		if (!speaking) { return }
+		let falseReads = 0;
+		const timer = setInterval(()=>{
+			TtsVoices.isSpeaking().then((isSpeaking)=>{
+				if (isSpeaking) {
+					falseReads = 0;
+					return;
+				}
+				falseReads += 1;
+				if (falseReads >= 2 && Date.now() - lastSpeechAtRef.current >= 1000) {
+					setSpeaking(false);
+				}
+			});
+		}, 400);
+		return () => clearInterval(timer);
+	},[speaking]);
 
   const handleStartTour = () => {
 		startModuleTour(TOUR_IDS.CHATBOT, () =>
@@ -324,7 +356,9 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 		setStreaming(true);
 		let received = "";
 		// Con una build nativa sin enqueue se conserva la lectura completa al final.
-		const streamer = TtsVoices.canEnqueue() ? new SpeechStreamer() : null;
+		const streamer = TtsVoices.canEnqueue()
+			? new SpeechStreamer({ speak: (sentence) => { TtsVoices.enqueue(sentence); markSpeaking(); } })
+			: null;
 		speechStreamerRef.current = streamer;
 		const handlers = {
 			onChatId: (chatId: string) => { chatIdRef.current = chatId; },
@@ -358,6 +392,7 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 					const speech = markdownToSpeech(received);
 					if (speech) {
 						TtsVoices.speak(speech);
+						markSpeaking();
 					}
 				}
 			}
@@ -498,15 +533,16 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 
 				renderSend={ (sendProps)=>(
 					<View ref={composerControlsRef} collapsable={false} style={{display:"flex", flexDirection:"row", alignItems:"center"}}>
-						{streaming &&
+						{/* Visible mientras llega la respuesta o mientras la voz la sigue leyendo */}
+						{(streaming || speaking) &&
 							<IconButton
 								size={32}
 								icon="stop"
 								mode="outlined"
-								accessibilityLabel="Detener respuesta"
+								accessibilityLabel={streaming ? "Detener respuesta" : "Detener lectura"}
 								iconColor={MD3Colors.error50}
 								style={{ margin: 3, borderColor: MD3Colors.error50, borderWidth:2 }}
-								onPress={handleStop}
+								onPress={streaming ? handleStop : stopVoice}
 							/>
 						}
 

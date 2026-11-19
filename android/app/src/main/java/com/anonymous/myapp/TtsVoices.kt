@@ -197,4 +197,11 @@ class TtsVoices {
     fun stop(){
         tts?.stop()
     }
+
+    /**
+     * True mientras el motor está diciendo algo o tiene fragmentos en cola.
+     */
+    fun isSpeaking(): Boolean {
+        return tts?.isSpeaking == true
+    }
 }

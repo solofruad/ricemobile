@@ -60,6 +60,23 @@ export class TtsVoices {
   }
 
   /**
+   * True si el módulo nativo puede informar si está hablando (una dev build anterior no lo tiene).
+   */
+  static canReportSpeaking(): boolean {
+    return typeof TtsVoicesModule?.isSpeaking === "function";
+  }
+
+  /**
+   * True mientras la voz está hablando o tiene fragmentos en cola.
+   */
+  static isSpeaking(): Promise<boolean> {
+    if (!TtsVoices.canReportSpeaking()) {
+      return Promise.resolve(false);
+    }
+    return (TtsVoicesModule.isSpeaking() as Promise<boolean>).catch(() => false);
+  }
+
+  /**
    * Stop speak
    */
   static stop(){

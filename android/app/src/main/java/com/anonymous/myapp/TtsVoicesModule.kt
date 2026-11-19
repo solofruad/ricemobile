@@ -50,6 +50,11 @@ class TtsVoicesModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     }
 
     @ReactMethod
+    fun isSpeaking(promise: Promise){
+        promise.resolve( ttsManager.isSpeaking() )
+    }
+
+    @ReactMethod
     fun stop(){
         ttsManager.stop()
     }
