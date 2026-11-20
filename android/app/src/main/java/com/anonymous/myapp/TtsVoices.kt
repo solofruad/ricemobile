@@ -20,6 +20,8 @@ class TtsVoices {
         //Se espera encontrar voces en español, por defecto
         private var expectedLanguage = Locale.forLanguageTag("es")
         private val maxInputLength = TextToSpeech.getMaxSpeechInputLength()
+        // Identificador de cada fragmento encolado con enqueue()
+        private var utteranceCounter = 0
     }
 
     //***************************** Configuration and init stuff *********************************
@@ -176,7 +178,30 @@ class TtsVoices {
         return hasSucced == TextToSpeech.SUCCESS
     }
 
+    /**
+     * Encola el texto detrás de lo que se esté diciendo (QUEUE_ADD), sin cortarlo.
+     * Se usa para leer una respuesta por oraciones mientras llega en streaming.
+     * @param text Texto a decir
+     * @return True si se encoló, false si no o si el texto es demasiado largo
+     */
+    fun enqueue(text : String):Boolean{
+        if(text.length > maxInputLength){
+            println("Text is too long")
+            return false
+        }
+        utteranceCounter += 1
+        val hasSucced = tts?.speak(text, TextToSpeech.QUEUE_ADD, null, "rice-$utteranceCounter")
+        return hasSucced == TextToSpeech.SUCCESS
+    }
+
     fun stop(){
         tts?.stop()
+    }
+
+    /**
+     * True mientras el motor está diciendo algo o tiene fragmentos en cola.
+     */
+    fun isSpeaking(): Boolean {
+        return tts?.isSpeaking == true
     }
 }

@@ -19,8 +19,14 @@ export default class SpeechText{
     });
   }
 
-  record(){
-     vosk.start()
+  /**
+   * Empieza a grabar. vosk.start() pide el permiso de micrófono en Android y rechaza
+   * ('Record permission not granted') si se niega: quien llama debe manejar el rechazo.
+   */
+  record(): Promise<void>{
+    // Cada grabación empieza vacía: si no, stop() devolvería el texto del dictado anterior.
+    this.result = "";
+    return Promise.resolve(vosk.start()).then(() => undefined);
   }
 
   stop(){

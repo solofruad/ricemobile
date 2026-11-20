@@ -1,16 +1,17 @@
 import {DetectionRecord} from "@/database/tables/DetectionsTable"
 import SpeechText from "@/src/SpeechText";
 import { TtsVoices } from "@/src/TtsVoices";
+import { markdownToSpeech } from "@/src/markdownToSpeech";
+import { SpeechStreamer } from "@/src/SpeechStreamer";
 import LlmServer, { LlmApiError, LlmStreamRequest, NewChatContext, summarizeDetections } from "@/src/LlmServer";
 import { WifiBinder } from "@/src/WifiBinder";
-import { LLM_HANDSHAKE_POLL_MS, LLM_MAX_MESSAGE_CHARS, LLM_SSID } from "@/constants/config";
-import { useHeaderHeight } from "@react-navigation/elements";
+import { LLM_HANDSHAKE_POLL_MS, LLM_MAX_MESSAGE_CHARS, LLM_SSID, TTS_SPEAKING_POLL_MS } from "@/constants/config";
 import { LinearGradient } from "expo-linear-gradient";
 import { File } from "expo-file-system";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TextInput, View } from "react-native";
-import { GiftedChat, IMessage,  MessageText, Send } from "react-native-gifted-chat";
+import { ActivityIndicator, Image, StyleSheet, Text, TextInput, View } from "react-native";
+import { GiftedChat, IMessage, MessageImage, MessageText, Send } from "react-native-gifted-chat";
 import { EnrichedMarkdownText, MarkdownStyle } from "react-native-enriched-markdown";
 import { Button, IconButton, MD3Colors } from "react-native-paper";
 import { useWindowDimensions } from "react-native";
@@ -21,17 +22,48 @@ import { buildChatbotTourSteps } from "@/constants/tours/chatbot";
 
 type ChatBotModuleProps = {
 	detection?: DetectionRecord
+	// Cambia con cada "Chatbot" pulsado en el Álbum (aunque sea la misma foto) para iniciar una conversación nueva
+	attachKey?: string
 }
 
 type ConnectionState = "scanning" | "loading" | "connected" | "failed"
 
+const USER = { _id: 1, name: "User" };
 const BOT_USER = { _id: 2, name: "Chatbot" };
+
+// Miniatura de la foto adjunta: se respeta la proporción real para que no se recorte
+// (el visor ampliado de GiftedChat calcula su tamaño a partir de la miniatura).
+const PHOTO_MAX_WIDTH = 220;
+const PHOTO_MAX_HEIGHT = 300;
+const DEFAULT_PHOTO_ASPECT = 3 / 4;
+
+const photoThumbnailSize = (aspect: number) => {
+	let width = PHOTO_MAX_WIDTH;
+	let height = width / aspect;
+	if (height > PHOTO_MAX_HEIGHT) {
+		height = PHOTO_MAX_HEIGHT;
+		width = height * aspect;
+	}
+	return { width, height };
+};
+
+const photoExists = (uri?: string): boolean => {
+	if (!uri) return false;
+	try {
+		return new File(uri).exists;
+	} catch (error) {
+		console.warn("No se pudo leer la foto de la detección:", error);
+		return false;
+	}
+};
 
 const WELCOME_TEXT =
 	"Bienvenido. ¿En qué puedo ayudarte?\n\n" +
 	"_Diagnóstico orientativo generado por IA. Confirme con un agrónomo antes de aplicar tratamientos._";
 
 const TYPING_TEXT = "Escribiendo…";
+const MIC_PERMISSION_TEXT = "Para dictar, permita el acceso al micrófono cuando la app lo pida (o en Ajustes > Aplicaciones > permisos).";
+const MIC_ERROR_TEXT = "No se pudo iniciar el dictado. Intente de nuevo.";
 
 const BOT_MARKDOWN_STYLE: MarkdownStyle = {
 	paragraph: { fontSize: 16, color: "#000000", marginTop: 0, marginBottom: 6 },
@@ -39,22 +71,49 @@ const BOT_MARKDOWN_STYLE: MarkdownStyle = {
 	strong: { color: "#000000" },
 };
 
-const initialMessages = (): IMessage[] => [
-	{
-		_id: "welcome",
-		text: WELCOME_TEXT,
-		createdAt: new Date(),
-		user: BOT_USER,
-	},
-];
+// GiftedChat ordena los mensajes del más nuevo al más viejo.
+const initialMessages = (detection?: DetectionRecord): IMessage[] => {
+	const messages: IMessage[] = [
+		{
+			_id: "welcome",
+			text: WELCOME_TEXT,
+			createdAt: new Date(),
+			user: BOT_USER,
+		},
+	];
+	if (!detection) return messages;
+	if (photoExists(detection.photo_dir)) {
+		// Solo visual: la foto se envía al asistente junto con la primera pregunta (/new_chat).
+		messages.unshift({
+			_id: `photo-${detection.id}`,
+			text: "Foto adjunta del Álbum. Escriba su pregunta para enviarla al asistente.",
+			image: detection.photo_dir,
+			createdAt: new Date(),
+			user: USER,
+		});
+	} else {
+		messages.unshift({
+			_id: `photo-missing-${detection.id}`,
+			text: "La foto de esta detección ya no está en el teléfono; usaré los resultados guardados de la detección.",
+			createdAt: new Date(),
+			user: BOT_USER,
+		});
+	}
+	return messages;
+};
 
 export default function ChatBotModule (props: ChatBotModuleProps) {
 	const llmServer = useMemo(() => new LlmServer(), []);
 	const inputRef = useRef<TextInput>(null);
-	const [speechDetect, setSpeechDetect] = useState<SpeechText|null>(null);
+	const speechRef = useRef<SpeechText | null>(null);
 	const [recording, setRecording] = useState(false);
-	const [inputHasContent, setInputHasContent] = useState(false);
-	const headerHeight = useHeaderHeight();
+	const isRecordingRef = useRef(false);
+	// Texto del input controlado (GiftedChat `text`): el dictado lo escribe y GiftedChat lo limpia al enviar.
+	const [composerText, setComposerText] = useState("");
+	const inputHasContent = composerText.length > 0;
+	// Evita enviar dos veces el mismo dictado (fin por silencio de Vosk y por el botón de micrófono).
+	const dictationHandledRef = useRef(true);
+	const sendDictationRef = useRef<(text: string) => void>(() => {});
 	const windowSize = useWindowDimensions();
 	const composerControlsRef = useRef<View | null>(null);
 	const connectionRetryRef = useRef<View | null>(null);
@@ -63,7 +122,9 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	const [connectionState, setConnectionState] = useState<ConnectionState>("scanning");
 	const [connectionError, setConnectionError] = useState<string>("");
 	const [streaming, setStreaming] = useState(false);
-	const [messages, setMessages] = useState<IMessage[]>(initialMessages);
+	const [messages, setMessages] = useState<IMessage[]>(() => initialMessages(props.detection));
+	const [photoAspect, setPhotoAspect] = useState(DEFAULT_PHOTO_ASPECT);
+	const photoImageStyle = useMemo(() => ({ ...photoThumbnailSize(photoAspect), borderRadius: 13, margin: 3 }), [photoAspect]);
 
 	// chat_id de la conversación actual en el servidor (null => el próximo mensaje crea una con /new_chat)
 	const chatIdRef = useRef<string | null>(null);
@@ -74,6 +135,47 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 	// Invalida handshakes/polling anteriores (reintentos, cambio de foco)
 	const handshakeSeqRef = useRef(0);
 	const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	// Lectura en voz alta por oraciones de la respuesta en curso (preguntas dictadas)
+	const speechStreamerRef = useRef<SpeechStreamer | null>(null);
+
+	// true mientras la voz lee (aunque la respuesta ya haya terminado de llegar): mantiene visible el botón de detener
+	const [speaking, setSpeaking] = useState(false);
+	const lastSpeechAtRef = useRef(0);
+
+	// Calla el TTS y evita que se encolen más oraciones de la respuesta que sigue llegando.
+	const stopVoice = () => {
+		speechStreamerRef.current?.cancel();
+		speechStreamerRef.current = null;
+		TtsVoices.stop();
+		setSpeaking(false);
+	};
+
+	// Se llama al encolar texto en el TTS. Sin isSpeaking nativo (build vieja) no se puede saber cuándo termina.
+	const markSpeaking = () => {
+		if (!TtsVoices.canReportSpeaking()) { return }
+		lastSpeechAtRef.current = Date.now();
+		setSpeaking(true);
+	};
+
+	// Mientras se lee, se consulta al TTS si sigue hablando. Se exige 2 lecturas seguidas en false y 1 s desde
+	// la última oración encolada para que el botón no parpadee entre oraciones.
+	useEffect(()=>{
+		if (!speaking) { return }
+		let falseReads = 0;
+		const timer = setInterval(()=>{
+			TtsVoices.isSpeaking().then((isSpeaking)=>{
+				if (isSpeaking) {
+					falseReads = 0;
+					return;
+				}
+				falseReads += 1;
+				if (falseReads >= 2 && Date.now() - lastSpeechAtRef.current >= 1000) {
+					setSpeaking(false);
+				}
+			});
+		}, TTS_SPEAKING_POLL_MS);
+		return () => clearInterval(timer);
+	},[speaking]);
 
   const handleStartTour = () => {
 		startModuleTour(TOUR_IDS.CHATBOT, () =>
@@ -141,44 +243,59 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 			handshakeSeqRef.current++;
 			clearPoll();
 			activeRequestRef.current?.abort();
+			stopVoice();
+			// Si se sale grabando, se descarta el dictado (no se envía fuera de la pantalla).
+			if (isRecordingRef.current) {
+				dictationHandledRef.current = true;
+				isRecordingRef.current = false;
+				speechRef.current?.stop();
+				setRecording(false);
+			}
 			WifiBinder.unbind();
 		};
 	}, [handshake]));
 
-	// Nueva detección desde el Álbum => nueva conversación
-	const detectionKey = props.detection?.id;
+	// Cada adjunto desde el Álbum => nueva conversación (/new_chat), mostrando la foto adjunta
+	const resetKey = props.attachKey ?? (props.detection ? String(props.detection.id) : "");
 	useEffect(()=>{
 		activeRequestRef.current?.abort();
+		stopVoice();
 		chatIdRef.current = null;
 		skipImageRef.current = false;
-		setMessages(initialMessages());
-	},[detectionKey]);
+		setMessages(initialMessages(props.detection));
+		setPhotoAspect(DEFAULT_PHOTO_ASPECT);
+		const photoUri = props.detection?.photo_dir;
+		if (photoUri && photoExists(photoUri)) {
+			Image.getSize(
+				photoUri,
+				(width, height) => { if (width > 0 && height > 0) setPhotoAspect(width / height); },
+				(error) => console.warn("No se pudo obtener el tamaño de la foto:", error),
+			);
+		}
+	// Solo resetKey: app/(tabs)/chatbot.tsx crea props.detection con JSON.parse en cada render,
+	// así que depender del objeto reiniciaría la conversación constantemente.
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	},[resetKey]);
 
+	// Dictado (Vosk): los parciales se ven en el input; al terminar (el usuario deja de hablar) se envía solo.
+	// SpeechText se crea una vez, por eso el envío pasa por una ref con el estado actual.
 	useEffect(()=>{
-		setSpeechDetect(
-			new SpeechText((text)=>{
-				inputRef.current?.setNativeProps({ text });
-			}, (text)=>{
-				if (!inputRef.current) { return }
-				setRecording(false);
-				inputRef.current.setNativeProps({ text });
-				TtsVoices.speak(text);
-			})
-		);
+		speechRef.current = new SpeechText((text)=>{
+			if (dictationHandledRef.current) { return }
+			setComposerText(text);
+		}, (text)=>{
+			isRecordingRef.current = false;
+			setRecording(false);
+			sendDictationRef.current(text);
+		});
 	},[]);
 
 	// Contexto del primer mensaje: foto (YOLO en el servidor) > detección local > nada.
 	const buildNewChatContext = (): NewChatContext => {
 		const detection = props.detection;
 		if (!detection) return {};
-		if (!skipImageRef.current && detection.photo_dir) {
-			try {
-				if (new File(detection.photo_dir).exists) {
-					return { imageUri: detection.photo_dir };
-				}
-			} catch (error) {
-				console.warn("No se pudo leer la foto de la detección:", error);
-			}
+		if (!skipImageRef.current && photoExists(detection.photo_dir)) {
+			return { imageUri: detection.photo_dir };
 		}
 		const summary = summarizeDetections(detection.detection);
 		return { detectionData: summary.length > 0 ? summary : "Sin detecciones en la foto." };
@@ -210,9 +327,11 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 		}
 	};
 
-	const handleSend = async (newMessages:Array<IMessage> = []) => {
+	// La respuesta se lee en voz alta oración por oración mientras llega (preguntas escritas o dictadas).
+	const handleSend = async (newMessages: IMessage[] = []) => {
 		const userMessage = newMessages[0]?.text?.trim() ?? "";
 		if (streaming || connectionState !== "connected" || !userMessage) { return }
+		stopVoice();
 
 		const botMessageId = `bot-${Date.now()}`;
 		const updateBotMessage = (text: string, pending = false) => {
@@ -236,11 +355,17 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 
 		setStreaming(true);
 		let received = "";
+		// Con una build nativa sin enqueue se conserva la lectura completa al final.
+		const streamer = TtsVoices.canEnqueue()
+			? new SpeechStreamer({ speak: (sentence) => { TtsVoices.enqueue(sentence); markSpeaking(); } })
+			: null;
+		speechStreamerRef.current = streamer;
 		const handlers = {
 			onChatId: (chatId: string) => { chatIdRef.current = chatId; },
 			onToken: (text: string) => {
 				received += text;
 				updateBotMessage(received);
+				streamer?.push(text);
 			},
 		};
 
@@ -253,25 +378,41 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 			if (result.chatId) chatIdRef.current = result.chatId;
 
 			if (result.finishReason === "cancelled") {
+				streamer?.cancel();
 				updateBotMessage(received ? `${received}\n\n_(respuesta detenida)_` : "_(respuesta detenida)_");
 			} else if (result.finishReason === "error") {
+				streamer?.cancel();
 				const reason = result.error?.message ?? "Falló el asistente al generar la respuesta.";
 				updateBotMessage(`${received ? `${received}\n\n` : ""}**Error:** ${reason} Puede intentar de nuevo.`);
 			} else {
 				updateBotMessage(received || "_(respuesta vacía)_");
+				if (streamer) {
+					streamer.finish();
+				} else {
+					const speech = markdownToSpeech(received);
+					if (speech) {
+						TtsVoices.speak(speech);
+						markSpeaking();
+					}
+				}
 			}
 		} catch (error) {
 			console.error("Error al conversar con el asistente:", error);
+			streamer?.cancel();
 			const reason = describeError(error);
 			updateBotMessage(`${received ? `${received}\n\n` : ""}**Error:** ${reason}`);
 		} finally {
 			activeRequestRef.current = null;
+			if (speechStreamerRef.current === streamer) {
+				speechStreamerRef.current = null;
+			}
 			setStreaming(false);
 		}
 	};
 
 	// POST /stop_response; si aún no hay chat_id (primer evento no llegó), cerrar la conexión.
 	const handleStop = async () => {
+		stopVoice();
 		const request = activeRequestRef.current;
 		if (!request) { return }
 		const chatId = chatIdRef.current;
@@ -287,21 +428,54 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 		}
 	};
 
-	const microphoneButtonLogic = ()=>{
-		if (inputRef.current) {
-			if(!recording){
-				inputRef.current.setNativeProps({ text:"" });
-				speechDetect?.record();
-			}else{
-				const text = speechDetect?.stop() ?? "";
-				if(!text){
-					setInputHasContent(false);
-				}
-				inputRef.current.setNativeProps({ text });
-				TtsVoices.speak(text);
-			}
+	// Fin del dictado: se envía solo si se puede; si hay una respuesta en curso o no hay conexión,
+	// el texto queda en el input para enviarlo a mano.
+	const sendDictation = (rawText: string) => {
+		if (dictationHandledRef.current) { return }
+		dictationHandledRef.current = true;
+		const text = rawText.trim();
+		if (!text) {
+			setComposerText("");
+			return;
 		}
-		setRecording(!recording);
+		if (streaming || connectionState !== "connected") {
+			setComposerText(text);
+			return;
+		}
+		setComposerText("");
+		handleSend([{ _id: `dictation-${Date.now()}`, text, createdAt: new Date(), user: USER }]);
+	};
+	useEffect(()=>{
+		sendDictationRef.current = sendDictation;
+	});
+
+	const microphoneButtonLogic = ()=>{
+		if(!recording){
+			// Cortar la voz para que el micrófono no la capte
+			stopVoice();
+			dictationHandledRef.current = false;
+			setComposerText("");
+			isRecordingRef.current = true;
+			setRecording(true);
+			speechRef.current?.record().catch((error) => {
+				// Permiso de micrófono negado (o Vosk no pudo arrancar): volver al estado normal y avisar.
+				console.warn("No se pudo iniciar el dictado:", error);
+				dictationHandledRef.current = true;
+				isRecordingRef.current = false;
+				setRecording(false);
+				setMessages((previousMessages) => GiftedChat.append(previousMessages, [{
+					_id: `mic-error-${Date.now()}`,
+					text: String(error).toLowerCase().includes("permission") ? MIC_PERMISSION_TEXT : MIC_ERROR_TEXT,
+					createdAt: new Date(),
+					user: BOT_USER,
+				}]));
+			});
+		}else{
+			const text = speechRef.current?.stop() ?? "";
+			isRecordingRef.current = false;
+			setRecording(false);
+			sendDictation(text);
+		}
 	}
 
 	return (
@@ -320,8 +494,9 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
       </View>
 			<GiftedChat
 				textInputRef={inputRef as React.RefObject<TextInput>}
-				// Evita que el teclado cubra el input, ajustando su posición según la altura del header de navegación
-				keyboardAvoidingViewProps={{ keyboardVerticalOffset: headerHeight }}
+				// Mide la posición real del chat en pantalla (barra de estado, SafeAreaView) para que el teclado no tape la caja;
+				// la pestaña no tiene header, así que un offset fijo (antes useHeaderHeight = 0) quedaba corto.
+				keyboardAvoidingViewProps={{ automaticOffset: true }}
 				colorScheme="light"
 				messages={messages}
 				renderMessageText={(textProps)=>{
@@ -343,28 +518,31 @@ export default function ChatBotModule (props: ChatBotModuleProps) {
 					}
 					return <MessageText {...textProps} textStyle={{left:{fontSize:16}, right:{fontSize:16}}}/>;
 				}}
-				onSend={handleSend}
-				user={{ _id: 1, name: "User" }}
+				renderMessageImage={(imageProps)=>(
+					<MessageImage {...imageProps} imageStyle={photoImageStyle}/>
+				)}
+				onSend={(newMessages)=>handleSend(newMessages)}
+				user={USER}
+				text={composerText}
 				textInputProps={{
 					style:{fontSize:17, color:"black", marginBottom:4},
 					maxLength: LLM_MAX_MESSAGE_CHARS,
-					onChangeText:((inputText)=>{
-						setInputHasContent(inputText.length != 0)
-					}),
+					onChangeText:setComposerText,
 					placeholder:"Escriba su mensaje aquí..."
 				}}
 
 				renderSend={ (sendProps)=>(
 					<View ref={composerControlsRef} collapsable={false} style={{display:"flex", flexDirection:"row", alignItems:"center"}}>
-						{streaming &&
+						{/* Visible mientras llega la respuesta o mientras la voz la sigue leyendo */}
+						{(streaming || speaking) &&
 							<IconButton
 								size={32}
 								icon="stop"
 								mode="outlined"
-								accessibilityLabel="Detener respuesta"
+								accessibilityLabel={streaming ? "Detener respuesta" : "Detener lectura"}
 								iconColor={MD3Colors.error50}
 								style={{ margin: 3, borderColor: MD3Colors.error50, borderWidth:2 }}
-								onPress={handleStop}
+								onPress={streaming ? handleStop : stopVoice}
 							/>
 						}
 
